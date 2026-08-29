@@ -17,13 +17,30 @@ repos:
   # ---------------------------------------------------------------------------
   # Python linting — ruff (mais rapido que flake8)
   # ---------------------------------------------------------------------------
+  # rev alinhado com o ruff usado no CI e no desenvolvimento (0.16.5).
+  #
+  # 2026-08-29 -- bug real corrigido: o rev estava preso em v0.4.4 enquanto os
+  # args ja listavam `UP045` no --ignore. Essa regra so passou a existir em
+  # ruff >= 0.9 (antes era parte de UP007), entao o ruff v0.4.4 abortava com
+  # "invalid value 'UP045' for '--ignore'" e exit code 2 -- o hook era
+  # INCAPAZ de passar, em qualquer commit. Nao foi detectado antes porque os
+  # hooks nao estavam instalados neste checkout (`.git/hooks/` so tinha os
+  # .sample), entao nada rodava de verdade.
+  #
+  # Causa raiz da classe: select/ignore viviam DUPLICADOS aqui e em
+  # ruff.toml -- duas copias da mesma regra de negocio, que a Regra 5 do
+  # README proibe justamente porque divergem em silencio. Quem acrescentou
+  # UP045 ao ruff.toml nao tinha como saber que existia uma segunda copia com
+  # um ruff antigo atras. Os args foram REMOVIDOS: o ruff le ruff.toml da raiz
+  # sozinho, que passa a ser a fonte unica de select/ignore/exclude para hook,
+  # CI e execucao manual.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
+    rev: v0.16.5
     hooks:
-      - id: ruff
-        args: ['--select=E,F,W,B,UP', '--ignore=E501,UP007,UP006,UP035,UP045,B904,W191,E101', '--fix']
-        files: ^addon/
-        exclude: ^addon/globalPlugins/nvdastudio/(lib|nvda_docs_cache)/
+      # `ruff-check`, nao `ruff`: neste rev o id antigo ainda funciona mas ja
+      # roda como "legacy alias" e deve sumir num release futuro.
+      - id: ruff-check
+        args: ['--fix']
 
   # ---------------------------------------------------------------------------
   # Conventional Commits — commit-msg
@@ -55,7 +72,13 @@ repos:
       - id: check-version-asserts
         name: Verifica asserts de versao nos testes
         entry: python scripts/check_version_asserts.py
-        language: python
+        # language: system, nao python -- mesmo motivo do hook pip-audit
+        # abaixo. 2026-08-29, bug real corrigido: com `language: python` o
+        # pre-commit cria um venv ISOLADO sem as dependencias do projeto, e o
+        # script importa tests/conftest.py, que importa pytest -- o hook
+        # morria com ModuleNotFoundError em todo commit. Precisa do
+        # interpretador real do desenvolvedor, onde as deps ja existem.
+        language: system
         pass_filenames: false
         files: \.(py)$
         verbose: false
