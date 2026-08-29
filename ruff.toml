@@ -1,0 +1,23 @@
+# Config de raiz para que `ruff check .` funcione direto, sem flags manuais.
+# Espelha o hook do .pre-commit-config.yaml (select/ignore) e exclui lib/,
+# que e vendorizado (httpx, httpcore, h11, primp, typing_extensions --
+# codigo de terceiros, fora do escopo de lint do NVDAStudio). nvda_docs_cache/
+# (2026-08-16, nvda_context.py 3.31.0) e a mesma categoria: copia de
+# referencia do codigo-fonte REAL do NVDA/AddonTemplate, lida como texto
+# puro (nunca importada/executada), nao codigo escrito pelo NVDAStudio.
+extend-exclude = [
+	"addon/globalPlugins/nvdastudio/lib",
+	"addon/globalPlugins/nvdastudio/nvda_docs_cache",
+]
+
+[lint]
+select = ["E", "F", "W", "B", "UP"]
+# W191/E101: o projeto usa TABs como indentacao por decisao explicita (README
+# Regra 20, padrao de codificacao do NVDA) -- nao sao bugs, sao o estilo
+# oficial. Alinhamento de continuacao de linha com espacos dentro de um
+# arquivo indentado por tabs (E101) tambem e estilo Python comum e aceito.
+# UP035 seguiria de perto UP006 (Dict/List/Optional do modulo typing em vez de
+# dict/list/T|None nativos) -- UP006/UP007 ja eram ignorados de proposito;
+# ignorar UP035 tambem evita reescrever ~36 imports contra uma convencao que
+# o proprio projeto ja optou por nao forcar.
+ignore = ["E501", "UP007", "UP006", "UP035", "B904", "W191", "E101"]

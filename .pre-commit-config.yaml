@@ -1,0 +1,77 @@
+repos:
+  # ---------------------------------------------------------------------------
+  # Verificacoes basicas de qualidade
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: detect-private-key
+
+  # ---------------------------------------------------------------------------
+  # Python linting — ruff (mais rapido que flake8)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        args: ['--select=E,F,W,B,UP', '--ignore=E501,UP007,UP006,UP035,B904,W191,E101', '--fix']
+        files: ^addon/
+        exclude: ^addon/globalPlugins/nvdastudio/(lib|nvda_docs_cache)/
+
+  # ---------------------------------------------------------------------------
+  # Conventional Commits — commit-msg
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, chore, refactor, docs, test, perf, ci, build, revert]
+
+  # ---------------------------------------------------------------------------
+  # Secret scanning — gitleaks (detect-private-key acima so pega chaves
+  # PEM/SSH; o projeto lida com 7 chaves de API de provedor diferentes --
+  # OPENAI/ANTHROPIC/GEMINI/XAI/OLLAMA/TAVILY/EXA -- que tem formato proprio,
+  # nao coberto pelo hook generico. Achado de auditoria 2026-08-03.)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # ---------------------------------------------------------------------------
+  # Hook local — verifica consistencia de MODULE_VERSION vs. test asserts
+  # Captura o problema mais comum do projeto: bumpar versao e esquecer o assert
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: check-version-asserts
+        name: Verifica asserts de versao nos testes
+        entry: python scripts/check_version_asserts.py
+        language: python
+        pass_filenames: false
+        files: \.(py)$
+        verbose: false
+
+  # ---------------------------------------------------------------------------
+  # Hook local — pip-audit contra vulnerabilidades conhecidas (OSV) nas
+  # dependencias diretas do projeto. Superficie pequena (tinydb/pytest/
+  # pytest-mock/pytest-cov/hypothesis) mas barato o suficiente para nao
+  # deixar de rodar. Achado de auditoria 2026-08-03.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: pip-audit
+        name: pip-audit (vulnerabilidades de dependencias)
+        entry: python -m pip_audit -r requirements.txt --strict
+        language: system
+        pass_filenames: false
+        files: requirements\.txt$
+        verbose: true

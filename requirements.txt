@@ -1,0 +1,10 @@
+tinydb>=4.8.0
+
+# Testes
+pytest>=8.0.0
+pytest-mock>=3.14.0
+pytest-cov>=5.0.0
+hypothesis>=6.100.0
+
+# Seguranca (dev/CI apenas — auditoria de dependencias, ver .pre-commit-config.yaml)
+pip-audit>=2.7.0
