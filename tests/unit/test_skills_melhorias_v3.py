@@ -8,7 +8,7 @@ class TestValidateImportToolDesign:
 
     def test_versao_e_2_1_0(self):
         from addon.globalPlugins.nvdastudio.sub_agents.code_generator import MODULE_VERSION
-        assert MODULE_VERSION == "3.33.0"
+        assert MODULE_VERSION == "3.34.0"
 
     def _get_tool_description(self):
         from addon.globalPlugins.nvdastudio.sub_agents import code_generator

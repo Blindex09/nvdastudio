@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 import re
 from concurrent.futures import ThreadPoolExecutor
 from ._base import _run_sub_agent, _tl, narrate, LiveNarrator, _TOOL_PREAMBLE_INSTRUCTION, _truncate_at_word, _search_web_tool  # _tl: thread-local para tokens (B4)
@@ -11,10 +12,18 @@ from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
 from ..utils.engineering_principles import ENGINEERING_CODEGEN_PROMPT_TEXT
 from ..memory.session_memory import memory
 from ..tools.tool_gateway import tool_gateway
-from .ast_validator import validate_nvda019, validate_wx_a11y, validate_wx_a11y_002_accelerators, ASTValidationResult
+from .ast_validator import (
+	ASTValidationResult,
+	validate_nvda019,
+	validate_nvda056_messagedialog_thread,
+	validate_nvda060_controltypes,
+	validate_wx_a11y,
+	validate_wx_a11y_002_accelerators,
+	validate_wx_a11y_013_key_events,
+)
 from ..builder.controller_client_context import CTRL_CLIENT_SYSTEM_PROMPT, is_controller_client_context
 
-MODULE_VERSION = "3.33.0"
+MODULE_VERSION = "3.34.0"
 
 _logger = get_logger("code_generator")
 
@@ -1077,6 +1086,60 @@ def _fetch_url_tool(url: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+# Validadores AST da Fase 2, em tabela em vez de chamadas soltas.
+#
+# 3.34.0: eram 3 validadores com bloco proprio de chamada, agregacao, log e
+# montagem de mensagem -- adicionar mais 3 significaria 6 repeticoes do mesmo
+# fluxo, a duplicacao que a Regra 5 do README proibe. Com a tabela, um
+# validador novo e uma linha.
+#
+# Cada entrada: (rule_id, descricao para o prompt de correcao, funcao).
+# A funcao recebe o codigo Python ja extraido dos blocos e devolve
+# ASTValidationResult. Todas fazem fail-open em SyntaxError -- sintaxe e
+# reportada por um degrau anterior, mais barato e mais preciso.
+_AST_VALIDATORS: tuple[tuple[str, str, Callable[[str], ASTValidationResult]], ...] = (
+	(
+		"NVDA-019",
+		"# Translators: ausente antes de _()",
+		validate_nvda019,
+	),
+	(
+		"WX-A11Y-001",
+		"rotulo acessivel ausente em widget wx interativo -- wx.StaticText/label= "
+		"preferidos, SetName() como complemento",
+		validate_wx_a11y,
+	),
+	(
+		"WX-A11Y-002",
+		"SetAcceleratorTable() ausente para wx.Panel/wx.Frame",
+		validate_wx_a11y_002_accelerators,
+	),
+	(
+		"NVDA-060",
+		"controlTypes.ROLE_*/STATE_* -- API REMOVIDA no NVDA 2022.1, levanta "
+		"AttributeError em runtime; use os enums controlTypes.Role.*/State.*",
+		validate_nvda060_controltypes,
+	),
+	(
+		"WX-A11Y-013",
+		"EVT_KEY_DOWN/EVT_CHAR em ListBox/ListCtrl/TreeCtrl/DataViewCtrl -- falha "
+		"SILENCIOSA com NVDA/JAWS, que interceptam a navegacao por setas nesses "
+		"controles; use EVT_LIST_KEY_DOWN/EVT_TREE_KEY_DOWN",
+		validate_wx_a11y_013_key_events,
+	),
+	(
+		"NVDA-056",
+		"wx.MessageDialog criado em thread de background sem wx.CallAfter -- UI do "
+		"wx fora da thread GUI costuma travar o processo do NVDA inteiro",
+		validate_nvda056_messagedialog_thread,
+	),
+)
+
+# NVDA-019 e convencao do gettext do PROPRIO NVDA -- nao se aplica a um
+# programa controller_client (externo, sem addonHandler.initTranslation()).
+_SKIP_EM_CONTROLLER_CLIENT: frozenset[str] = frozenset(["NVDA-019"])
+
+
 def _verificar_codigo_gerado(
 	codigo: str,
 	model_id: str,
@@ -1126,44 +1189,34 @@ def _verificar_codigo_gerado(
 	python_blocks = [b["code"] for b in extract_code_blocks(codigo) if b["filename"].endswith(".py")]
 	codigo_para_validar = "\n".join(python_blocks) if python_blocks else codigo
 
-	# 3.30.0: NVDA-019 (# Translators: antes de _()) e convencao do gettext
-	# do PROPRIO NVDA -- nao se aplica a um programa controller_client
-	# (externo, sem addonHandler.initTranslation()). wx_a11y/wx_accel
-	# continuam validos -- sao boas praticas genericas de wxPython, nao
-	# especificas de addon, entao valem tambem se o programa tiver UI wx.
-	r_nvda019 = ASTValidationResult(ok=True) if skip_nvda019 else validate_nvda019(codigo_para_validar)
-	r_wx_a11y = validate_wx_a11y(codigo_para_validar)
-	r_wx_accel = validate_wx_a11y_002_accelerators(codigo_para_validar)
-	total_violacoes = (
-		len(r_nvda019.violacoes)
-		+ len(r_wx_a11y.violacoes)
-		+ len(r_wx_accel.violacoes)
-	)
+	# Roda todos os validadores da tabela, preservando a ordem declarada -- a
+	# ordem e o que o modelo le no prompt de correcao da Fase 3.
+	resultados: list[tuple[str, str, ASTValidationResult]] = []
+	for rule_id, descricao, validador in _AST_VALIDATORS:
+		if skip_nvda019 and rule_id in _SKIP_EM_CONTROLLER_CLIENT:
+			continue
+		resultados.append((rule_id, descricao, validador(codigo_para_validar)))
+
+	total_violacoes = sum(len(r.violacoes) for _, _, r in resultados)
 
 	_logger.info(
-		"[CODE_GEN] Fase 2 AST: nvda019_ok=%s wx_a11y_ok=%s wx_accel_ok=%s violacoes=%d",
-		r_nvda019.ok,
-		r_wx_a11y.ok,
-		r_wx_accel.ok,
+		"[CODE_GEN] Fase 2 AST: %s violacoes=%d",
+		" ".join(f"{rid}={'ok' if r.ok else 'FALHOU'}" for rid, _, r in resultados),
 		total_violacoes,
 	)
 
-	if r_nvda019.ok and r_wx_a11y.ok and r_wx_accel.ok:
+	if total_violacoes == 0:
 		_logger.info("[CODE_GEN] Fase 2: sem violacoes — codigo aprovado.")
 		return codigo
 
 	# Fase 3: correcao cirurgica — contexto isolado, lista de violacoes explicita
 	try:
 		linhas_violacoes: list[str] = []
-		if r_nvda019.violacoes:
-			linhas_violacoes.append("NVDA-019 (# Translators: ausente antes de _()):")
-			linhas_violacoes.extend(f"  - {v}" for v in r_nvda019.violacoes)
-		if r_wx_a11y.violacoes:
-			linhas_violacoes.append("WX-A11Y-001 (rotulo acessivel ausente em widget wx interativo -- wx.StaticText/label= preferidos, SetName() como complemento):")
-			linhas_violacoes.extend(f"  - {v}" for v in r_wx_a11y.violacoes)
-		if r_wx_accel.violacoes:
-			linhas_violacoes.append("WX-A11Y-002 (SetAcceleratorTable() ausente para wx.Panel/wx.Frame):")
-			linhas_violacoes.extend(f"  - {v}" for v in r_wx_accel.violacoes)
+		for rule_id, descricao, r in resultados:
+			if not r.violacoes:
+				continue
+			linhas_violacoes.append(f"{rule_id} ({descricao}):")
+			linhas_violacoes.extend(f"  - {v}" for v in r.violacoes)
 
 		_logger.info(
 			"[CODE_GEN] Fase 3: correcao cirurgica de %d violacoes.",

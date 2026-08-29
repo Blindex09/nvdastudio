@@ -12,7 +12,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.30.0"
+MODULE_VERSION = "2.31.0"
 _logger = get_logger("planner")
 
 PLANNER_MODEL = "alto"
@@ -38,6 +38,43 @@ _DEFAULT_MODEL = "alto"
 # code_generation tente implementar um mini-projeto inteiro de uma vez.
 _MAX_CODE_STEP_DESCRIPTION_CHARS = 1800
 _MAX_CODE_STEP_USER_MESSAGE_CHARS = 7000
+
+
+
+def _normalize_gestures(raw: object) -> list[str]:
+	"""
+	Normaliza a lista de gestures declarada pela IA para o formato canonico do
+	NVDA, sem interpretar o PEDIDO do usuario (isso e decisao semantica, ja
+	tomada pela LLM ao preencher o campo -- README Regra 7).
+
+	Aqui so ha normalizacao de FORMA, o mesmo tipo de tratamento que
+	`dependencies` recebe: minusculas nos modificadores, prefixo "kb:" quando
+	ausente, descarte de entradas vazias ou nao-string. Um modelo que devolve
+	"NVDA+H" em vez de "kb:NVDA+h" declarou o mesmo atalho -- reprovar por isso
+	seria transformar uma diferenca de formatacao em falha de funcionalidade.
+
+	Deduplica preservando a ordem de declaracao: a ordem e o que o usuario vai
+	ouvir se o addon for reprovado por atalho faltando.
+	"""
+	if not isinstance(raw, list):
+		return []
+	vistos: set[str] = set()
+	saida: list[str] = []
+	for item in raw:
+		if not isinstance(item, str):
+			continue
+		texto = item.strip()
+		if not texto:
+			continue
+		if ":" not in texto:
+			texto = "kb:" + texto
+		fonte, _, combo = texto.partition(":")
+		canonico = f"{fonte.strip().lower()}:{combo.strip().lower()}"
+		if canonico in vistos:
+			continue
+		vistos.add(canonico)
+		saida.append(canonico)
+	return saida
 
 
 def oversized_code_generation_steps(steps: list["ExecutionStep"]) -> list[str]:
@@ -324,6 +361,15 @@ class ExecutionPlan:
 	completed_message: str = ""
 	replan_message: str = ""
 	dependencies: list[str] = field(default_factory=list)
+	# Atalhos de teclado que o addon DEVE expor, declarados pela IA a partir do
+	# pedido do usuario -- nunca extraidos por regex do texto (README Regra 7: a
+	# interpretacao do pedido e decisao SEMANTICA, da LLM). O codigo so VERIFICA
+	# que o que foi declarado existe de verdade no addon gerado
+	# (sub_agents/ast_validator.py::validate_declared_gestures). Fecha a lacuna
+	# achada em 2026-08-29: o pipeline garantia que o addon importa, instancia,
+	# passa no lint e empacota -- mas nada garantia que a FUNCIONALIDADE pedida
+	# estava la. Formato NVDA: "kb:NVDA+h", "kb:control+shift+m".
+	expected_gestures: list[str] = field(default_factory=list)
 	# Pacotes pip que o addon gerado precisa — bundlados em lib/ automaticamente.
 	# Ex: ["openai-whisper", "Pillow", "requests"]
 	# Usuario nao precisa instalar nada — igual ao NVDAStudio em si.
@@ -771,6 +817,7 @@ class Planner:
 			assembling_message=plan_data.get("assembling_message", "Montando o addon..."),
 			completed_message=plan_data.get("completed_message", "Addon criado com sucesso!"),
 			replan_message=plan_data.get("replan_message", "Encontramos problemas. Revisando a abordagem..."),
+			expected_gestures=_normalize_gestures(plan_data.get("expected_gestures", [])),
 			dependencies=plan_data.get("dependencies", []),
 		)
 		log_decision(
@@ -1507,6 +1554,7 @@ class Planner:
 						"assembling_message":     {"type": "string", "description": "Mensagem em português, max 90 chars, para o usuário enquanto os arquivos são reunidos. Ex: 'Reunindo os arquivos do addon...'"},
 						"completed_message":      {"type": "string", "description": "Mensagem em português descrevendo o que foi criado. Ex: 'Pronto! Criei o TranscriadorIA com suporte a Whisper.'"},
 						"replan_message":         {"type": "string", "description": "Mensagem em portugues para quando o plano precisa ser revisado. Ex: 'Encontramos problemas. Revisando a abordagem...'"},
+						"expected_gestures":      {"type": "array", "items": {"type": "string"}, "description": "Lista dos atalhos de teclado que o addon DEVE expor, no formato de gesture do NVDA (ex: \"kb:NVDA+h\", \"kb:control+shift+m\"). Preencha SOMENTE com atalhos que o usuario realmente pediu ou que sao inequivocamente necessarios para a funcionalidade solicitada -- este campo vira uma VERIFICACAO OBRIGATORIA: o codigo gerado sera reprovado se um atalho declarado aqui nao existir como @script(gesture=...) no addon. Nunca liste um atalho que o usuario pediu para NAO usar, nem invente atalhos 'extras' que ninguem pediu. Lista vazia quando o addon nao tem atalho de teclado (ex: so um item de menu, so um AppModule que reage a eventos, ou project_type='controller_client')."},
 						"dependencies":           {"type": "array", "items": {"type": "string", "description": "Nome EXATO do pacote no PyPI — NAO o nome do modulo Python. Ex: 'google-api-python-client' (NAO 'googleapiclient'), 'google-auth-oauthlib' (NAO 'google.auth'), 'Pillow' (NAO 'PIL'). Nunca inclua stdlib (os, sys, webbrowser, json, threading), modulos NVDA (nvda, nvdaHelper, ui, api, wx, addonHandler) nem submódulos (google.auth.transport.requests — isso nao e pacote pip)."}, "description": "Pacotes pip externos para bundle em runtime. Lista vazia se nenhum pacote externo for necessario."},
 						"steps": {
 							"type": "array",
@@ -1539,7 +1587,7 @@ class Planner:
 								 "intro_message", "plan_presentation", "approval_message",
 								 "cancellation_message", "modification_message", "assembling_message",
 								 "completed_message", "replan_message",
-								 "dependencies", "steps"],                    "additionalProperties": False,
+								 "expected_gestures", "dependencies", "steps"],                    "additionalProperties": False,
 				}
 			}
 		}
@@ -1747,6 +1795,7 @@ class Planner:
 				assembling_message=plan_data.get("assembling_message", "Montando o addon..."),
 				completed_message=plan_data.get("completed_message", "Addon criado com sucesso!"),
 				replan_message=plan_data.get("replan_message", "Encontramos problemas. Revisando a abordagem..."),
+				expected_gestures=_normalize_gestures(plan_data.get("expected_gestures", [])),
 				dependencies=plan_data.get("dependencies", []),
 			)
 			log_decision(_logger, "replan_com_feedback", f"novos_steps={len(steps)}")

@@ -149,7 +149,7 @@ class TestFeedbackLoopEstendido:
 
     def test_versao_orchestrator_e_3_1_0(self):
         from addon.globalPlugins.nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.56.0"
+        assert MODULE_VERSION == "5.57.0"
 
     def test_build_step_prompt_manifest_consulta_failures(self):
         """manifest_builder deve receber padroes de erro de sessoes anteriores."""
@@ -232,7 +232,7 @@ class TestAutoVerificacaoCodeGenerator:
 
     def test_versao_e_2_1_0(self):
         from addon.globalPlugins.nvdastudio.sub_agents.code_generator import MODULE_VERSION
-        assert MODULE_VERSION == "3.33.0"
+        assert MODULE_VERSION == "3.34.0"
 
     def test_system_tem_verificacao_final(self):
         from addon.globalPlugins.nvdastudio.sub_agents.code_generator import _SYSTEM

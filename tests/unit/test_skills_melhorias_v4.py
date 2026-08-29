@@ -115,7 +115,7 @@ class TestCodeGeneratorV4:
 
     def test_versao_e_2_2_0(self):
         from nvdastudio.sub_agents.code_generator import MODULE_VERSION
-        assert MODULE_VERSION == "3.33.0"
+        assert MODULE_VERSION == "3.34.0"
 
     def test_system_menciona_nvda_019(self):
         from nvdastudio.sub_agents.code_generator import _SYSTEM

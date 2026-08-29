@@ -41,7 +41,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.56.0"
+MODULE_VERSION = "5.57.0"
 _logger = get_logger("orchestrator")
 
 MAX_RETRIES_DEFAULT = 3
@@ -2864,7 +2864,154 @@ class Orchestrator:
 		# TODA criacao bem-sucedida desse tipo.
 		if plan.project_type != "controller_client" and not manifest_found:
 			return "A criação não foi concluída porque o arquivo manifest.ini não foi gerado e aprovado."
+
+		# 5.57.0 -- PONTO DE ENTRADA CARREGAVEL.
+		#
+		# Achado real, medido nos 379 relatorios de tests/e2e/relatorios/:
+		# TODOS os 11 addons Gemini marcados success=True estavam QUEBRADOS.
+		# Exemplos com nome e data:
+		#   2026-08-17 10:27 AssistenteLeituraGemini -- 16 arquivos Python,
+		#     arquitetura por feature (qa/, summarizer/, web_search/), score
+		#     64.7 ... e nenhum globalPlugins/<Addon>/__init__.py.
+		#   2026-08-16 11:48 GeminiMultimodal -- so module_1.py, score 80.8.
+		#   2026-08-17 19:49 AssistenteLeituraGemini -- 30 retries, 2.5M
+		#     tokens, entregou APENAS manifest.ini (esse ja era pego pela
+		#     checagem de python_files acima).
+		#
+		# O NVDA carrega addon por CONVENCAO DE CAMINHO, nao por conteudo: um
+		# pacote em globalPlugins/ so e carregado pelo __init__.py; qualquer
+		# outro .py ao lado dele e ignorado. Um addon sem ponto de entrada nao
+		# falha com erro -- ele simplesmente NAO EXISTE para o usuario cego,
+		# que instala, nao ouve nada e nao tem como descobrir por que.
+		#
+		# A deteccao ja existia: validate_addon_structure() emite ESTRUTURA-008
+		# exatamente para isso, e a mensagem aparecia nos relatorios. Mas ela
+		# roda no caminho de EMPACOTAMENTO da GUI (studio_dialog), nunca no
+		# veredito do pipeline -- entao o defeito era detectado, registrado por
+		# escrito, e ignorado. Esta funcao ja e o portao de "recusa conclusao
+		# falsa"; faltava ela conhecer a regra de carregamento do NVDA.
+		if plan.project_type != "controller_client":
+			entry_error = Orchestrator._missing_loadable_entry_point(python_files)
+			if entry_error:
+				return entry_error
+
+		# 5.57.0 -- FUNCIONALIDADE PEDIDA vs FUNCIONALIDADE ENTREGUE.
+		#
+		# Ate aqui o portao so provava que o addon EXISTE e CARREGA. Faltava a
+		# pergunta que o usuario realmente faz: ele faz o que eu pedi?
+		#
+		# A divisao segue a Regra 7 do README. Interpretar o pedido em
+		# linguagem natural e decisao SEMANTICA: quem faz e a LLM, declarando
+		# os atalhos em `plan.expected_gestures`. Extrair "NVDA+H" da frase do
+		# usuario com regex seria exatamente o "simular entendimento semantico
+		# com regex" que a regra proibe. Aqui so CONFERIMOS que o que foi
+		# declarado existe no AST do codigo aprovado.
+		#
+		# Lista vazia (addon sem atalho: so item de menu, AppModule reagindo a
+		# evento, driver) nao verifica nada -- validate_declared_gestures
+		# devolve ok=True e o portao segue.
+		if plan.expected_gestures:
+			gesture_error = Orchestrator._missing_requested_gestures(
+				plan.expected_gestures, step_results, outputs, approved_ids,
+			)
+			if gesture_error:
+				return gesture_error
 		return ""
+
+	@staticmethod
+	def _missing_requested_gestures(
+		esperados: list[str],
+		step_results: list[StepResult],
+		outputs: dict[str, str],
+		approved_ids: set[str],
+	) -> str:
+		"""
+		Confere que os atalhos declarados no plano existem no codigo aprovado.
+
+		Junta TODOS os blocos Python aprovados antes de validar: um addon
+		multi-arquivo pode declarar o script num modulo e o resto noutro, e
+		validar bloco a bloco reprovaria addon correto por atalho "ausente" no
+		arquivo errado -- falso positivo garantido.
+
+		Degrada em silencio se o validador nao estiver disponivel: uma falha de
+		import aqui nunca deve derrubar uma criacao que deu certo.
+		"""
+		try:
+			from ..sub_agents.ast_validator import validate_declared_gestures
+		except Exception:  # pragma: no cover - defesa de import
+			return ""
+
+		partes: list[str] = []
+		for result in step_results:
+			if result.step_id not in approved_ids or result.step_id not in outputs:
+				continue
+			for block in extract_code_blocks(outputs[result.step_id]):
+				if (block.get("language") or "").lower() == "python":
+					partes.append(block.get("code") or "")
+		if not partes:
+			return ""
+
+		resultado = validate_declared_gestures("\n".join(partes), esperados)
+		if resultado.ok:
+			return ""
+		return (
+			"A criação não foi concluída porque o addon não expõe os atalhos que você pediu. "
+			+ " ".join(resultado.violacoes)
+		)
+
+	# Diretorios que o NVDA carrega por convencao, com o padrao de arquivo que
+	# ele reconhece como ponto de entrada em cada um. Fonte: addonHandler e a
+	# estrutura oficial do AddonTemplate (nvda_docs_cache/).
+	_ENTRY_POINT_DIRS: tuple[str, ...] = (
+		"globalPlugins",
+		"appModules",
+		"synthDrivers",
+		"brailleDisplayDrivers",
+		"visionEnhancementProviders",
+	)
+
+	@staticmethod
+	def _missing_loadable_entry_point(python_files: set[str]) -> str:
+		"""
+		Confere que existe pelo menos UM arquivo que o NVDA de fato carrega.
+
+		Formas validas, todas por convencao de caminho:
+		  <dir>/<nome>.py            -- modulo solto (appModules/notepad.py)
+		  <dir>/<pacote>/__init__.py -- pacote (globalPlugins/MeuAddon/__init__.py)
+
+		Devolve "" quando ha ponto de entrada, ou a mensagem de erro pro
+		usuario quando nao ha. A mensagem nomeia os pacotes orfaos encontrados
+		-- sem isso o retry seguinte nao sabe QUAL pacote precisa de
+		__init__.py e tende a reescrever o addon inteiro do zero.
+		"""
+		orfaos: set[str] = set()
+		for caminho in python_files:
+			partes = caminho.replace("\\", "/").lstrip("/").split("/")
+			if len(partes) < 2 or partes[0] not in Orchestrator._ENTRY_POINT_DIRS:
+				continue
+			if len(partes) == 2:
+				# <dir>/<nome>.py -- modulo solto, carregavel por si so.
+				return ""
+			if partes[-1] == "__init__.py" and len(partes) == 3:
+				# <dir>/<pacote>/__init__.py -- pacote carregavel.
+				return ""
+			# .py dentro de um pacote que ainda nao provou ter __init__.py.
+			orfaos.add("/".join(partes[:2]))
+
+		if orfaos:
+			pacotes = ", ".join(sorted(orfaos))
+			return (
+				"A criação não foi concluída porque o addon não tem ponto de entrada que o "
+				f"NVDA consiga carregar. Os arquivos Python ficaram em {pacotes}, mas sem "
+				"__init__.py — o NVDA carrega um pacote de addon apenas pelo __init__.py, "
+				"e ignora qualquer outro arquivo ao lado dele. Do jeito que está, o addon "
+                "instalaria sem erro e simplesmente não faria nada."
+			)
+		return (
+			"A criação não foi concluída porque nenhum arquivo Python ficou num diretório "
+			"que o NVDA carrega (globalPlugins/, appModules/, synthDrivers/, "
+			"brailleDisplayDrivers/ ou visionEnhancementProviders/)."
+		)
 
 	def _assemble(self, plan: ExecutionPlan, outputs: dict) -> str:
 		"""Monta final_output apenas com steps que geram codigo/artefatos.

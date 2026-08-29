@@ -102,6 +102,6 @@ class TestCodeGeneratorNVDA024FolderNames:
 
     def test_versao_code_generator_e_3_1_1(self):
         from nvdastudio.sub_agents.code_generator import MODULE_VERSION
-        assert MODULE_VERSION == "3.33.0", (
+        assert MODULE_VERSION == "3.34.0", (
             f"code_generator versao esperada 3.24.0, encontrada {MODULE_VERSION}."
         )

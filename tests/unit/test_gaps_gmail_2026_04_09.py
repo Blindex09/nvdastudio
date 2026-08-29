@@ -11,7 +11,7 @@ class TestCodeGeneratorNVDA024:
 
     def test_versao_2_4_0(self):
         from nvdastudio.sub_agents.code_generator import MODULE_VERSION
-        assert MODULE_VERSION == "3.33.0"
+        assert MODULE_VERSION == "3.34.0"
 
     def test_nvda_024_presente_no_system(self):
         from nvdastudio.sub_agents.code_generator import _SYSTEM
@@ -187,7 +187,7 @@ class TestPlannerAddonNameCanonical:
 
     def test_planner_versao_2_2_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.30.0"
+        assert MODULE_VERSION == "2.31.0"
 
     def test_addon_name_no_dataclass(self):
         """ExecutionPlan deve ter campo addon_name."""
@@ -218,12 +218,27 @@ class TestPlannerAddonNameCanonical:
         import nvdastudio.core.planner as planner_mod
         src = inspect.getsource(planner_mod)
         schema_start = src.find("_PLAN_SCHEMA =")
-        schema_src = src[schema_start:schema_start + 9000]
-        # Procura o required do schema raiz — o ultimo "required" no bloco do schema
-        # contem addon_name, complexity, steps, etc.
-        last_required = schema_src.rfind('"required"')
-        required_block = schema_src[last_required:last_required + 500]
-        assert "addon_name" in required_block
+        assert schema_start != -1, "_PLAN_SCHEMA nao encontrado no planner"
+        schema_src = src[schema_start:]
+
+        # 2026-08-29: a versao anterior fatiava os primeiros 9000 chars e pegava o
+        # ULTIMO '"required"' dessa janela. Frageis os dois: qualquer campo novo com
+        # descricao longa empurra o required da RAIZ para fora da janela, e o teste
+        # passa a inspecionar o required dos STEPS -- foi o que aconteceu ao adicionar
+        # `expected_gestures`. O teste falhava sem que nada estivesse errado no schema.
+        #
+        # Agora identifica o nivel pelo que ele e de verdade: o required da raiz e o
+        # MENOS indentado do bloco (os aninhados, como o dos steps, tem mais tabs).
+        candidatos = [
+            linha for linha in schema_src.split("\n") if '"required"' in linha
+        ]
+        assert candidatos, "nenhuma lista required encontrada no schema"
+        raiz = min(candidatos, key=lambda ln: len(ln) - len(ln.lstrip("\t")))
+
+        # A lista pode continuar na(s) linha(s) seguinte(s); junta ate fechar o ].
+        idx = schema_src.index(raiz)
+        bloco = schema_src[idx:idx + 600]
+        assert "addon_name" in bloco.split("]")[0]
 
     def test_addon_name_regra_no_prompt(self):
         """_PLAN_SYSTEM_PROMPT deve ter regra explicita sobre addon_name."""

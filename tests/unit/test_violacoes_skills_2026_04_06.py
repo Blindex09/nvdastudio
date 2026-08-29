@@ -230,7 +230,7 @@ class TestCodeGeneratorNovosRegras:
 
     def test_versao_code_generator_e_2_3_0(self):
         from nvdastudio.sub_agents.code_generator import MODULE_VERSION
-        assert MODULE_VERSION == "3.33.0"
+        assert MODULE_VERSION == "3.34.0"
 
     def test_nvda_022_presente_no_system_prompt(self):
         from nvdastudio.sub_agents.code_generator import _SYSTEM
