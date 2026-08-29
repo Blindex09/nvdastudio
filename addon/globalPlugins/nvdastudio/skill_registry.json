@@ -1,0 +1,262 @@
+﻿{
+  "version": "1.0.0",
+  "updated_at": "2026-06-10",
+  "source": "nvdastudio-native",
+  "trust_level": "builtin",
+  "skills": [
+    {
+      "name": "code_generator",
+      "version": "2.0.0",
+      "description": "Gera codigo Python para addons NVDA com validacao AST e compliance NVDA 2019.3+",
+      "toolset": "core",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.code_generator.run",
+      "schema": {
+        "inputs": [
+          {"name": "spec", "type": "str", "description": "Especificacao do addon a ser gerado"},
+          {"name": "context", "type": "dict", "description": "Contexto do projeto (manifest, config)"},
+          {"name": "model_id", "type": "str", "description": "ID do modelo LLM a ser usado"}
+        ],
+        "outputs": [
+          {"name": "code", "type": "str", "description": "Codigo Python gerado"},
+          {"name": "violations", "type": "list", "description": "Lista de violacoes de compliance encontradas"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "manifest_builder",
+      "version": "2.0.0",
+      "description": "Gera manifest.ini estruturado para addons NVDA com validacao de campos obrigatorios",
+      "toolset": "core",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.manifest_builder.run",
+      "schema": {
+        "inputs": [
+          {"name": "spec", "type": "str", "description": "Especificacao do addon"},
+          {"name": "context", "type": "dict", "description": "Contexto do projeto"}
+        ],
+        "outputs": [
+          {"name": "manifest", "type": "str", "description": "Conteudo do manifest.ini"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "design_review_agent",
+      "version": "2.0.0",
+      "description": "Revisao de design arquitetural em tres estagios (challenger, guardian, advocate) para addons NVDA",
+      "toolset": "quality",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.design_review_agent.run",
+      "schema": {
+        "inputs": [
+          {"name": "spec", "type": "str", "description": "Especificacao completa do addon"},
+          {"name": "context", "type": "dict", "description": "Contexto do projeto"},
+          {"name": "model_id", "type": "str", "description": "ID do modelo LLM"}
+        ],
+        "outputs": [
+          {"name": "review", "type": "str", "description": "Revisao de design completa com recomendacoes"},
+          {"name": "score", "type": "int", "description": "Score de qualidade (0-100)"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "accessibility_auditor",
+      "version": "2.0.0",
+      "description": "Audita acessibilidade WCAG 2.1 AA e compliance NVDA para addons",
+      "toolset": "quality",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.accessibility_auditor.run",
+      "schema": {
+        "inputs": [
+          {"name": "code", "type": "str", "description": "Codigo Python do addon a ser auditado"},
+          {"name": "manifest", "type": "str", "description": "Conteudo do manifest.ini"}
+        ],
+        "outputs": [
+          {"name": "audit", "type": "str", "description": "Relatorio de auditoria de acessibilidade"},
+          {"name": "violations", "type": "list", "description": "Lista de violacoes encontradas"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "syntax_validator",
+      "version": "2.0.0",
+      "description": "Valida sintaxe Python via AST e verifica compliance com padroes NVDA",
+      "toolset": "quality",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.syntax_validator.run",
+      "schema": {
+        "inputs": [
+          {"name": "code", "type": "str", "description": "Codigo Python a ser validado"}
+        ],
+        "outputs": [
+          {"name": "valid", "type": "bool", "description": "True se codigo e sintaticamente valido"},
+          {"name": "errors", "type": "list", "description": "Lista de erros de sintaxe"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "assembler",
+      "version": "2.0.0",
+      "description": "Monta a saida final do addon (estrutura de pastas, arquivos, pacote .nvda-addon)",
+      "toolset": "core",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.assembler.run",
+      "schema": {
+        "inputs": [
+          {"name": "manifest", "type": "str", "description": "Conteudo do manifest.ini"},
+          {"name": "code", "type": "str", "description": "Codigo Python do addon"},
+          {"name": "docs", "type": "str", "description": "Documentacao em HTML"}
+        ],
+        "outputs": [
+          {"name": "addon_path", "type": "str", "description": "Caminho do pacote .nvda-addon gerado"}
+        ]
+      },
+      "dependencies": ["manifest_builder", "code_generator"],
+      "enabled": true
+    },
+    {
+      "name": "test_generator",
+      "version": "2.0.0",
+      "description": "Gera testes unitarios e de integracao para addons NVDA",
+      "toolset": "quality",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.test_generator.run",
+      "schema": {
+        "inputs": [
+          {"name": "code", "type": "str", "description": "Codigo Python do addon"},
+          {"name": "spec", "type": "str", "description": "Especificacao do addon"}
+        ],
+        "outputs": [
+          {"name": "tests", "type": "str", "description": "Codigo dos testes gerados"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "doc_generator",
+      "version": "2.0.0",
+      "description": "Gera documentacao de ajuda (readme.html) para addons NVDA",
+      "toolset": "core",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.doc_generator.run",
+      "schema": {
+        "inputs": [
+          {"name": "spec", "type": "str", "description": "Especificacao do addon"},
+          {"name": "manifest", "type": "str", "description": "Conteudo do manifest.ini"}
+        ],
+        "outputs": [
+          {"name": "docs", "type": "str", "description": "Documentacao HTML gerada"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "web_researcher",
+      "version": "2.0.0",
+      "description": "Pesquisa web via DuckDuckGo para coletar informacoes sobre dominios e APIs",
+      "toolset": "research",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.web_researcher.run",
+      "schema": {
+        "inputs": [
+          {"name": "query", "type": "str", "description": "Termo de pesquisa"},
+          {"name": "max_results", "type": "int", "description": "Numero maximo de resultados"}
+        ],
+        "outputs": [
+          {"name": "results", "type": "list", "description": "Lista de resultados da pesquisa"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "agent_template_agent",
+      "version": "2.0.0",
+      "description": "Gera templates de agentes reutilizaveis para tarefas comuns de desenvolvimento NVDA",
+      "toolset": "meta",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.agent_template_agent.run",
+      "schema": {
+        "inputs": [
+          {"name": "task_type", "type": "str", "description": "Tipo de tarefa (ex: 'audio', 'clima', 'email')"},
+          {"name": "context", "type": "dict", "description": "Contexto adicional"}
+        ],
+        "outputs": [
+          {"name": "template", "type": "str", "description": "Template de agente gerado"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "agent_runner_agent",
+      "version": "2.0.0",
+      "description": "Executa agentes em sandbox seguro para tarefas auxiliares",
+      "toolset": "meta",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.agent_runner_agent.run",
+      "schema": {
+        "inputs": [
+          {"name": "agent_code", "type": "str", "description": "Codigo do agente a ser executado"},
+          {"name": "timeout", "type": "int", "description": "Timeout em segundos"}
+        ],
+        "outputs": [
+          {"name": "result", "type": "str", "description": "Resultado da execucao"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    },
+    {
+      "name": "dispatcher",
+      "version": "3.0.0",
+      "description": "Roteia tarefas para sub-agentes e orquestra execucao paralela. Nao e uma skill executavel — e o motor de dispatch.",
+      "toolset": "core",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.dispatcher.run",
+      "schema": {
+        "inputs": [
+          {"name": "plan", "type": "list", "description": "Lista de steps do plano de execucao"},
+          {"name": "context", "type": "dict", "description": "Contexto global do projeto"}
+        ],
+        "outputs": [
+          {"name": "results", "type": "dict", "description": "Resultados por step"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true,
+      "is_dispatcher": true
+    },
+    {
+      "name": "ast_validator",
+      "version": "2.0.0",
+      "description": "Valida codigo Python via AST com regras especificas para addons NVDA",
+      "toolset": "quality",
+      "trust_level": "builtin",
+      "handler_path": "globalPlugins.nvdastudio.sub_agents.ast_validator.run",
+      "schema": {
+        "inputs": [
+          {"name": "code", "type": "str", "description": "Codigo Python a ser validado"}
+        ],
+        "outputs": [
+          {"name": "valid", "type": "bool", "description": "True se codigo e valido"},
+          {"name": "errors", "type": "list", "description": "Lista de erros de AST"}
+        ]
+      },
+      "dependencies": [],
+      "enabled": true
+    }
+  ]
+}
