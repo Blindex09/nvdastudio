@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NVDAStudio - NVDA Add-on Creator with AI</title>
+</head>
+<body>
+<h1>NVDAStudio</h1>
+<p>NVDAStudio is an NVDA add-on that creates, reviews, documents, packages, and iterates other NVDA add-ons using AI via the Groq API. It provides an accessible interface built with wxPython, running entirely inside NVDA.</p>
+
+<h2>Requirements</h2>
+<ul>
+  <li>NVDA 2025.3.3 or later</li>
+  <li>A Groq API key (free tier available at <a href="https://console.groq.com">console.groq.com</a>)</li>
+  <li>Internet connection for AI generation</li>
+</ul>
+
+<h2>Installation</h2>
+<p>Double-click the <code>.nvda-addon</code> file, or use <strong>NVDA menu &rarr; Tools &rarr; Add-on Store &rarr; Install from file</strong>.</p>
+
+<h2>Configuration</h2>
+<ol>
+  <li>Open NVDA Settings with <kbd>NVDA+N</kbd> then <kbd>P</kbd>.</li>
+  <li>Navigate to the <strong>NVDAStudio</strong> category.</li>
+  <li>Enter your Groq API key in the designated field.</li>
+  <li>Optionally, set an output folder for generated add-ons.</li>
+  <li>Press <strong>OK</strong> to save.</li>
+</ol>
+<p>Alternatively, press <kbd>NVDA+Shift+,</kbd> to open NVDAStudio settings directly.</p>
+
+<h2>Usage</h2>
+<h3>Opening NVDAStudio</h3>
+<p>Press <kbd>NVDA+Shift+N</kbd> to open the NVDAStudio dialog. NVDA will also announce "NVDAStudio ready" approximately 1.5 seconds after startup.</p>
+
+<h3>Creating an Add-on</h3>
+<ol>
+  <li>Press <kbd>NVDA+Shift+N</kbd> to open NVDAStudio.</li>
+  <li>Describe what your add-on should do in the text field.</li>
+  <li>Press <strong>Create Add-on</strong>. The AI pipeline will clarify requirements, plan, generate code, review it, and package it.</li>
+  <li>The generated <code>.nvda-addon</code> file will be placed in the configured output folder.</li>
+</ol>
+
+<h3>Keyboard Shortcuts</h3>
+<table>
+  <thead>
+    <tr><th>Shortcut</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><kbd>NVDA+Shift+N</kbd></td><td>Open NVDAStudio dialog</td></tr>
+    <tr><td><kbd>NVDA+Shift+,</kbd></td><td>Open NVDAStudio settings</td></tr>
+  </tbody>
+</table>
+
+<h2>Pipeline Stages</h2>
+<p>When you request an add-on, NVDAStudio runs the following autonomous pipeline:</p>
+<ol>
+  <li><strong>Clarify</strong> &mdash; The AI asks clarifying questions to understand your requirements.</li>
+  <li><strong>Plan</strong> &mdash; A structured plan is created with modules, gestures, and events.</li>
+  <li><strong>Generate</strong> &mdash; Python code is generated for each module according to NVDA standards.</li>
+  <li><strong>Review</strong> &mdash; The critic agent reviews the code for correctness and accessibility issues.</li>
+  <li><strong>Package</strong> &mdash; The add-on is bundled into a <code>.nvda-addon</code> file ready to install.</li>
+</ol>
+
+<h2>Troubleshooting</h2>
+<dl>
+  <dt>API key not accepted</dt>
+  <dd>Verify the key at <a href="https://console.groq.com/keys">console.groq.com/keys</a>. Use the <strong>Validate Key</strong> button in NVDAStudio settings.</dd>
+  <dt>Generated add-on fails to install</dt>
+  <dd>Check the NVDA log (<kbd>NVDA+F1</kbd>) for details. Common causes: invalid manifest fields or Python syntax errors in the generated code.</dd>
+  <dt>No output folder configured</dt>
+  <dd>The add-on defaults to the user's Documents folder when no output path is set.</dd>
+</dl>
+
+<h2>Support and Source Code</h2>
+<p>Source code and issue tracker: <a href="https://github.com/nvdaaddons/nvdastudio">github.com/nvdaaddons/nvdastudio</a></p>
+
+<h2>License</h2>
+<p>NVDAStudio is distributed under the <a href="https://www.gnu.org/licenses/gpl-2.0.html">GNU General Public License v2</a>.</p>
+</body>
+</html>
