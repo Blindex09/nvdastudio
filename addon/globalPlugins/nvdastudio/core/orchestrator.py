@@ -41,7 +41,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.55.0"
+MODULE_VERSION = "5.56.0"
 _logger = get_logger("orchestrator")
 
 MAX_RETRIES_DEFAULT = 3
@@ -2332,6 +2332,61 @@ class Orchestrator:
 								"rebind sem limpar acumula gestures duplicados para o mesmo script. "
 								"Se o binding for dinamico (nao um dict __gestures estatico), "
 								"chame self.removeGestureBinding(gesture) antes de rebindar."
+							)
+
+						# 5.56.0: ANALISE ESTATICA do addon gerado (ruff + mypy).
+						# Fecha a assimetria historica do projeto -- o CI exige
+						# `ruff check` e `mypy` limpos no codigo do NVDAStudio,
+						# mas o addon ENTREGUE ao usuario nunca passava por
+						# nenhum dos dois. Roda depois de execucao/resiliencia
+						# de proposito: quando o addon nem importa, o erro de
+						# import e o sinal util; lint em cima disso so
+						# adicionaria ruido ao prompt do retry.
+						#
+						# ruff BLOQUEIA (retry): a config curada de
+						# code_sandbox._GENERATED_RUFF_CONFIG so seleciona
+						# F/E9/B -- defeito real, nunca estilo -- entao um
+						# achado aqui e sempre corrigivel e vale o retry.
+						# mypy e ADVISORY (so contexto): sem stubs dos modulos
+						# do NVDA o resultado tem falso-positivo demais pra
+						# bloquear um step; serve pra orientar o proximo passo.
+						#
+						# Ambos sao FAIL-OPEN por construcao (ver
+						# _run_static_tool): ferramenta ausente devolve
+						# success=True com error="*_indisponivel" -- o Python
+						# embutido do NVDA normalmente nao tem ruff nem mypy, e
+						# quebrar o addon de quem nao tem dev tooling instalado
+						# seria pior que nao lintar.
+						_static_sandbox = _CodeSandboxExec()
+						lint_check = _static_sandbox.lint_check(py_files)
+						if not lint_check.success and not lint_check.error:
+							# success=False com error vazio == ruff rodou e
+							# ACHOU defeito (infra sempre preenche error).
+							findings = lint_check.stdout.strip()[:1200]
+							_logger.warning("[LINT] ruff reprovou o addon gerado: %s", findings[:300])
+							last_issues.append(
+								"Lint do addon gerado (ruff) apontou defeitos reais -- "
+								"corrija todos antes de seguir:\n" + findings
+							)
+							retries += 1
+							continue
+						if lint_check.error:
+							_logger.info("[LINT] ruff nao aplicado: %s", lint_check.error)
+						else:
+							_logger.info("[LINT] ruff limpo para step %s", step.step_id)
+
+						type_check = _static_sandbox.typecheck(py_files)
+						if not type_check.success and not type_check.error and type_check.stdout.strip():
+							_logger.info(
+								"[TYPES] mypy apontou inconsistencias em %s (advisory)", step.step_id
+							)
+							context = (
+								context
+								+ "\n\nAVISO (checagem de tipos, nao bloqueante): mypy apontou "
+								"as inconsistencias abaixo no codigo gerado. Avalie se sao "
+								"defeitos reais -- modulos do NVDA nao tem stubs, entao parte "
+								"pode ser falso-positivo. Corrija apenas o que for defeito de "
+								"verdade:\n" + type_check.stdout.strip()[:800]
 							)
 				except Exception as e:
 					_logger.error("[SANDBOX] validate_addon_execution indisponivel: %s", e)

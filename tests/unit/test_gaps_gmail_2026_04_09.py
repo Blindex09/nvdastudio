@@ -11,7 +11,7 @@ class TestCodeGeneratorNVDA024:
 
     def test_versao_2_4_0(self):
         from nvdastudio.sub_agents.code_generator import MODULE_VERSION
-        assert MODULE_VERSION == "3.32.0"
+        assert MODULE_VERSION == "3.33.0"
 
     def test_nvda_024_presente_no_system(self):
         from nvdastudio.sub_agents.code_generator import _SYSTEM
@@ -187,7 +187,7 @@ class TestPlannerAddonNameCanonical:
 
     def test_planner_versao_2_2_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.29.0"
+        assert MODULE_VERSION == "2.30.0"
 
     def test_addon_name_no_dataclass(self):
         """ExecutionPlan deve ter campo addon_name."""

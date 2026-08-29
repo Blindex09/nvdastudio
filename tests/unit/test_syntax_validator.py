@@ -22,7 +22,7 @@ class TestPlannerSyntaxValidation:
 
     def test_versao_Planner(self):
         from addon.globalPlugins.nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.29.0"
+        assert MODULE_VERSION == "2.30.0"
 
 
 # ===========================================================================
@@ -142,7 +142,7 @@ class TestOrchestratorSyntaxValidation:
 
     def test_versao_orchestrator(self):
         from addon.globalPlugins.nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.55.0"
+        assert MODULE_VERSION == "5.56.0"
 
     def test_sv_em_non_blocking(self):
         from addon.globalPlugins.nvdastudio.core.orchestrator import _NON_BLOCKING_STEP_TYPES
@@ -169,7 +169,7 @@ class TestDispatcherSyntaxValidation:
 
     def test_versao_dispatcher(self):
         from addon.globalPlugins.nvdastudio.sub_agents.dispatcher import MODULE_VERSION
-        assert MODULE_VERSION == "2.3.0"
+        assert MODULE_VERSION == "2.4.0"
 
     def test_dispatch_syntax_validation_rota_para_validator(self):
         from unittest.mock import patch

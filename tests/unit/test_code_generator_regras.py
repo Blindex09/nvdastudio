@@ -5,7 +5,7 @@ from addon.globalPlugins.nvdastudio.sub_agents.code_generator import (
 
 class TestCodeGeneratorVersao:
     def test_versao_e_1_9_0(self):
-        assert MODULE_VERSION == "3.32.0"
+        assert MODULE_VERSION == "3.33.0"
 
 
 class TestCodeGeneratorRegrasNovas:

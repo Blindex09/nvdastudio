@@ -4,12 +4,12 @@ from ..core.planner import (
 	STEP_CODE_GENERATION, STEP_MANIFEST, STEP_ACCESSIBILITY_AUDIT,
 	STEP_TEST_GENERATION, STEP_WEB_RESEARCH, STEP_AGENT_TEMPLATE,
 	STEP_AGENT_RUNNER, STEP_ASSEMBLY, STEP_DESIGN_REVIEW,
-	STEP_DOCUMENTATION, STEP_SYNTAX_VALIDATION,
+	STEP_DOCUMENTATION, STEP_SYNTAX_VALIDATION, STEP_ENGINEERING_REVIEW,
 )
 from ..utils.logger import get_logger
 from ..tools.skills_hub import get_skill
 
-MODULE_VERSION = "2.3.0"
+MODULE_VERSION = "2.4.0"
 _logger = get_logger("dispatcher")
 
 
@@ -73,7 +73,7 @@ def _get_builtin_handler(step_type: str) -> Callable[..., Any] | None:
         code_generator, manifest_builder, accessibility_auditor,
         test_generator, web_researcher, agent_template_agent,
         agent_runner_agent, assembler, design_review_agent, doc_generator,
-        syntax_validator,
+        syntax_validator, engineering_reviewer,
     )
 
     handlers: dict[str, Callable[..., Any]] = {
@@ -88,6 +88,7 @@ def _get_builtin_handler(step_type: str) -> Callable[..., Any] | None:
         STEP_DESIGN_REVIEW:       design_review_agent.run,
         STEP_DOCUMENTATION:       doc_generator.run,
         STEP_SYNTAX_VALIDATION:   syntax_validator.run,
+        STEP_ENGINEERING_REVIEW:  engineering_reviewer.run,
     }
 
     return handlers.get(step_type)

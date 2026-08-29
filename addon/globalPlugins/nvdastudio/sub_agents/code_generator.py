@@ -8,12 +8,13 @@ from ..ai.anthropic_memory_tool import handle_memory_command
 from ..utils.logger import get_logger
 from ..builder.nvda_context import NVDA_SYSTEM_PROMPT, get_docs_code_generation
 from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
+from ..utils.engineering_principles import ENGINEERING_CODEGEN_PROMPT_TEXT
 from ..memory.session_memory import memory
 from ..tools.tool_gateway import tool_gateway
 from .ast_validator import validate_nvda019, validate_wx_a11y, validate_wx_a11y_002_accelerators, ASTValidationResult
 from ..builder.controller_client_context import CTRL_CLIENT_SYSTEM_PROMPT, is_controller_client_context
 
-MODULE_VERSION = "3.32.0"
+MODULE_VERSION = "3.33.0"
 
 _logger = get_logger("code_generator")
 
@@ -499,7 +500,13 @@ VERIFICACAO FINAL OBRIGATORIA:
 Se qualquer item falhar, corrija o problema antes de entregar a resposta final.
 """
 
+# 2026-08-29: principios de engenharia destilados dos 3 documentos de
+# metodologia do projeto (utils/engineering_principles.py). O catalogo de
+# regras acima diz o que NAO fazer num addon NVDA; isto diz como decidir
+# estrutura, tratamento de falha e complexidade quando nenhuma regra se
+# aplica -- que e a maior parte das decisoes reais de codigo.
 _SYSTEM += "\n\n" + RULE_REGISTRY_PROMPT_TEXT
+_SYSTEM += "\n\n" + ENGINEERING_CODEGEN_PROMPT_TEXT
 
 
 

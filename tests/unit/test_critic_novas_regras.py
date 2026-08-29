@@ -7,7 +7,7 @@ from addon.globalPlugins.nvdastudio.ai.critic import (
 
 class TestCriticVersao:
     def test_versao_e_2_9_0(self):
-        assert MODULE_VERSION == "3.20.0"
+        assert MODULE_VERSION == "3.21.0"
 
 
 class TestNvdaRegrasNovas:

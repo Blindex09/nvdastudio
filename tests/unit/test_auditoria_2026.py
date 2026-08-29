@@ -8,7 +8,7 @@ from nvdastudio.sub_agents.design_review_agent import (
 
 class TestCodeGenerator2026:
     def test_versao_e_1_9_0(self):
-        assert CODE_VER == "3.32.0"
+        assert CODE_VER == "3.33.0"
 
     def test_nvda_017_dll_32bit_proibida(self):
         assert "NVDA-017" in CODE_SYSTEM

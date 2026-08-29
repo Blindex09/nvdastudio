@@ -3,7 +3,7 @@ from nvdastudio.sub_agents.manifest_builder import _SYSTEM, MODULE_VERSION
 
 class TestManifestBuilderVersao:
     def test_versao_e_1_5_0(self):
-        assert MODULE_VERSION == "1.13.0"
+        assert MODULE_VERSION == "1.14.0"
 
 
 class TestManifestBuilderPromptAntiLista:

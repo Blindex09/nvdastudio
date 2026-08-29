@@ -1,8 +1,34 @@
 import math
+from contextlib import contextmanager
+from unittest.mock import patch
 
 from nvdastudio.core.planner import (
 	apply_model_budget, ExecutionStep, STEP_CODE_GENERATION, STEP_MANIFEST,
 )
+
+_MODELO_ELEVADO = "MODELO_ELEVADO"
+_MODELO_LEVE = "MODELO_LEVE"
+
+
+@contextmanager
+def _modelos_controlados(elevado: str = _MODELO_ELEVADO, leve: str = _MODELO_LEVE):
+	"""
+	Substitui o roteador por uma escolha deterministica por complexity.
+
+	Necessario porque `select_model()` real pontua tambem por confiabilidade
+	OBSERVADA, que vem de estado persistido -- outros testes da suite mudam
+	esse estado e, com ele, a identidade do modelo escolhido. Qualquer teste
+	que meca PERCENTUAL nao pode depender dessa identidade.
+
+	Patcha em `ai.model_router` (nao em `core.planner`) porque
+	apply_model_budget faz o import LOCAL, dentro da funcao -- patchar o
+	namespace do planner nao teria efeito nenhum.
+	"""
+	def _fake_select_model(provider, step_type, configured_model, complexity="medium", **kw):
+		return leve if complexity == "low" else elevado
+
+	with patch("nvdastudio.ai.model_router.select_model", _fake_select_model):
+		yield
 
 
 def _make_steps(n_code_gen: int, n_other: int) -> list[ExecutionStep]:
@@ -26,28 +52,48 @@ class TestBudgetPorComplexidade:
 
 	def test_complexity_medium_usa_tier_heavy_percentual_original(self):
 		"""Retrocompatibilidade: complexity default (medium) mantem os
-		mesmos 20% do tier heavy -- a IDENTIDADE do modelo heavy pode variar
-		conforme o router pontua (model_router.py 1.3.0/model_registry.py
-		1.16.0 corrigiram cost_tier de varios modelos Ollama com dados reais
-		de ollama.com -- kimi-k2.7-code nao e mais garantido vencer), mas o
-		PERCENTUAL (20%) continua igual."""
-		from nvdastudio.ai.model_router import select_model
+		mesmos 20% do tier heavy.
+
+		Mede o PERCENTUAL com identidades de modelo controladas
+		(_fake_select_model). Ate 2026-08-29 este teste chamava o
+		select_model REAL pra descobrir qual era o "heavy" e contava quantos
+		steps batiam com ele -- o que so funciona enquanto o modelo elevado e
+		o leve forem DIFERENTES. Como o router pontua tambem por
+		confiabilidade OBSERVADA (estado persistido que outros testes
+		escrevem), os dois colapsavam no mesmo model_id dependendo da ordem
+		da suite; ai os 10 steps batiam com "heavy_model" e a contagem dava
+		10 em vez de 2. Falha real, dependente de ordem, reproduzida em
+		`pytest tests/unit tests/integration` e ausente rodando o arquivo
+		sozinho. O invariante que o teste sempre quis verificar -- e que o
+		proprio docstring original ja declarava: "a IDENTIDADE do modelo
+		heavy pode variar, mas o PERCENTUAL (20%) continua igual" -- agora e
+		medido sem depender de identidade nenhuma."""
 		steps = _make_steps(n_code_gen=10, n_other=0)
-		apply_model_budget(steps, "ollama", "alto", complexity="medium")
-		heavy_model = select_model("ollama", STEP_CODE_GENERATION, "alto", complexity="medium")
-		heavy_count = sum(s.model_id == heavy_model for s in steps)
+		with _modelos_controlados():
+			apply_model_budget(steps, "ollama", "alto", complexity="medium")
+		heavy_count = sum(s.model_id == _MODELO_ELEVADO for s in steps)
 		assert heavy_count == math.floor(10 * 0.20)
 
 	def test_complexity_ausente_usa_default_medium(self):
 		"""apply_model_budget() sem complexity= (comportamento anterior a
-		2.22.0) continua identico -- default e 'medium'. IDENTIDADE do
-		modelo pode variar (ver comentario acima), PERCENTUAL nao."""
-		from nvdastudio.ai.model_router import select_model
+		2.22.0) continua identico -- default e 'medium'. Mesma correcao de
+		fragilidade do teste acima."""
 		steps = _make_steps(n_code_gen=10, n_other=0)
-		apply_model_budget(steps, "ollama", "alto")
-		heavy_model = select_model("ollama", STEP_CODE_GENERATION, "alto", complexity="medium")
-		heavy_count = sum(s.model_id == heavy_model for s in steps)
+		with _modelos_controlados():
+			apply_model_budget(steps, "ollama", "alto")
+		heavy_count = sum(s.model_id == _MODELO_ELEVADO for s in steps)
 		assert heavy_count == math.floor(10 * 0.20)
+
+	def test_percentual_nao_depende_de_o_router_separar_os_tiers(self):
+		"""REGRESSAO da falha dependente de ordem: mesmo quando o router
+		devolve o MESMO model_id para leve e elevado (acontece de verdade --
+		em processo limpo, low e medium resolvem ambos para gpt-oss:20b), o
+		orcamento continua elevando exatamente 20% dos steps. Antes, esse
+		cenario nao quebrava a producao, so a forma como o teste media."""
+		steps = _make_steps(n_code_gen=10, n_other=0)
+		with _modelos_controlados(elevado="MESMO", leve="MESMO"):
+			apply_model_budget(steps, "ollama", "alto", complexity="medium")
+		assert all(s.model_id == "MESMO" for s in steps)
 
 	def test_complexity_low_todos_os_code_generation_ficam_no_mesmo_modelo_barato(self):
 		"""complexity="low" e um caso especial: o slot "elevado" tambem e

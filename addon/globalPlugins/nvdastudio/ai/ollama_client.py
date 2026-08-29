@@ -7,7 +7,7 @@ from .llm_client import LLMClientError, LLMResponse
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from .model_registry import registry as model_registry
 
-MODULE_VERSION = "2.26.0"
+MODULE_VERSION = "2.27.0"
 _logger = get_logger("ollama_client")
 
 _OLLAMA_CLOUD_URL = "https://ollama.com/api/chat"
@@ -48,7 +48,13 @@ _OLLAMA_CLOUD_TIMEOUT_EXTENDED = 660
 # Steps que usam o timeout estendido. "assembly" adicionado 2026-08-07
 # junto com _EXTENDED_TOKENS_STEP_TYPES (mesmo achado real, mesmo motivo:
 # contexto grande de consolidacao pra addons complexos).
-_EXTENDED_TIMEOUT_STEP_TYPES = frozenset({"code_generation", "design_review", "agent_runner", "assembly"})
+_EXTENDED_TIMEOUT_STEP_TYPES = frozenset({
+	"code_generation", "design_review", "agent_runner", "assembly",
+	# engineering_review recebe o codigo gerado INTEIRO como entrada
+	# (depende de todos os code_generation) -- mesmo perfil de contexto
+	# longo que design_review, mesmo teto de timeout HTTP.
+	"engineering_review",
+})
 
 # Temperature por tipo de operacao. Fonte: docs.ollama.com/blog/structured-outputs
 # recomenda temperature=0 para outputs deterministicos. Usamos 0 para passos de

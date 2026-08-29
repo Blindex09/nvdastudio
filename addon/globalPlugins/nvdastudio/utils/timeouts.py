@@ -43,6 +43,12 @@ _STEP_TYPE_TIMEOUT_OVERRIDE = {
     "code_generation": _DEFAULT_STEP_TIMEOUT_LONG,
     "agent_runner": _DEFAULT_STEP_TIMEOUT_LONG,
     "web_research": _DEFAULT_STEP_TIMEOUT_LONG,
+    # engineering_review le TODO o codigo gerado de uma vez (depende de
+    # todos os code_generation, nao de um so) para achar defeito que so
+    # aparece no conjunto. Entrada de contexto comparavel a design_review,
+    # entao o mesmo teto -- sem isso caia nos 180s do default e um addon
+    # multi-feature estouraria o timeout num step que nao falhou.
+    "engineering_review": _DEFAULT_STEP_TIMEOUT_LONG,
 }
 
 _TOOL_TIMEOUT_OVERRIDE = {

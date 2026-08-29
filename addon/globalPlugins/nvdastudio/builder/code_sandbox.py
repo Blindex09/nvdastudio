@@ -9,11 +9,32 @@ from dataclasses import dataclass
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.4.0"
+MODULE_VERSION = "1.5.0"
 _logger = get_logger("code_sandbox")
 
 _SANDBOX_TIMEOUT = 10  # segundos
 _TEST_SUITE_TIMEOUT = 25  # segundos — varios arquivos/imports, mais folga que uma checagem simples
+_LINT_TIMEOUT = 20  # segundos -- ruff/mypy sobre o addon gerado inteiro
+
+# Config de lint aplicada ao codigo GERADO (nunca a do proprio NVDAStudio).
+# Escolha deliberada de escopo: so regras que apontam DEFEITO real
+# (F=pyflakes: nome indefinido, import nao usado, f-string sem placeholder;
+# E9=erro de sintaxe/IO; B=bugbear: default mutavel, loop capturando
+# variavel). Regras de ESTILO ficam de fora de proposito -- o NVDA usa TABs
+# (W191/E101) e linhas longas sao comuns no core, entao ligar pycodestyle
+# inteiro produziria dezenas de avisos que nao sao bugs e empurrariam o
+# pipeline para retries infinitos sem ganho de qualidade.
+# builtins: _/ngettext/pgettext/npgettext sao injetados em tempo de execucao
+# por addonHandler.initTranslation() -- sem declara-los aqui, TODO addon
+# traduzido (isto e, todo addon correto pela NVDA-019) levaria F821
+# "undefined name" em cada string traduzivel. E chave top-level no schema do
+# ruff, nao dentro de [lint] (confirmado contra ruff 0.16.5).
+_GENERATED_RUFF_CONFIG = """builtins = ["_", "ngettext", "pgettext", "npgettext"]
+
+[lint]
+select = ["F", "E9", "B"]
+ignore = ["B904"]
+"""
 
 # Roda em SUBPROCESSO isolado (nunca no processo deste modulo) -- instala
 # nvda_runtime_stubs.py (copiado pro mesmo diretorio temporario), importa o
@@ -546,6 +567,146 @@ class CodeSandbox:
             stdout=proc.stdout[:5000], stderr=proc.stderr[:5000],
             exit_code=proc.returncode,
         )
+
+    def lint_check(
+        self, files: dict[str, str], timeout: int | None = None,
+    ) -> SandboxResult:
+        """
+        Roda `ruff check` sobre o codigo Python GERADO, num diretorio
+        temporario isolado, com a config curada de _GENERATED_RUFF_CONFIG
+        (so regras de defeito real -- ver comentario na constante).
+
+        Fecha a assimetria historica do projeto: o CI do NVDAStudio exige
+        `ruff check` limpo no proprio codigo, mas o addon entregue ao
+        usuario nunca passava por lint nenhum -- so AST, import e pytest.
+
+        FAIL-OPEN (mesma politica de `pytest_indisponivel` em _run_pytest):
+        se o ruff nao estiver instalado no interpretador -- caso normal no
+        Python embutido de uma instalacao real do NVDA -- retorna
+        success=True com error="ruff_indisponivel". Ausencia de ferramenta
+        e falha de INFRAESTRUTURA, nunca defeito do addon; bloquear o
+        pipeline por isso quebraria o addon de quem nao tem dev tooling.
+
+        Regra 9: nao executa o addon. `ruff` faz analise estatica.
+        """
+        return self._run_static_tool(
+            files,
+            timeout,
+            tool_argv=["-m", "ruff", "check", "--output-format=concise", "--no-cache", "."],
+            prefix="nvdastudio_lint_",
+            missing_pattern=r"No module named .?ruff",
+            missing_error="ruff_indisponivel",
+            config_filename="ruff.toml",
+            config_content=_GENERATED_RUFF_CONFIG,
+        )
+
+    def typecheck(
+        self, files: dict[str, str], timeout: int | None = None,
+    ) -> SandboxResult:
+        """
+        Roda `mypy` sobre o codigo Python GERADO, em diretorio isolado.
+
+        --ignore-missing-imports e obrigatorio aqui: os modulos que o addon
+        importa (globalPluginHandler, addonHandler, ui, wx, config...) sao
+        injetados pelo PROCESSO do NVDA em tempo de execucao e nao existem
+        no interpretador de dev -- exatamente o mesmo motivo que levou o
+        mypy.ini da raiz a declarar `ignore_missing_imports` para cada um
+        deles. Sem a flag, 100% do resultado seria import-not-found.
+
+        FAIL-OPEN identico a lint_check() quando o mypy nao esta instalado.
+
+        Regra 9: nao executa o addon. `mypy` faz analise estatica.
+        """
+        return self._run_static_tool(
+            files,
+            timeout,
+            tool_argv=[
+                "-m", "mypy",
+                "--ignore-missing-imports",
+                "--follow-imports=silent",
+                "--no-error-summary",
+                "--no-color-output",
+                "--cache-dir", os.devnull,
+                ".",
+            ],
+            prefix="nvdastudio_typecheck_",
+            missing_pattern=r"No module named .?mypy",
+            missing_error="mypy_indisponivel",
+        )
+
+    def _run_static_tool(
+        self,
+        files: dict[str, str],
+        timeout: int | None,
+        tool_argv: list[str],
+        prefix: str,
+        missing_pattern: str,
+        missing_error: str,
+        config_filename: str | None = None,
+        config_content: str | None = None,
+    ) -> SandboxResult:
+        """
+        Escreve `files` num tmpdir e roda uma ferramenta de analise ESTATICA
+        (ruff/mypy) sobre ele, em subprocesso isolado com timeout.
+
+        Compartilhado por lint_check() e typecheck() -- a unica diferenca
+        real entre as duas e o argv e o arquivo de config, entao duplicar
+        toda a preparacao de tmpdir/subprocesso/degradacao seria a
+        duplicacao de fluxo que a Regra 5 do README proibe.
+
+        Nunca levanta excecao: qualquer falha de infraestrutura vira
+        SandboxResult(success=True, error=...) -- fail-open.
+        """
+        if timeout is None:
+            timeout = _LINT_TIMEOUT
+
+        py_files = {
+            rel: content for rel, content in files.items()
+            if rel.replace("\\", "/").endswith(".py")
+        }
+        if not py_files:
+            return SandboxResult(success=True, stdout="", stderr="", error="sem arquivo Python")
+
+        tmpdir = tempfile.mkdtemp(prefix=prefix)
+        try:
+            self._write_files(tmpdir, py_files)
+            if config_filename and config_content:
+                with open(os.path.join(tmpdir, config_filename), "w", encoding="utf-8") as f:
+                    f.write(config_content)
+
+            try:
+                proc = subprocess.run(
+                    [sys.executable, *tool_argv],
+                    capture_output=True, text=True, timeout=timeout, cwd=tmpdir,
+                    # Ambiente REAL herdado, mesmo motivo ja documentado em
+                    # _run_pytest(): ruff/mypy costumam estar instalados como
+                    # --user e vivem num site-packages que so e resolvido via
+                    # APPDATA/USERPROFILE no Windows.
+                    env=os.environ.copy(),
+                )
+            except subprocess.TimeoutExpired:
+                # Timeout de ferramenta estatica e infraestrutura lenta, nao
+                # defeito do addon -- fail-open igual a ausencia da ferramenta.
+                return SandboxResult(
+                    success=True, stdout="", stderr="",
+                    error=f"analise estatica excedeu {timeout}s", timed_out=True,
+                )
+            except FileNotFoundError:
+                return SandboxResult(success=True, stdout="", stderr="", error=missing_error)
+
+            stdout, stderr = proc.stdout[:5000], proc.stderr[:5000]
+            if re.search(missing_pattern, stdout + stderr):
+                return SandboxResult(success=True, stdout="", stderr="", error=missing_error)
+
+            return SandboxResult(
+                success=proc.returncode == 0, stdout=stdout, stderr=stderr,
+                exit_code=proc.returncode,
+            )
+        except Exception as exc:
+            _logger.error("[Sandbox] Erro ao preparar analise estatica: %s", exc)
+            return SandboxResult(success=True, stdout="", stderr="", error=str(exc))
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     def syntax_check(self, code: str) -> SandboxResult:
         """

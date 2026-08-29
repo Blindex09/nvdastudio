@@ -9,13 +9,14 @@ from .llm_factory import create_llm_client
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..builder.api_key_validator import api_key_validator
 from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
+from ..utils.engineering_principles import ENGINEERING_CRITIC_PROMPT_TEXT
 from ..builder.controller_client_context import is_controller_client_context, CTRL_CLIENT_CRITIC_ADDENDUM
 # Constantes de step_type: fonte unica de verdade (evita acoplamento por string literal)
 from ..core.planner import (
 	STEP_CODE_GENERATION, STEP_MANIFEST as STEP_MANIFEST_BUILDER, STEP_WEB_RESEARCH,
 )
 
-MODULE_VERSION = "3.20.0"
+MODULE_VERSION = "3.21.0"
 _logger = get_logger("critic")
 
 # 3.19.0: Critic roteado pra OpenCode Go, independente do provider ativo do
@@ -424,7 +425,15 @@ Retorne APENAS JSON valido:
  "dimension_scores": {"completeness": X, "format": X, "nvda_compliance": X}}
 """
 
+# 2026-08-29: alem do catalogo de regras, o QualityCritic passa a julgar
+# ENGENHARIA -- os defeitos que nenhum ID de regra descreve (erro engolido,
+# operacao externa sem timeout, recurso sem fim de vida, complexidade que o
+# addon nao precisa, logica impossivel de testar sem o NVDA real). Fonte unica
+# de verdade em utils/engineering_principles.py, compartilhada com planner,
+# code_generator e engineering_reviewer -- nunca duplicar o texto aqui
+# (README Regra 5).
 _CRITIC_QUALITY_SYSTEM += "\n\n" + RULE_REGISTRY_PROMPT_TEXT
+_CRITIC_QUALITY_SYSTEM += "\n\n" + ENGINEERING_CRITIC_PROMPT_TEXT
 
 # _CRITIC_SYSTEM: compatibilidade com testes e modulos externos que importam este simbolo.
 # Contem os criterios completos (spec + quality) para que asserts de conteudo funcionem.

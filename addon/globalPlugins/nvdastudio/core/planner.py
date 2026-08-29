@@ -10,8 +10,9 @@ from ..ai.llm_factory import create_llm_client
 from ..ai.model_registry import ALTO_MODEL, get_provider_step_models, is_alto_model, resolve_provider_tier_model
 from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTION
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
+from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.29.0"
+MODULE_VERSION = "2.30.0"
 _logger = get_logger("planner")
 
 PLANNER_MODEL = "alto"
@@ -29,6 +30,7 @@ STEP_DESIGN_REVIEW      = "design_review"         # revisao Challenger+Guardian 
 STEP_DOCUMENTATION      = "documentation"         # gera userGuide.html acessivel para usuario final
 STEP_USER_CLARIFICATION = "user_clarification"    # pausa pipeline e pergunta ao usuario
 STEP_SYNTAX_VALIDATION  = "syntax_validation"     # valida sintaxe Python via code_interpreter (E2B)
+STEP_ENGINEERING_REVIEW = "engineering_review"    # julga ENGENHARIA do codigo gerado (nao regra NVDA)
 
 _DEFAULT_MODEL = "alto"
 
@@ -176,6 +178,7 @@ _STEP_FALLBACK_MODEL: dict[str, str] = {
 	STEP_DOCUMENTATION:       ALTO_MODEL,
 	STEP_USER_CLARIFICATION:  ALTO_MODEL,
 	STEP_SYNTAX_VALIDATION:   ALTO_MODEL,
+	STEP_ENGINEERING_REVIEW:  ALTO_MODEL,
 }
 
 # Alias retrocompativel para modulos que ainda referenciam STEP_MODEL_MAP
@@ -196,6 +199,7 @@ _STEP_FALLBACK_REASONING: dict[str, str | None] = {
 	STEP_DOCUMENTATION:       None,
 	STEP_USER_CLARIFICATION:  None,
 	STEP_SYNTAX_VALIDATION:   None,
+	STEP_ENGINEERING_REVIEW:  "high",
 }
 
 # Deriva reasoning_effort dinamicamente pela complexity do plano.
@@ -209,6 +213,7 @@ _EFFORT_BY_COMPLEXITY: dict[str, dict[str, str | None]] = {
 	STEP_DOCUMENTATION:       {"high": None,   "medium": None,     "low": None},
 	STEP_ASSEMBLY:            {"high": None,   "medium": None,     "low": None},
 	STEP_SYNTAX_VALIDATION:   {"high": None,   "medium": None,     "low": None},
+	STEP_ENGINEERING_REVIEW:  {"high": "high", "medium": "medium", "low": None},
 }
 
 def _effort_for_complexity(step_type: str, complexity: str) -> str | None:
@@ -238,6 +243,7 @@ COMPLEXITY_MAP: dict[str, dict[str, str]] = {
 		STEP_ASSEMBLY: "kimi-k2.7-code", STEP_DESIGN_REVIEW: "kimi-k2.7-code",
 		STEP_DOCUMENTATION: "kimi-k2.7-code", STEP_USER_CLARIFICATION: "kimi-k2.7-code",
 		STEP_SYNTAX_VALIDATION: "kimi-k2.7-code",
+		STEP_ENGINEERING_REVIEW: "kimi-k2.7-code",
 	},
 	"medium": {
 		STEP_CODE_GENERATION: "kimi-k2.7-code", STEP_MANIFEST: "kimi-k2.7-code",
@@ -247,6 +253,7 @@ COMPLEXITY_MAP: dict[str, dict[str, str]] = {
 		STEP_ASSEMBLY: "kimi-k2.7-code", STEP_DESIGN_REVIEW: "deepseek-v4-flash",
 		STEP_DOCUMENTATION: "kimi-k2.7-code", STEP_USER_CLARIFICATION: "kimi-k2.7-code",
 		STEP_SYNTAX_VALIDATION: "kimi-k2.7-code",
+		STEP_ENGINEERING_REVIEW: "kimi-k2.7-code",
 	},
 	"high":   {
 		STEP_CODE_GENERATION: "kimi-k2.7-code", STEP_MANIFEST: "kimi-k2.7-code",
@@ -256,6 +263,7 @@ COMPLEXITY_MAP: dict[str, dict[str, str]] = {
 		STEP_ASSEMBLY: "kimi-k2.7-code", STEP_DESIGN_REVIEW: "deepseek-v4-flash",
 		STEP_DOCUMENTATION: "kimi-k2.7-code", STEP_USER_CLARIFICATION: "kimi-k2.7-code",
 		STEP_SYNTAX_VALIDATION: "kimi-k2.7-code",
+		STEP_ENGINEERING_REVIEW: "kimi-k2.7-code",
 	},
 }
 
@@ -612,6 +620,13 @@ Regras de composicao:
 - Sem texto fora do JSON. Sem markdown. Apenas JSON puro.
 """
 
+# 2026-08-29: o planner passa a decidir DECOMPOSICAO e ORDEM DE VERIFICACAO com
+# criterio de engenharia explicito, nao so pelo formato do JSON. Fonte unica de
+# verdade em utils/engineering_principles.py, compartilhada com critic,
+# code_generator e engineering_reviewer -- nunca duplicar o texto aqui
+# (README Regra 5).
+_PLAN_SYSTEM_PROMPT += "\n\n" + ENGINEERING_PLANNING_PROMPT_TEXT
+
 
 def _plan_json_from_tool_call(resp) -> str:
 	"""
@@ -701,6 +716,9 @@ class Planner:
 		steps = self._inject_documentation(steps, complexity)
 
 		steps = self._inject_syntax_validation(steps, complexity)
+
+		if project_type == "addon":
+			steps = self._inject_engineering_review(steps, complexity)
 
 		steps = self._inject_assembly(steps, complexity)
 
@@ -1230,6 +1248,107 @@ class Planner:
 		)
 		return steps + [asm]
 
+	def _inject_engineering_review(
+		self, steps: list[ExecutionStep], complexity: str = "medium",
+	) -> list[ExecutionStep]:
+		"""
+		Injeta engineering_review depois de TODOS os code_generation, antes do
+		assembly.
+
+		POR QUE ESTE STEP EXISTE (auditoria 2026-08-29): todo o julgamento de
+		qualidade do pipeline era conformidade a REGRA CATALOGADA -- as ~50
+		regras NVDA/WX-A11Y/ARCH do rule_registry. Isso cobre o que e
+		catalogavel, mas engenharia e o que sobra quando o catalogo acaba:
+		fronteira de modulo errada, abstracao prematura, erro engolido,
+		recurso sem dono, codigo impossivel de testar. Nenhum ID descreve
+		esses defeitos e nenhum agente os procurava.
+
+		Logica deterministica (Regra 5), igual aos outros injetores:
+		- so injeta se existe code_generation no plano (sem codigo, nada a
+		  revisar);
+		- nao duplica se ja houver engineering_review;
+		- depende de TODOS os code_generation, nao de um so -- um defeito de
+		  engenharia tipico (duas features gravando a mesma config, camada
+		  duplicada entre modulos) so e visivel olhando o conjunto. E a
+		  diferenca deliberada em relacao a _inject_syntax_validation, que
+		  injeta um sv_ POR step porque sintaxe e local por natureza.
+
+		Roda com o modelo leve: apply_model_budget() so eleva
+		code_generation, e critica/auditoria usam o leve por decisao do
+		README Regra 8 -- este step nao consome o orcamento de 20%.
+		"""
+		if any(s.step_type == STEP_ENGINEERING_REVIEW for s in steps):
+			_logger.info("[PLAN] engineering_review ja presente no plano. Sem injecao.")
+			return steps
+
+		cg_ids = [s.step_id for s in steps if s.step_type == STEP_CODE_GENERATION]
+		if not cg_ids:
+			return steps
+
+		reasoning_params: dict = {}
+		re_effort = _effort_for_complexity(STEP_ENGINEERING_REVIEW, complexity)
+		if re_effort:
+			reasoning_params["reasoning_effort"] = re_effort
+
+		er_step = ExecutionStep(
+			step_id="er_inj",
+			step_type=STEP_ENGINEERING_REVIEW,
+			description=(
+				"Revisar a ENGENHARIA do codigo gerado, nao a conformidade a regras "
+				"(essa ja e auditada em outros steps): defeitos de estrutura, erro "
+				"engolido, operacao externa sem timeout, recurso criado sem fim de "
+				"vida, complexidade que o addon nao precisa, logica impossivel de "
+				"testar sem o NVDA real e risco na proxima mudanca."
+			),
+			model_id=_STEP_FALLBACK_MODEL.get(STEP_ENGINEERING_REVIEW, _DEFAULT_MODEL),
+			reasoning_params=reasoning_params,
+			depends_on=cg_ids,
+			context_from_steps=cg_ids,
+			expected_output=(
+				"Revisao de engenharia com DEFEITOS DE ENGENHARIA, COMPLEXIDADE "
+				"DESNECESSARIA, TESTABILIDADE, RISCO DE EVOLUCAO e "
+				"VEREDITO_ENGENHARIA (SOLIDO | AJUSTES_RECOMENDADOS | REESTRUTURAR)."
+			),
+			max_retries=1,
+			user_message="Revisando a qualidade de engenharia do código...",
+			msg_evaluating="Conferindo se a revisão de engenharia está completa...",
+			msg_retrying="Refinando a revisão de engenharia...",
+			msg_escalating="Aprofundando a revisão de engenharia...",
+		)
+
+		# Assembly passa a depender do review -- mesmo padrao (e mesmo motivo)
+		# de _inject_accessibility_audit: sem isso, um plano que ja trouxesse
+		# assembly proprio faria o addon ser empacotado ANTES da revisao rodar,
+		# quebrando a invariante "assembly e sempre o ultimo step".
+		updated: list[ExecutionStep] = []
+		asm_updated = False
+		for step in steps:
+			if step.step_type == STEP_ASSEMBLY:
+				if "er_inj" not in step.depends_on:
+					step.depends_on = step.depends_on + ["er_inj"]
+				if "er_inj" not in step.context_from_steps:
+					step.context_from_steps = step.context_from_steps + ["er_inj"]
+				asm_updated = True
+			updated.append(step)
+
+		log_decision(
+			_logger, "engineering_review_injetado",
+			f"er_inj injetado apos {len(cg_ids)} code_generation. assembly_atualizado={asm_updated}",
+		)
+
+		# Insere imediatamente antes do assembly.
+		result: list[ExecutionStep] = []
+		for step in updated:
+			if step.step_type == STEP_ASSEMBLY:
+				result.append(er_step)
+			result.append(step)
+
+		# Sem assembly no plano, entra no fim -- ainda depois de todo
+		# code_generation, que e a unica ordem que importa aqui.
+		if not asm_updated:
+			result.append(er_step)
+		return result
+
 	def _inject_syntax_validation(self, steps: list[ExecutionStep],
 	                                    complexity: str = "medium") -> list[ExecutionStep]:
 		"""
@@ -1596,6 +1715,8 @@ class Planner:
 				steps = self._inject_core_step(steps, original_query, complexity)
 			steps = self._inject_documentation(steps, complexity)
 			steps = self._inject_syntax_validation(steps, complexity)
+			if project_type == "addon":
+				steps = self._inject_engineering_review(steps, complexity)
 			steps = self._inject_assembly(steps, complexity)
 
 			from ..gui.settings_panel import get_llm_provider, get_llm_model
