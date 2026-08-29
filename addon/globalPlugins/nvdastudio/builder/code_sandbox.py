@@ -1,0 +1,571 @@
+import re
+import subprocess
+import sys
+import tempfile
+import os
+import shutil
+import zipfile
+from dataclasses import dataclass
+
+from ..utils.logger import get_logger
+
+MODULE_VERSION = "1.4.0"
+_logger = get_logger("code_sandbox")
+
+_SANDBOX_TIMEOUT = 10  # segundos
+_TEST_SUITE_TIMEOUT = 25  # segundos — varios arquivos/imports, mais folga que uma checagem simples
+
+# Roda em SUBPROCESSO isolado (nunca no processo deste modulo) -- instala
+# nvda_runtime_stubs.py (copiado pro mesmo diretorio temporario), importa o
+# modulo principal do addon gerado e tenta instanciar a classe principal
+# (GlobalPlugin/AppModule/SynthDriver/SettingsPanel). {dotted} e
+# substituido pelo caminho de import ja calculado em Python real (repr()
+# do proprio validate_addon_execution()), nunca por texto vindo da IA --
+# format() so recebe uma string ja validada como caminho de modulo.
+_RUNNER_TEMPLATE = '''\
+import sys, os, inspect, traceback, importlib, time
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nvda_runtime_stubs
+nvda_runtime_stubs.install()
+
+DOTTED = "{dotted}"
+
+try:
+	mod = importlib.import_module(DOTTED)
+except Exception:
+	print("IMPORT_FALHOU")
+	traceback.print_exc()
+	sys.exit(1)
+
+_BASE_NAMES = {{"GlobalPlugin", "AppModule", "SynthDriver", "SettingsPanel"}}
+candidates = []
+for _name, obj in vars(mod).items():
+	if inspect.isclass(obj) and getattr(obj, "__module__", None) == DOTTED:
+		base_names = {{b.__name__ for b in obj.__mro__}}
+		if base_names & _BASE_NAMES:
+			candidates.append(obj)
+
+if not candidates:
+	print("SEM_CLASSE_PRINCIPAL_ENCONTRADA")
+	sys.exit(0)
+
+for cls in candidates:
+	# Injecao de falha controlada: acontece dentro do subprocesso que executa
+	# o addon, depois do import e antes da instanciação. Isso exercita o codigo
+	# real do addon sem tocar no NVDA ou no sistema do usuario.
+	_fault = os.environ.get("NVDASTUDIO_FAULT_SCENARIO", "")
+	if _fault == "api_401":
+		try:
+			import urllib.error
+			import urllib.request
+			urllib.request.urlopen = lambda *args, **kwargs: (_ for _ in ()).throw(
+				urllib.error.HTTPError("http://fault.local", 401, "Unauthorized", {{}}, None)
+			)
+		except Exception:
+			pass
+	elif _fault == "missing_file":
+		import builtins
+		_real_open = builtins.open
+		def _fault_open(file, *args, **kwargs):
+			if isinstance(file, str) and not file.endswith("_sandbox_runner.py"):
+				raise FileNotFoundError(2, "arquivo ausente injetado", file)
+			return _real_open(file, *args, **kwargs)
+		builtins.open = _fault_open
+	elif _fault == "timeout":
+		try:
+			import socket
+			import urllib.request
+			def _fault_urlopen(*args, **kwargs):
+				raise socket.timeout("timeout injetado")
+			urllib.request.urlopen = _fault_urlopen
+		except Exception:
+			pass
+
+	try:
+		instance = cls()
+		if hasattr(instance, "terminate"):
+			instance.terminate()
+	except Exception:
+		print("INSTANCIACAO_FALHOU: " + cls.__name__)
+		traceback.print_exc()
+		sys.exit(1)
+
+	# Verificacao de bind/unbind de teclado (Keyboard/Focus Management):
+	# bindGesture() via dict de classe __gestures e o padrao estatico normal
+	# do NVDA -- limpo automaticamente quando a instancia e destruida, nao
+	# precisa de unbind. O risco real e bindGesture() chamado DINAMICAMENTE
+	# (self.bindGesture(...) fora do dict __gestures, tipicamente em
+	# resposta a mudanca de configuracao) sem removeGestureBinding()
+	# correspondente em lugar nenhum da classe -- cada rebind acumula um
+	# gesture duplicado apontando pro mesmo script. So roda se a
+	# instanciacao/terminate ja passaram (nao bloqueia o addon por isso --
+	# aviso, nao falha).
+	try:
+		src = inspect.getsource(cls)
+		if "self.bindGesture(" in src and "removeGestureBinding" not in src:
+			print("AVISO_BINDGESTURE_SEM_UNBIND: " + cls.__name__)
+	except (OSError, TypeError):
+		pass
+
+print("OK")
+sys.exit(0)
+'''
+
+
+@dataclass
+class SandboxResult:
+    """Resultado da execucao em sandbox."""
+    success: bool
+    stdout: str
+    stderr: str
+    error: str = ""
+    exit_code: int = -1
+    timed_out: bool = False
+
+
+def _result_evidence(result: SandboxResult) -> str:
+	"""Consolida a saída observável de uma execução isolada."""
+	parts = [result.error, result.stderr, result.stdout]
+	return " | ".join(part for part in parts if part) or f"exit_code={result.exit_code}"
+
+
+class CodeSandbox:
+    """
+    Sandbox para execucao segura de codigo Python.
+
+    Executa em subprocesso isolado — nunca no processo NVDA.
+    Timeout rigido para evitar loops infinitos.
+    Sem acesso a rede, arquivos do sistema ou modulos NVDA.
+    """
+
+    def __init__(self, timeout_sec: int = _SANDBOX_TIMEOUT):
+        self.default_timeout = timeout_sec
+
+    def run_python_code(self, code: str, timeout: int | None = None) -> SandboxResult:
+        """
+        Executa codigo Python em sandbox isolado.
+
+        Args:
+            code: Codigo Python a ser executado
+            timeout: Timeout em segundos
+
+        Returns:
+            SandboxResult com saida e erros
+        """
+        if timeout is None:
+            timeout = self.default_timeout
+
+        # Cria arquivo temporario com o codigo
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".py", delete=False, encoding="utf-8"
+            ) as f:
+                f.write(code)
+                temp_path = f.name
+
+            # Executa em subprocesso isolado
+            result = self._run_subprocess(temp_path, timeout)
+
+            # Limpa arquivo temporario
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
+            return result
+
+        except Exception as exc:
+            _logger.error("[Sandbox] Erro ao criar/executar sandbox: %s", exc)
+            return SandboxResult(
+                success=False,
+                stdout="",
+                stderr="",
+                error=str(exc),
+            )
+
+    def _run_subprocess(self, script_path: str, timeout: int) -> SandboxResult:
+        """Executa script em subprocesso com timeout."""
+        try:
+            proc = subprocess.run(
+                [sys.executable, script_path],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=tempfile.gettempdir(),
+                env={
+                    "PYTHONPATH": "",
+                    "PATH": os.environ.get("PATH", ""),
+                },
+            )
+
+            return SandboxResult(
+                success=proc.returncode == 0,
+                stdout=proc.stdout[:5000],
+                stderr=proc.stderr[:5000],
+                exit_code=proc.returncode,
+            )
+
+        except subprocess.TimeoutExpired:
+            _logger.warning("[Sandbox] Timeout apos %ds", timeout)
+            return SandboxResult(
+                success=False,
+                stdout="",
+                stderr="",
+                error=f"Timeout: codigo excedeu {timeout}s",
+                timed_out=True,
+            )
+        except FileNotFoundError:
+            return SandboxResult(
+                success=False,
+                stdout="",
+                stderr="",
+                error="Python nao encontrado no PATH",
+            )
+        except Exception as exc:
+            return SandboxResult(
+                success=False,
+                stdout="",
+                stderr="",
+                error=str(exc),
+            )
+
+    def validate_addon_imports(self, code: str) -> SandboxResult:
+        """
+        Valida se os imports do addon funcionam.
+
+        Executa apenas os imports do codigo, sem executar logica.
+        Util para detectar ModuleNotFoundError antes de empacotar.
+        """
+        # Extrai apenas linhas de import
+        import_lines = []
+        for line in code.split("\n"):
+            stripped = line.strip()
+            if stripped.startswith("import ") or stripped.startswith("from "):
+                import_lines.append(stripped)
+
+        if not import_lines:
+            return SandboxResult(success=True, stdout="", stderr="")
+
+        import_code = "\n".join(import_lines)
+        return self.run_python_code(import_code, timeout=5)
+
+    def validate_addon_execution(
+        self, files: dict[str, str], timeout: int | None = None,
+        fault_scenario: str | None = None,
+    ) -> SandboxResult:
+        """
+        Tenta IMPORTAR e INSTANCIAR de verdade a classe principal do addon
+        (GlobalPlugin/AppModule/SynthDriver/SettingsPanel), em subprocesso
+        isolado com os modulos NVDA simulados (nvda_runtime_stubs.py) --
+        pega NameError/AttributeError/assinatura de construtor errada que
+        syntax_check() (so AST, nao executa nada) nunca detecta.
+
+        Diferente de syntax_check() (rapido, sempre roda no critic) e
+        run_test_suite() (so roda se test_generation gerou testes E o
+        proprio teste exercitar o bug), esta verificacao roda direto sobre
+        o output de code_generation, sem depender de nenhum outro step --
+        fecha a lacuna real: validate_addon_imports()/run_python_code() ja
+        existiam desde 1.0.0 mas nunca eram chamados por ninguem porque
+        rodar import puro contra os modulos REAIS do NVDA sempre falha
+        (ModuleNotFoundError -- eles so existem dentro do processo do
+        NVDA). nvda_runtime_stubs.py resolve isso com stand-ins seguros.
+
+        Regra 9: subprocesso isolado, sem rede, sem acesso ao NVDA real.
+        """
+        if timeout is None:
+            timeout = self.default_timeout
+
+        main_relpath = self._find_main_module(files)
+        if main_relpath is None:
+            return SandboxResult(
+                success=True, stdout="", stderr="",
+                error="nenhum globalPlugins/*/__init__.py encontrado -- nada pra validar",
+            )
+
+        tmpdir = tempfile.mkdtemp(prefix="nvdastudio_execcheck_")
+        try:
+            self._write_files(tmpdir, files)
+
+            stubs_src_path = os.path.join(os.path.dirname(__file__), "nvda_runtime_stubs.py")
+            shutil.copy(stubs_src_path, os.path.join(tmpdir, "nvda_runtime_stubs.py"))
+
+            dotted = main_relpath[: -len("/__init__.py")].replace("/", ".")
+            runner_path = os.path.join(tmpdir, "_sandbox_runner.py")
+            with open(runner_path, "w", encoding="utf-8") as f:
+                f.write(_RUNNER_TEMPLATE.format(dotted=dotted))
+
+            try:
+                env = {"PYTHONPATH": tmpdir, "PATH": os.environ.get("PATH", "")}
+                if fault_scenario:
+                    env["NVDASTUDIO_FAULT_SCENARIO"] = fault_scenario
+                proc = subprocess.run(
+                    [sys.executable, "_sandbox_runner.py"],
+                    capture_output=True, text=True, timeout=timeout, cwd=tmpdir,
+                    env=env,
+                )
+            except subprocess.TimeoutExpired:
+                return SandboxResult(
+                    success=False, stdout="", stderr="",
+                    error=f"Timeout: validacao de execucao excedeu {timeout}s", timed_out=True,
+                )
+            except FileNotFoundError:
+                return SandboxResult(success=False, stdout="", stderr="", error="Python nao encontrado no PATH")
+
+            stdout, stderr = proc.stdout[:5000], proc.stderr[:5000]
+            return SandboxResult(
+                success=proc.returncode == 0, stdout=stdout, stderr=stderr, exit_code=proc.returncode,
+            )
+        except Exception as exc:
+            _logger.error("[Sandbox] Erro ao preparar validate_addon_execution: %s", exc)
+            return SandboxResult(success=False, stdout="", stderr="", error=str(exc))
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def validate_addon_resilience(
+        self, files: dict[str, str], timeout: int | None = None,
+    ) -> SandboxResult:
+        """Executa o addon real sob falhas injetadas no subprocesso isolado."""
+        scenarios = ("api_401", "timeout", "missing_file")
+        evidence: list[str] = []
+        for scenario in scenarios:
+            result = self.validate_addon_execution(files, timeout, scenario)
+            evidence.append(f"{scenario}: {_result_evidence(result)}")
+            if not result.success:
+                return SandboxResult(
+                    success=False,
+                    stdout="\n".join(evidence),
+                    stderr=result.stderr,
+                    error=f"falha no cenário real {scenario}: {_result_evidence(result)}",
+                    exit_code=result.exit_code,
+                    timed_out=result.timed_out,
+                )
+        return SandboxResult(success=True, stdout="\n".join(evidence), stderr="", exit_code=0)
+
+    def validate_final_package(self, package_path: str) -> SandboxResult:
+        """Valida o arquivo .nvda-addon final, não apenas os blocos da IA."""
+        if not os.path.isfile(package_path) or not zipfile.is_zipfile(package_path):
+            return SandboxResult(False, "", "", error="pacote final ausente ou ZIP inválido")
+
+        temp_root = tempfile.mkdtemp(prefix="nvdastudio_final_package_")
+        try:
+            with zipfile.ZipFile(package_path) as archive:
+                bad_member = archive.testzip()
+                if bad_member:
+                    return SandboxResult(False, "", "", error=f"ZIP corrompido: {bad_member}")
+                root = os.path.abspath(temp_root)
+                for member in archive.infolist():
+                    target = os.path.abspath(os.path.join(temp_root, member.filename))
+                    if target != root and not target.startswith(root + os.sep):
+                        return SandboxResult(
+                            False, "", "", error=f"ZIP rejeitado por path traversal: {member.filename}"
+                        )
+                archive.extractall(temp_root)
+
+            from .addon_builder import validate_addon_structure
+
+            problems = validate_addon_structure(temp_root)
+            if problems:
+                return SandboxResult(
+                    False, "", "", error="estrutura do pacote final inválida: " + " | ".join(problems[:8])
+                )
+
+            files: dict[str, str] = {}
+            for root, _, names in os.walk(temp_root):
+                for name in names:
+                    path = os.path.join(root, name)
+                    rel = os.path.relpath(path, temp_root).replace("\\", "/")
+                    if name.endswith(".py"):
+                        with open(path, encoding="utf-8") as source:
+                            files[rel] = source.read()
+
+            runtime = self.validate_addon_execution(files)
+            if not runtime.success:
+                return SandboxResult(
+                    False,
+                    runtime.stdout,
+                    runtime.stderr,
+                    error="execução do pacote final falhou: " + _result_evidence(runtime),
+                    exit_code=runtime.exit_code,
+                    timed_out=runtime.timed_out,
+                )
+            return SandboxResult(
+                True,
+                "pacote íntegro; estrutura válida; execução do pacote final aprovada",
+                "",
+                exit_code=0,
+            )
+        except (OSError, zipfile.BadZipFile) as exc:
+            return SandboxResult(False, "", "", error=f"falha ao validar pacote final: {exc}")
+        finally:
+            shutil.rmtree(temp_root, ignore_errors=True)
+
+    @staticmethod
+    def _find_main_module(files: dict[str, str]) -> str | None:
+        """Localiza globalPlugins/<Addon>/__init__.py entre os arquivos
+        gerados -- convencao ja usada por builder/addon_builder.py."""
+        gp_re = re.compile(r"^globalPlugins/([^/]+)/__init__\.py$")
+        for relpath in files:
+            norm = relpath.replace("\\", "/").lstrip("/")
+            if gp_re.match(norm):
+                return norm
+        return None
+
+    def run_test_suite(
+        self, files: dict[str, str], test_relpaths: list[str], timeout: int | None = None,
+    ) -> SandboxResult:
+        """
+        Escreve `files` (relpath -> conteudo) num diretorio temporario e
+        executa de verdade os arquivos de teste em `test_relpaths` contra
+        eles, via subprocesso isolado (mesma garantia de seguranca de
+        run_python_code() -- nunca no processo do NVDA).
+
+        Tenta `python -m pytest` primeiro (roda tanto `def test_*()` soltos
+        quanto `class Test*(unittest.TestCase)`, os 2 estilos que o prompt
+        de test_generator.py aceita). Se pytest nao estiver instalado no
+        interpretador (comum: o Python embutido de uma instalacao real do
+        NVDA pode nao ter pytest), cai pra `python -m unittest discover`
+        (stdlib, sempre disponivel, mas so descobre TestCase — funcoes test_*
+        soltas fora de uma classe nao sao coletadas por unittest puro).
+
+        Nunca levanta excecao — degrada pra SandboxResult(success=False,
+        error=...) em qualquer falha de infraestrutura (sem Python no PATH,
+        diretorio nao gravavel, etc), pra nao derrubar o pipeline principal.
+        """
+        if timeout is None:
+            timeout = _TEST_SUITE_TIMEOUT
+        if not test_relpaths:
+            return SandboxResult(success=True, stdout="", stderr="", error="sem arquivos de teste")
+
+        tmpdir = tempfile.mkdtemp(prefix="nvdastudio_testrun_")
+        try:
+            self._write_files(tmpdir, files)
+
+            safe_test_paths = [p for p in (self._safe_relpath(r) for r in test_relpaths) if p]
+            if not safe_test_paths:
+                return SandboxResult(success=True, stdout="", stderr="", error="sem caminho de teste valido")
+
+            result = self._run_pytest(tmpdir, safe_test_paths, timeout)
+            if result.error == "pytest_indisponivel":
+                result = self._run_unittest(tmpdir, safe_test_paths, timeout)
+            return result
+        except Exception as exc:
+            _logger.error("[Sandbox] Erro ao preparar run_test_suite: %s", exc)
+            return SandboxResult(success=False, stdout="", stderr="", error=str(exc))
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def _write_files(self, tmpdir: str, files: dict[str, str]) -> None:
+        """Escreve `files` (relpath -> conteudo) no diretorio temporario,
+        rejeitando caminhos inseguros (compartilhado por run_test_suite() e
+        validate_addon_execution())."""
+        for relpath, content in files.items():
+            safe_rel = self._safe_relpath(relpath)
+            if safe_rel is None:
+                continue
+            full_path = os.path.join(tmpdir, safe_rel)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+    @staticmethod
+    def _safe_relpath(relpath: str) -> str | None:
+        """Normaliza e rejeita caminhos absolutos ou com `..` (path traversal)."""
+        normalized = relpath.replace("\\", "/").lstrip("/")
+        parts = [p for p in normalized.split("/") if p not in ("", ".")]
+        if not parts or ".." in parts or any(":" in p for p in parts):
+            return None
+        return os.path.join(*parts)
+
+    def _run_pytest(self, cwd: str, test_relpaths: list[str], timeout: int) -> SandboxResult:
+        try:
+            # 2026-08-26: achado real de auditoria -- medido ao vivo, este
+            # subprocess levava 3.9s de wall-clock pra rodar UM teste
+            # trivial (assert 1==1), contra 0.58s com plugin autoload
+            # desligado (7x mais rapido; o tempo interno do proprio pytest
+            # caiu de 0.87s pra 0.01s). O ambiente herdado (env real
+            # completo, ver comentario abaixo) faz o subprocess descobrir e
+            # importar TODOS os plugins de terceiros instalados no
+            # interpretador (hypothesis/langsmith/anyio/flask/cov/mock),
+            # nenhum dos quais os testes gerados por test_generator.py
+            # (asserts simples, unittest.mock.patch) precisam. Sob
+            # contencao real de CPU (suite completa do NVDAStudio rodando
+            # em paralelo), essa sobrecarga sozinha ja passava perto do
+            # teto de _TEST_SUITE_TIMEOUT (25s) -- root cause do timeout
+            # flaky, nao falta de tempo de execucao real. Plugins BUILT-IN
+            # do pytest (fixtures, mocks via unittest.mock stdlib)
+            # continuam funcionando -- so entry points de terceiros
+            # deixam de autocarregar.
+            env = os.environ.copy()
+            env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+            proc = subprocess.run(
+                [sys.executable, "-m", "pytest", "-q", "--no-header", *test_relpaths],
+                capture_output=True, text=True, timeout=timeout, cwd=cwd,
+                # Diferente de _run_subprocess() (que zera PYTHONPATH de proposito
+                # pra higiene de import), aqui herdamos o ambiente REAL completo:
+                # pytest/pacotes de usuario costumam viver em site-packages
+                # resolvido via APPDATA/USERPROFILE (Windows, instalacao --user) --
+                # um env{} so com PATH nao encontra o interpretador certo mesmo
+                # sendo o mesmo sys.executable (confirmado: pytest instalado como
+                # --user, invisivel sem APPDATA no subprocesso).
+                env=env,
+            )
+        except subprocess.TimeoutExpired:
+            return SandboxResult(success=False, stdout="", stderr="",
+                                  error=f"Timeout: testes excederam {timeout}s", timed_out=True)
+        except FileNotFoundError:
+            return SandboxResult(success=False, stdout="", stderr="", error="Python nao encontrado no PATH")
+
+        stdout, stderr = proc.stdout[:5000], proc.stderr[:5000]
+        if proc.returncode != 0 and re.search(r"No module named .?pytest", stdout + stderr):
+            return SandboxResult(success=False, stdout=stdout, stderr=stderr, error="pytest_indisponivel")
+        return SandboxResult(success=proc.returncode == 0, stdout=stdout, stderr=stderr, exit_code=proc.returncode)
+
+    def _run_unittest(self, cwd: str, test_relpaths: list[str], timeout: int) -> SandboxResult:
+        modules = []
+        for relpath in test_relpaths:
+            if not relpath.endswith(".py"):
+                continue
+            dotted = relpath[:-3].replace("/", ".").replace(os.sep, ".")
+            modules.append(dotted)
+        if not modules:
+            return SandboxResult(success=True, stdout="", stderr="", error="sem modulo de teste valido")
+        try:
+            proc = subprocess.run(
+                [sys.executable, "-m", "unittest", *modules, "-v"],
+                capture_output=True, text=True, timeout=timeout, cwd=cwd,
+                env=os.environ.copy(),
+            )
+        except subprocess.TimeoutExpired:
+            return SandboxResult(success=False, stdout="", stderr="",
+                                  error=f"Timeout: testes excederam {timeout}s", timed_out=True)
+        except FileNotFoundError:
+            return SandboxResult(success=False, stdout="", stderr="", error="Python nao encontrado no PATH")
+
+        return SandboxResult(
+            success=proc.returncode == 0,
+            stdout=proc.stdout[:5000], stderr=proc.stderr[:5000],
+            exit_code=proc.returncode,
+        )
+
+    def syntax_check(self, code: str) -> SandboxResult:
+        """
+        Verifica sintaxe Python via ast.parse (rapido, sem subprocesso).
+
+        Returns:
+            SandboxResult com resultado da verificacao
+        """
+        try:
+            import ast
+            ast.parse(code)
+            return SandboxResult(success=True, stdout="", stderr="")
+        except SyntaxError as exc:
+            return SandboxResult(
+                success=False,
+                stdout="",
+                stderr=str(exc),
+                error=f"SyntaxError: linha {exc.lineno}, {exc.msg}",
+            )
+
+
+# Instancia global
+sandbox = CodeSandbox()
