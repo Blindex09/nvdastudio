@@ -302,4 +302,3 @@ class TestE2EAddonBuilderComOutputReal:
                 with open(path, encoding="utf-8") as f:
                     content = f.read()
                 assert len(content) > 0
-

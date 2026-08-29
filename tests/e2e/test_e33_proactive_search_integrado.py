@@ -349,4 +349,3 @@ class TestWebResearcherIntegradoPipeline:
         for wr in web_results:
             # web_research nao bloqueia: aprovado ou nao, pipeline continua
             assert isinstance(wr.output, str)
-

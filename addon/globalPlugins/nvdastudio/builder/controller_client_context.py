@@ -221,4 +221,3 @@ APROVADO se o programa cliente + README + (se houver) requirements.txt
 estao presentes e coerentes. NAO exija manifest.ini nem qualquer coisa
 especifica de addon aqui.
 """
-

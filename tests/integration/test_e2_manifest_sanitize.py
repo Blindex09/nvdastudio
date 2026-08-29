@@ -146,4 +146,3 @@ class TestE2ManifestSanitize:
 			                     "ESTRUTURA-004", "ESTRUTURA-005", "NVDA-003", "NVDA-004"]
 		)]
 		assert criticos == [], f"Problemas criticos inesperados: {criticos}"
-

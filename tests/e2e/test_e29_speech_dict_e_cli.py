@@ -453,4 +453,3 @@ class TestCliArgs:
             "wx.CallAfter(ui.message, 'mensagem') — nunca chamar ui.message() diretamente "
             "da thread, pois wx nao e thread-safe e pode travar o NVDA."
         )
-

@@ -958,4 +958,3 @@ class TestE2ERegra9:
                 assert isinstance(content, str), "Arquivo .py deve ser texto"
                 assert len(content) > 0, "Arquivo .py nao deve estar vazio"
                 # Nenhuma excecao de execucao foi lancada
-

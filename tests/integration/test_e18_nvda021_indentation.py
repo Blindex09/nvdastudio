@@ -108,4 +108,3 @@ class TestNVDA021IndentationStyle:
 			f"Mensagem NVDA-021 deve mencionar '__init__.py'. "
 			f"Mensagem recebida: {mensagem}"
 		)
-

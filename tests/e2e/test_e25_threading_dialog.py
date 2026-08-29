@@ -280,4 +280,3 @@ class TestThreadingDialog:
 			"NVDA-033: installTasks.py presente mas sem funcao onUninstall(). "
 			"Cleanup de recursos instalados vai em onUninstall()."
 		)
-

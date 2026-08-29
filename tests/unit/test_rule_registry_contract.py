@@ -67,4 +67,3 @@ def test_prompt_unico_e_injetado_nos_agentes_principais():
 def test_fontes_community_access_estao_registradas():
 	assert "https://community-access.org/" in COMMUNITY_ACCESS_SOURCES
 	assert "https://github.com/Community-Access/accessibility-agents" in COMMUNITY_ACCESS_SOURCES
-

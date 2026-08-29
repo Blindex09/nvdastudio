@@ -449,4 +449,3 @@ class TestTestGeneratorNoPipeline:
                     "Output do test_generation nao parece ser Python valido. "
                     f"Primeiros 200 chars: {sr.output[:200]}"
                 )
-

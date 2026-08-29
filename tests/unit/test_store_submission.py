@@ -294,5 +294,3 @@ class TestParseVersionHelper:
         assert v["major"] == 3
         assert v["minor"] == 0
         assert v["patch"] == 0
-
-

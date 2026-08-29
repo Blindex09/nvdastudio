@@ -182,4 +182,3 @@ class TestE3AddonComDepBinaria64Bit:
 		assert "_wrong_arch.pyd" in nvda017[0]
 		assert "_rust.pyd" not in nvda017[0]
 		assert "_upb_message.pyd" not in nvda017[0]
-

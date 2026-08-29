@@ -99,4 +99,3 @@ class TestMinimalPlanTemDocumentation:
         assembly = next(s for s in plan_dict["steps"] if s["step_type"] == STEP_ASSEMBLY)
         doc_step = next(s for s in plan_dict["steps"] if s["step_type"] == STEP_DOCUMENTATION)
         assert doc_step["step_id"] in assembly["depends_on"]
-

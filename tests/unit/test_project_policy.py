@@ -43,4 +43,3 @@ class TestProjectPolicyHelpers:
 
     def test_version_acima_do_baseline(self):
         assert is_below_project_baseline("2026.2") is False
-

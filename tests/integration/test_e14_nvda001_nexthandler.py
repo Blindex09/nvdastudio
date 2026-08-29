@@ -100,4 +100,3 @@ class TestNVDA001EventSemNextHandler:
 			f"Nao deve disparar NVDA-001 quando parametro nextHandler esta ausente. "
 			f"Problemas NVDA-001 encontrados: {nvda001_problems}"
 		)
-

@@ -89,4 +89,3 @@ class TestProjectManifestBaseline:
     def test_last_tested_formato_valido(self):
         raw = self.m["lasttestednvdaversion"].strip()
         assert re.match(r"^(0|\d{4})\.(\d)(?:\.(\d))?$", raw)
-

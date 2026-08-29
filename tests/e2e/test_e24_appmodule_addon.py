@@ -249,4 +249,3 @@ class TestAppModuleAddon:
 			"NVDA-041: app autoloquente sem sleepMode = True. "
 			"Adicione ao AppModule: sleepMode = True para suprimir a fala do NVDA."
 		)
-

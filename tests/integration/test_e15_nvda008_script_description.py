@@ -103,4 +103,3 @@ class TestNVDA008ScriptDescription:
 			f"Esperado problema NVDA-008 para @script sem parenteses. "
 			f"Todos os problemas: {problems}"
 		)
-

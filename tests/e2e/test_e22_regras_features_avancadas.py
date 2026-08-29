@@ -632,4 +632,3 @@ class TestRegrasFeaturessAvancadas:
 			"Registre seus parametros CLI com isCLIParamKnown para integracao correta "
 			"com o parser de linha de comando do NVDA."
 		)
-

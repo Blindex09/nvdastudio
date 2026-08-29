@@ -110,4 +110,3 @@ class TestNVDA009ReservedGestures:
 			f"Mensagem NVDA-009 deve mencionar o gesture 'kb:nvda+t'. "
 			f"Mensagem recebida: {mensagem}"
 		)
-

@@ -272,6 +272,3 @@ class TestOrchestratorFeedbackTipado:
             orch._build_step_prompt(step, "criar addon", "", [])
 
         mock_mem.get_recent_failures.assert_called_once_with(limit=3, step_type="assembly")
-
-
-

@@ -113,4 +113,3 @@ class TestSessionMemoryTotalTokens:
         )
         # Se chegou aqui sem executar nada, está correto
         assert doc_id is not None
-

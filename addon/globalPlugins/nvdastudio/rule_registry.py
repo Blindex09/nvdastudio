@@ -223,4 +223,3 @@ def format_rule_registry_prompt() -> str:
 
 
 RULE_REGISTRY_PROMPT_TEXT = format_rule_registry_prompt()
-

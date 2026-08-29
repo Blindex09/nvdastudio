@@ -149,5 +149,3 @@ class TestFindPython:
         assert "_find_python" in src
         # A chamada do cmd deve usar python_exe, nao sys.executable diretamente
         assert "python_exe" in src
-
-

@@ -316,4 +316,3 @@ class TestSynthDriver:
 			"O NVDA carrega SynthDrivers exclusivamente de synthDrivers/<nome>.py. "
 			f"Arquivos encontrados: {arquivos[:15]}"
 		)
-

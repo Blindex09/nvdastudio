@@ -103,4 +103,3 @@ class TestNVDA019TranslatorsComment:
 			f"Nao deve disparar NVDA-019 para codigo sem _() de traducao. "
 			f"Problemas NVDA-019 encontrados: {nvda019_problems}"
 		)
-

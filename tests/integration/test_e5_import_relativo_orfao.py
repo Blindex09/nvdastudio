@@ -197,4 +197,3 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		assert e009 == [], (
 			f"Subpacote apps/__init__.py deve satisfazer 'from .apps import ...'. Problemas: {e009}"
 		)
-

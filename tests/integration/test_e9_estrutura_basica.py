@@ -162,4 +162,3 @@ class TestE9EstruturaBasica:
 			f"Addon correto nao deve ter ESTRUTURA-001/002/003. "
 			f"Problemas: {problems}"
 		)
-

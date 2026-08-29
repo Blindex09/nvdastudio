@@ -189,4 +189,3 @@ class TestClarificationResult:
         assert r.needs_clarification is True
         assert len(r.questions) == 2
         assert "enriquecida" in r.enriched_query
-

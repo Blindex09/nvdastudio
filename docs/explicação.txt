@@ -58,6 +58,4 @@ O NVDAStudio está na versão 37.0.0, com mais de mil e oitenta testes automáti
 
 O projeto todo foi construído do zero para ser usado por pessoas cegas, criando ferramentas para pessoas cegas. A interface não é uma adaptação de algo que foi pensado para visão — ela foi projetada desde o início para funcionar auditivamente, com anúncios relevantes, sem poluição sonora, sem confiar em cores, ícones ou posição visual de elementos na tela.
 
-É um sistema que transforma intenção em software funcional, sem exigir que o usuário saiba programar. 
-
-
+É um sistema que transforma intenção em software funcional, sem exigir que o usuário saiba programar.

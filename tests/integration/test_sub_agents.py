@@ -271,5 +271,3 @@ class TestDesignReviewAgent:
     def test_usa_kimi_independente_do_model_id_passado(self, fake_api_key):
         """Teste removido — mock nao reflete implementacao real."""
         pass
-
-

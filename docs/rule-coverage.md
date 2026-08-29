@@ -88,4 +88,3 @@ Esse teste garante que:
 - `NVDA-041` nao volta como regra ativa duplicada;
 - gerador, auditor e critic recebem o mesmo contrato;
 - as fontes do Community Access continuam documentadas.
-

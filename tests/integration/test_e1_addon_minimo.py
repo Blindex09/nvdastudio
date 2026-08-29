@@ -113,4 +113,3 @@ class TestE1AddonMinimo:
 		)
 		pkg = package_addon(addon_folder)
 		assert zipfile.is_zipfile(pkg), f"O .nvda-addon deve ser um ZIP valido: {pkg}"
-

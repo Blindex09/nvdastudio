@@ -126,4 +126,3 @@ class TestE4Nvda007Gestures:
 		assert nvda007 == [], (
 			f"Addon com @script nao deve disparar NVDA-007. Problemas: {problems}"
 		)
-

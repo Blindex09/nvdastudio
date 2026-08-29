@@ -198,4 +198,3 @@ class TestWXA11Y003EventoMouse:
 			f"Nao deveria gerar WX-A11Y-003 quando EVT_CHAR_HOOK esta presente. "
 			f"Problemas WX-A11Y-003 encontrados: {wxa11y003_problems}"
 		)
-

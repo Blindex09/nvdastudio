@@ -798,4 +798,3 @@ class TestToolApprovalCallback:
             approved = orch._tool_approval_callback("file_writer", {"path": "x.py"})
 
         assert approved is False
-

@@ -242,5 +242,3 @@ class TestPlannerAddonNameCanonical:
         trecho = schema_src[idx:idx + 400]
         # Deve mencionar que nomes diferentes causam conflito
         assert "NUNCA" in trecho or "nunca" in trecho or "steps" in trecho.lower()
-
-

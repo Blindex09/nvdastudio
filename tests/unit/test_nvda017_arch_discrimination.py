@@ -162,4 +162,3 @@ class TestNVDA017SemMarcacaoGeraAviso:
         )
         assert "ruim.cp311-win32.pyd" in nvda017[0]
         assert "ok.cp313-win_amd64.pyd" not in nvda017[0]
-

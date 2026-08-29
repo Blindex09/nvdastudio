@@ -1,7 +1,7 @@
 # Changelog v2.1.0 — Bug Fixes e Wiring Completo
 
-**Versão:** 2.1.0  
-**Data:** 2026-05-15  
+**Versão:** 2.1.0\
+**Data:** 2026-05-15\
 **Status:** Produção
 
 ---
@@ -16,8 +16,8 @@ Versão 2.1.0 corrige 3 bugs críticos no `agentic_loop.py` e wirea 3 módulos d
 
 ### 1. Forbidden Future Import em agentic_loop.py
 
-**Severidade:** CRÍTICA  
-**Arquivo:** `addon/globalPlugins/nvdastudio/agentic_loop.py` linha 42  
+**Severidade:** CRÍTICA\
+**Arquivo:** `addon/globalPlugins/nvdastudio/agentic_loop.py` linha 42\
 **Violação:** Regra CLAUDE.md: "NUNCA usar `from __future__ import annotations` — causa regressão de tipos em runtime"
 
 **Antes:**
@@ -36,8 +36,8 @@ from __future__ import annotations  # Violação
 
 ### 2. Missing Orchestrator Attributes
 
-**Severidade:** CRÍTICA  
-**Arquivo:** `addon/globalPlugins/nvdastudio/orchestrator.py` linhas ~320-330  
+**Severidade:** CRÍTICA\
+**Arquivo:** `addon/globalPlugins/nvdastudio/orchestrator.py` linhas ~320-330\
 **Erro:** `AttributeError: 'Orchestrator' object has no attribute '_previous_issues'`
 
 **Antes:**
@@ -69,8 +69,8 @@ def __init__(self):
 
 ### 3. Synchronous Pipeline Blocking UI Thread
 
-**Severidade:** ALTA  
-**Arquivo:** `addon/globalPlugins/nvdastudio/agentic_loop.py` (20 chamadas)  
+**Severidade:** ALTA\
+**Arquivo:** `addon/globalPlugins/nvdastudio/agentic_loop.py` (20 chamadas)\
 **Problema:** Chamadas síncronas a `_run_pipeline()` travam a thread UI do NVDA
 
 **Antes:**
@@ -107,7 +107,7 @@ def retry_same(self, user_query: str, last_issues: list[str]):
 
 ### 1. evaluation_framework.py → Orchestrator
 
-**Status:** ✅ WIRED  
+**Status:** ✅ WIRED\
 **Localização:** `orchestrator.py` linhas ~730-745
 
 Adicionado ao final da pipeline bem-sucedida:
@@ -135,7 +135,7 @@ except Exception as e:
 
 ### 2. code_sandbox.py → _execute_step_with_critique
 
-**Status:** ✅ WIRED  
+**Status:** ✅ WIRED\
 **Localização:** `orchestrator.py` linhas ~1410-1430
 
 Adicionado na validação de sintaxe Python:
@@ -163,7 +163,7 @@ except Exception as e:
 
 ### 3. agent_memory.py → Orchestrator
 
-**Status:** ✅ WIRED  
+**Status:** ✅ WIRED\
 **Localização:** `orchestrator.py` linhas ~745-760
 
 Adicionado ao final da pipeline bem-sucedida:
@@ -296,5 +296,5 @@ print('[PASS] All 3 critical bugs fixed!')
 
 ## Autor
 
-GitHub Copilot — NVDAStudio Project  
+GitHub Copilot — NVDAStudio Project\
 Fecha: 2026-05-15

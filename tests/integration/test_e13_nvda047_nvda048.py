@@ -232,4 +232,3 @@ class TestE13Nvda048:
 		assert not any("NVDA-048" in p for p in problems), (
 			f"NVDA-048 nao deveria disparar sem lib/. Problemas: {problems}"
 		)
-

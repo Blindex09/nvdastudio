@@ -134,5 +134,3 @@ class TestNvdaContextArquiteturaPatterns:
         """NVDA_SYSTEM_PROMPT deve mencionar ARCH-001..006."""
         from nvdastudio.builder.nvda_context import NVDA_SYSTEM_PROMPT
         assert "ARCH-001" in NVDA_SYSTEM_PROMPT
-
-

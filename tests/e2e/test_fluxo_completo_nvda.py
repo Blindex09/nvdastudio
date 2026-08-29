@@ -1136,4 +1136,3 @@ class TestFluxoCompletoNVDA:
             "Use imports lazy (dentro de funcao ou try/except) para nao travar o NVDA "
             "se a biblioteca nao estiver instalada no ambiente do usuario."
         )
-

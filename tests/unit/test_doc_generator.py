@@ -74,4 +74,3 @@ class TestDocGeneratorRun:
         result = run("prompt", "kimi-k2.6", {})
         # Retorna como string — nunca executa
         assert result == html
-

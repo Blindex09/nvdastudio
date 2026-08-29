@@ -609,4 +609,3 @@ class TestGestureRemap:
             f"Arquivo verificado: {gestures_files[0]}. "
             "Ref: nvda_developer_guide_2025.html — secao Locale-Specific Gesture Remapping."
         )
-

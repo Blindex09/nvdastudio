@@ -275,4 +275,3 @@ class TestAddonContextToPromptContext:
         result = ctx.to_prompt_context()
         # Codigo malicioso esta no contexto como texto
         assert malicious in result
-

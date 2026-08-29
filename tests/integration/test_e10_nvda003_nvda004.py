@@ -173,4 +173,3 @@ class TestE10Nvda003Nvda004:
 			f"__init__.py correto nao deve gerar NVDA-003/004. "
 			f"Problemas: {problems}"
 		)
-

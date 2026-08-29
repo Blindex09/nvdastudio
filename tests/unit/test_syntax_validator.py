@@ -301,6 +301,3 @@ class TestGroqClientExecutedTools:
         from addon.globalPlugins.nvdastudio.ai.llm_client import LLMResponse
         resp = LLMResponse(content="ok", model_used="kimi-k2.6")
         assert resp.executed_tools == []
-
-
-

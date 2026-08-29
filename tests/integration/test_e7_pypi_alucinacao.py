@@ -168,4 +168,3 @@ class TestE7PyPiAlucinacao:
 		assert not any("[" in p for p in checker_chamado_com), (
 			f"Pacote com extras nao deve chegar ao checker. Checker recebeu: {checker_chamado_com}"
 		)
-

@@ -323,4 +323,3 @@ class TestAddon2AuditorFoco:
             assert encontrados, (
                 f"Nenhum evento de step encontrado. Eventos: {r.event_types}"
             )
-

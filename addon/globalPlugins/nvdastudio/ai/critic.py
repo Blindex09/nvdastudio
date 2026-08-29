@@ -1055,4 +1055,3 @@ class Critic:
 			fix_instructions=str(data.get("fix_instructions", "")),
 			dimension_scores=dimension_scores,
 		)
-

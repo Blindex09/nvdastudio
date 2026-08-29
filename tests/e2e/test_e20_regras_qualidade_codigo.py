@@ -513,4 +513,3 @@ class TestRegrasQualidadeCodigo:
 			"Sem unregister(), handlers ficam ativos apos desinstalar o addon — memory leak.\n"
 			"Ref: nvda_developer_guide_2025.html — Extension Points."
 		)
-

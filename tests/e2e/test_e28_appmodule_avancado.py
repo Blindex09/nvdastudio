@@ -442,4 +442,3 @@ class TestSleepMode:
             "sleepMode so funciona em AppModule — o arquivo deve estar em "
             "appModules/<nome_exe>.py (ex: appModules/vozapp.py)."
         )
-

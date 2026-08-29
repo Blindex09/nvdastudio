@@ -250,4 +250,3 @@ class TestE11Nvda023024025:
 			f"config.conf['AddonE11'] nao deve gerar NVDA-025. "
 			f"Problemas: {problems}"
 		)
-

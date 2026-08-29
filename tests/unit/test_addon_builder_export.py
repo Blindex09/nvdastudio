@@ -162,4 +162,3 @@ class TestExportAddonZip:
 
         zip_path = export_addon_zip(str(addon_folder), "Malicious")
         assert os.path.exists(zip_path)
-

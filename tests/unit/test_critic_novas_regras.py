@@ -133,4 +133,3 @@ class TestCriticEspecDesignReviewDocumentation:
         doc_block = _CRITIC_SPEC_SYSTEM[doc_start:score_start]
         for verdict in ["APROVADO", "CORRIGIR", "REJEITAR"]:
             assert verdict in doc_block, f"documentation block deve ter criterio {verdict}"
-

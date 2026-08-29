@@ -578,4 +578,3 @@ class TestCriticalStepTypesInvariante:
         assert _MAX_REPLANS <= 5, (
             f"_MAX_REPLANS={_MAX_REPLANS} muito alto — risco de loop caro"
         )
-

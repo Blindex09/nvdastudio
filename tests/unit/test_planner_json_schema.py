@@ -230,4 +230,3 @@ class TestPlannerNarracaoAoVivoViaToolCall:
         assert params["type"] == "object"
         assert "steps" in params["properties"]
         assert "addon_name" in params["properties"]
-

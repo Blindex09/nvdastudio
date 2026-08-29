@@ -397,4 +397,3 @@ class TestBrailleDisplayDriver:
 				f"manifest.ini: {display_nome}={val!r} abaixo do baseline 2026.1. "
 				"BrailleDisplayDrivers com auto-deteccao requerem NVDA 2025.x+."
 			)
-

@@ -249,4 +249,3 @@ class TestInfraErrorRegexNoFalsePositives:
 	def test_string_vazia_nao_dispara(self):
 		from nvdastudio.core.orchestrator import _IS_SUBAGENT_ERROR_RE
 		assert not _IS_SUBAGENT_ERROR_RE.search("")
-

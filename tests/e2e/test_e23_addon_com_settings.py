@@ -264,4 +264,3 @@ class TestAddonComSettings:
 			"NVDA-024: dependencies[] contem nome de import com ponto (ex: 'google.auth'). "
 			"Use o nome PyPI correspondente (ex: 'google-auth')."
 		)
-

@@ -330,4 +330,3 @@ class TestSubpacoteInitNaoDisparaFalsoPositivo:
             f"__init__.py principal sem GlobalPlugin deveria continuar sendo "
             f"detectado mesmo com subpacotes presentes — problemas: {problems}"
         )
-

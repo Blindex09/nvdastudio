@@ -367,5 +367,3 @@ def get_skill_registry() -> Dict[str, Dict[str, Any]]:
 
 # Inicializa cache na primeira importacao
 refresh_skills_cache()
-
-

@@ -94,5 +94,3 @@ def _extract_learnings(step_results: List[Any], query: str) -> List[str]:
         for result in step_results if not result.approved
         for issue in result.issues[:2]
     ][:5]
-
-

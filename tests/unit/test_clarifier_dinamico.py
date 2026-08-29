@@ -280,5 +280,3 @@ class TestOrchestratorMidPipelineClarification:
             orch._handle_clarification_step(step, {})
 
         assert dispatch_chamado[0] is False
-
-

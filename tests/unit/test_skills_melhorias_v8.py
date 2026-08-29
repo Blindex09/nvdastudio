@@ -345,5 +345,3 @@ class TestRunComManifest:
         # Sem codigo, prompt nao deve ter o manifesto
         assert "ESTRUTURA DO ADDON A TESTAR" not in injected_prompts[0]
         assert injected_prompts[0] == prompt_sem_codigo
-
-

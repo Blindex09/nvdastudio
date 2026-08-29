@@ -813,4 +813,3 @@ class TestRegrasConfiguracoes:
 			"Exemplos validos: 1.0 | 1.0.0 | 2.3.1. "
 			"Prefixos (v1.0) e sufixos (-beta, .dev0) nao sao aceitos pelo loader do NVDA."
 		)
-

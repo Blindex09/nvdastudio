@@ -2078,4 +2078,3 @@ cd /c/nvdastudio && git add -A && git commit -m "test: verificacao final — tod
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ```
-

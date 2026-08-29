@@ -136,4 +136,3 @@ class TestE8BaselinePolitica:
 		assert any(PROJECT_MIN_NVDA in p for p in p001), (
 			f"POLITICA-001 deve mencionar o baseline {PROJECT_MIN_NVDA}. Mensagem: {p001}"
 		)
-

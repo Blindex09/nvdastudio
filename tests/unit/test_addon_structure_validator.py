@@ -377,6 +377,3 @@ class TestValidateAddonStructureCompatibility2026:
 
         problems = validate_addon_structure(str(tmp_path))
         assert any("NVDA-054" in p for p in problems), problems
-
-
-

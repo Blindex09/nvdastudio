@@ -270,4 +270,3 @@ class TestE12Estrutura007:
 		assert not any("ESTRUTURA-007" in p for p in problems), (
 			f"ESTRUTURA-007 NAO deve disparar com uma unica pasta de plugin. Problemas: {problems}"
 		)
-

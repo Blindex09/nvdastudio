@@ -138,4 +138,3 @@ class TestE6Nvda022ImportNivelModulo:
 			f"Import lazy (dentro de metodo) nao deve disparar NVDA-022. "
 			f"Problemas: {problems}"
 		)
-

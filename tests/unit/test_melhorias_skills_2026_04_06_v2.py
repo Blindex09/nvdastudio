@@ -297,5 +297,3 @@ class TestPlannerSchemaDescriptions:
         assert "code_generation" in trecho
         assert "manifest_builder" in trecho
         assert "assembly" in trecho
-
-
