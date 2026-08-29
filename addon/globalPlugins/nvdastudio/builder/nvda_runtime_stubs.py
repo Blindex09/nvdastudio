@@ -90,7 +90,7 @@ def _make_module(name: str, **attrs) -> types.ModuleType:
 	mod = types.ModuleType(name)
 	for k, v in attrs.items():
 		setattr(mod, k, v)
-	mod.__getattr__ = lambda _n: _Permissive()  # type: ignore[attr-defined]
+	mod.__getattr__ = lambda _n: _Permissive()  # type: ignore[method-assign]
 	return mod
 
 
