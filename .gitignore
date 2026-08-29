@@ -30,3 +30,4 @@ logs/
 Thumbs.db
 .vscode/
 .idea/
+internal/
