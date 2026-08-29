@@ -633,12 +633,12 @@ class TestDesignReviewAgentEstrutura:
 
     def test_synthesis_template_tem_secoes_estruturadas(self):
         """Template de sintese deve ter secoes Challenger, Guardian e Advocate."""
-        from nvdastudio.sub_agents.design_review_agent import _SYNTHESIS_TEMPLATE
-        assert "Challenger" in _SYNTHESIS_TEMPLATE
-        assert "Guardian" in _SYNTHESIS_TEMPLATE
-        assert "{challenger}" in _SYNTHESIS_TEMPLATE
-        assert "{guardian}" in _SYNTHESIS_TEMPLATE
-        assert "{advocate}" in _SYNTHESIS_TEMPLATE
+        from nvdastudio.sub_agents.design_review_agent import _SYNTHESIS_TEMPLATE_V3
+        assert "Challenger" in _SYNTHESIS_TEMPLATE_V3
+        assert "Guardian" in _SYNTHESIS_TEMPLATE_V3
+        assert "{challenger}" in _SYNTHESIS_TEMPLATE_V3
+        assert "{guardian}" in _SYNTHESIS_TEMPLATE_V3
+        assert "{advocate}" in _SYNTHESIS_TEMPLATE_V3
 
 
 class TestGuardianCatalogoCompletoDeRegras:
@@ -1305,7 +1305,7 @@ class TestDesignReviewTokenAccumulation:
 
     def test_versao_design_review_e_2_4_0(self):
         from nvdastudio.sub_agents.design_review_agent import MODULE_VERSION
-        assert MODULE_VERSION == "2.12.0"
+        assert MODULE_VERSION == "2.13.0"
 
 # ==========================================================================
 # Testes de contexto especializado — v1.1.0 dos sub-agentes sem docs

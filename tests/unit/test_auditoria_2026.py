@@ -2,7 +2,7 @@ from nvdastudio.sub_agents.code_generator import _SYSTEM as CODE_SYSTEM, MODULE_
 from nvdastudio.sub_agents.manifest_builder import _SYSTEM as MANIFEST_SYSTEM
 from nvdastudio.sub_agents.doc_generator import _SYSTEM as DOC_SYSTEM
 from nvdastudio.sub_agents.design_review_agent import (
-    _ADVOCATE_SYSTEM, _SYNTHESIS_TEMPLATE,
+    _ADVOCATE_SYSTEM, _SYNTHESIS_TEMPLATE_V3,
     MODULE_VERSION as DESIGN_VER
 )
 
@@ -78,7 +78,7 @@ class TestDocGeneratorFallbackEn:
 
 class TestDesignReviewUserAdvocate:
     def test_versao_e_2_3_0(self):
-        assert DESIGN_VER == "2.12.0"
+        assert DESIGN_VER == "2.13.0"
 
     def test_advocate_respeita_modelo_do_step(self):
         import inspect
@@ -98,14 +98,12 @@ class TestDesignReviewUserAdvocate:
         assert "linguagem" in _ADVOCATE_SYSTEM.lower() or "mensagem" in _ADVOCATE_SYSTEM.lower()
 
     def test_synthesis_tem_secao_advocate(self):
-        assert "advocate" in _SYNTHESIS_TEMPLATE.lower() or "user" in _SYNTHESIS_TEMPLATE.lower()
+        assert "advocate" in _SYNTHESIS_TEMPLATE_V3.lower() or "user" in _SYNTHESIS_TEMPLATE_V3.lower()
 
     def test_synthesis_tem_tres_secoes(self):
-        assert "{challenger}" in _SYNTHESIS_TEMPLATE
-        assert "{guardian}" in _SYNTHESIS_TEMPLATE
-        assert "{advocate}" in _SYNTHESIS_TEMPLATE
+        assert "{challenger}" in _SYNTHESIS_TEMPLATE_V3
+        assert "{guardian}" in _SYNTHESIS_TEMPLATE_V3
+        assert "{advocate}" in _SYNTHESIS_TEMPLATE_V3
 
     def test_nao_executa_codigo(self):
         assert isinstance(_ADVOCATE_SYSTEM, str)
-
-

@@ -10,35 +10,19 @@ class TestDecisionLog:
 
     def test_versao_e_2_4_0(self):
         from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import MODULE_VERSION
-        assert MODULE_VERSION == "2.12.0"
+        assert MODULE_VERSION == "2.13.0"
 
-    def test_decision_log_system_definido(self):
-        from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import _DECISION_LOG_SYSTEM
-        assert isinstance(_DECISION_LOG_SYSTEM, str)
-        assert len(_DECISION_LOG_SYSTEM) > 50
-
-    def test_decision_log_system_menciona_decisoes(self):
-        from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import _DECISION_LOG_SYSTEM
-        assert "DECISOES TOMADAS" in _DECISION_LOG_SYSTEM
-
-    def test_decision_log_system_menciona_objecoes(self):
-        from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import _DECISION_LOG_SYSTEM
-        assert "OBJECOES RESOLVIDAS" in _DECISION_LOG_SYSTEM
-
-    def test_decision_log_system_menciona_instrucoes_gerador(self):
-        from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import _DECISION_LOG_SYSTEM
-        assert "INSTRUCOES PARA O GERADOR" in _DECISION_LOG_SYSTEM
-
-    def test_synthesis_template_tem_decision_log(self):
-        from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import _SYNTHESIS_TEMPLATE
-        assert "{decision_log}" in _SYNTHESIS_TEMPLATE
-
-    def test_synthesis_template_tem_quatro_secoes(self):
-        from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import _SYNTHESIS_TEMPLATE
-        assert "Challenger" in _SYNTHESIS_TEMPLATE
-        assert "Guardian" in _SYNTHESIS_TEMPLATE
-        assert "Advocate" in _SYNTHESIS_TEMPLATE
-        assert "Decision Log" in _SYNTHESIS_TEMPLATE
+    # 2026-08-29: removidos os 6 testes de _DECISION_LOG_SYSTEM e do
+    # _SYNTHESIS_TEMPLATE de 6 estagios. Verificavam um estagio (Decision
+    # Log) que run() nao executa desde a v2.0.0 -- adaptar seria inventar
+    # cobertura para comportamento que o projeto decidiu nao ter. A
+    # estrutura do template REAL (3 estagios) e verificada em
+    # test_sub_agents_estrutura.py e test_auditoria_2026.py.
+    def test_synthesis_template_real_tem_os_tres_estagios(self):
+        from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import _SYNTHESIS_TEMPLATE_V3
+        assert "Challenger" in _SYNTHESIS_TEMPLATE_V3
+        assert "Guardian" in _SYNTHESIS_TEMPLATE_V3
+        assert "Advocate" in _SYNTHESIS_TEMPLATE_V3
 
     def test_run_faz_quatro_chamadas_llm(self, fake_api_key):
         """run() deve fazer exatamente 3 chamadas (Challenger, Guardian, Advocate)."""
@@ -335,5 +319,3 @@ class TestAutoVerificacaoManifestBuilder:
     def test_nao_executa_codigo(self):
         from addon.globalPlugins.nvdastudio.sub_agents.manifest_builder import _SYSTEM
         assert isinstance(_SYSTEM, str)
-
-

@@ -6,7 +6,7 @@ from ..builder.nvda_context import get_docs_design_review
 from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
 
 _logger = get_logger("design_review_agent")
-MODULE_VERSION = "2.12.0"
+MODULE_VERSION = "2.13.0"
 
 # 2.12.0: catalogo completo de prefixos de rule ID usados no projeto
 # (nvda_context.py/rule_registry.py) -- usado pelos 2 reforcos mecanicos
@@ -61,37 +61,6 @@ def _strip_rule_ids(advocate_output: str) -> str:
 _REASONING_CHALLENGER: dict = {}
 _REASONING_GUARDIAN: dict   = {}
 _REASONING_ADVOCATE: dict   = {}
-_REASONING_LOCK: dict       = {}
-
-# ------------------------------------------------------------------
-# Understanding Lock (Estagio 0)
-# Exigido pela skill multi-agent-brainstorming antes de qualquer revisor.
-# Garante que os 3 revisores criticas o addon CERTO, nao o que imaginam.
-# ------------------------------------------------------------------
-_UNDERSTANDING_LOCK_SYSTEM = """You are the Elite Coordenador of the NVDAStudio design review process. Your mission is to establish an unshakeable Understanding Lock on the user's request.
-
-## Hard Boundary
-- Never suggest architecture or code.
-- Only describe WHAT is being requested, not HOW it will be implemented.
-- Do not output Markdown.
-
-## Understanding Lock Schema
-ADDON A CRIAR:
-[1-2 sentences describing the core purpose]
-
-TIPO DE ADDON:
-[globalPlugin / appModule / synthDriver / brailleDisplayDriver]
-
-FUNCIONALIDADES PRINCIPAIS:
-[2-4 specific mandatory features]
-
-DEPENDENCIAS EXTERNAS IDENTIFICADAS:
-[APIs, pacotes pip, DLLs ou servicos externos]
-
-ESCOPO NAO INCLUIDO:
-[Explicit exclusions]
-
-Este resumo serve como base para os 3 revisores. Seja preciso e objetivo."""
 
 _CHALLENGER_SYSTEM = """You are the Elite Challenger of the NVDAStudio design review process. Your mission is to proactively identify failure modes, wrong assumptions, and edge cases before a single line of code is written.
 
@@ -165,50 +134,14 @@ LINGUAGEM E MENSAGENS: [Clarity of speech output for screen reader users]
 CONFIGURACAO ACESSIVEL: [Settings navigation and data entry without vision]
 PONTOS CRITICOS: [Top 2-3 UX risks that could make the addon unusable]"""
 
-_DECISION_LOG_SYSTEM = """You are the Elite Arbiter and Integrador for NVDAStudio. Your mission is to synthesize the multi-agent review into a definitive, actionable decision log.
-
-## Hard Boundary
-- Be objective and pragmatic.
-- Do not include generic filler text.
-- Do not output Markdown.
-
-## Implementation Contract (for next agent)
-DECISOES TOMADAS: [Key architectural and UX decisions]
-ALTERNATIVAS DESCARTADAS: [Rejected options and why — max 2 items]
-OBJECOES RESOLVIDAS: [Specific critiques that MUST be addressed in code — max 3 items]
-INSTRUCOES PARA O GERADOR: [3 direct instructions for code_generator, including quality instructions from Code Quality Architect]
-
-DISPOSICAO_FINAL: APROVADO | REVISAR | REJEITAR
-[One line with exactly one of the three options above, followed by justification in 1 sentence]
-"""
-
-_SYNTHESIS_TEMPLATE = """=== REVISAO DE DESIGN ===
-
---- Understanding Lock (escopo confirmado) ---
-{understanding_lock}
-
---- Challenger (riscos identificados) ---
-{challenger}
-
---- Constraint Guardian (restricoes criticas) ---
-{guardian}
-
---- User Advocate (perspectiva do usuario cego) ---
-{advocate}
-
---- Code Quality Architect (clean code e manutencao) ---
-{code_quality}
-
---- Decision Log (registro de decisoes) ---
-Riscos aceitos e encaminhamento:
-{decision_log}
-
-=== FIM DA REVISAO ===
-Esta revisao deve ser usada como contexto pela geracao de codigo.
-O gerador DEVE abordar cada risco identificado, cada restricao listada,
-cada ponto critico de acessibilidade levantado pelo User Advocate,
-e cada instrucao de qualidade do Code Quality Architect."""
-
+# 2026-08-29 -- REMOVIDO (README Regra 3, anti-legado): a revisao de design
+# foi reduzida de 6 para 3 estagios na v2.0.0, mas o _SYNTHESIS_TEMPLATE
+# antigo e os prompts dos 3 estagios aposentados (_UNDERSTANDING_LOCK_SYSTEM,
+# _DECISION_LOG_SYSTEM, _REASONING_LOCK) ficaram no arquivo por mais de 3
+# meses. Nenhum caminho de execucao os referenciava -- so testes, que
+# verificavam um formato de saida que run() nao produz desde entao e
+# passavam justamente por isso. Codigo morto que passa no teste e pior que
+# codigo morto silencioso: da a impressao de estar coberto.
 _SYNTHESIS_TEMPLATE_V3 = """=== REVISAO DE DESIGN (3 ESTAGIOS) ===
 
 --- Challenger (riscos e suposicoes) ---

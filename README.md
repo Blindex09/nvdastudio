@@ -239,7 +239,7 @@ MCP, A2A (Agent-to-Agent), browser-use e computer-use **nao fazem parte do escop
 | `syntax_validator.py` | 2.0.0 | Sintaxe Python via AST local (ast.parse) — zero chamadas de rede; sem narrate() de proposito (deterministico, instantaneo) |
 | `ast_validator.py` | 1.1.0 | Validador AST deterministico para NVDA-019 e WX-A11Y-001; sem narrate() de proposito (deterministico, instantaneo) |
 | `assembler.py` | 1.7.0 | Monta saida final + consistencia cruzada de nome; narracao granular via narrate() |
-| `design_review_agent.py` | 2.10.0 | Understanding Lock + Challenger + Guardian (catalogo completo de 77 regras) + Advocate + Decision Log + DISPOSICAO_FINAL; narracao granular via narrate() nos 3 estagios + sintese; os 3 estagios agora passam `step_type="design_review"` (achado 2026-08-04, ativa timeout estendido) |
+| `design_review_agent.py` | 2.13.0 | Challenger (riscos e suposicoes) + Constraint Guardian (catalogo completo de regras via RULE_REGISTRY_PROMPT_TEXT) + User Advocate (perspectiva do usuario cego); narracao granular via narrate() nos 3 estagios + sintese; os 3 passam `step_type="design_review"` (achado 2026-08-04, ativa timeout estendido). 2.13.0 remove o legado da reducao de 6 para 3 estagios feita na v2.0.0 -- `_SYNTHESIS_TEMPLATE` (template de 6 secoes), `_UNDERSTANDING_LOCK_SYSTEM`, `_DECISION_LOG_SYSTEM` e `_REASONING_LOCK` sobreviveram 3+ meses como codigo morto, referenciados so por testes que verificavam um formato que `run()` nao produz desde entao |
 | `doc_generator.py` | 1.10.0 | userGuide.html + DOC-A01..A09 + tabela 43 termos avoid-ai-writing; narracao granular via narrate() |
 | `agent_template_agent.py` | 1.4.1 | Templates MD de agentes; narracao granular via narrate() |
 | `engineering_reviewer.py` | 1.0.0 | Julga a ENGENHARIA do codigo gerado -- o que nenhum ID de regra descreve: fronteira de modulo errada, erro engolido, recurso sem dono, complexidade sem motivo, testabilidade, risco de evolucao. Proibido citar IDs de regra (isso e trabalho do `accessibility_auditor` e do `critic`) e proibido reportar estilo. Roda no modelo leve -- nao consome o orcamento de 20% do modelo topo |
@@ -413,6 +413,3 @@ Instalacao:
 
 Próximas prioridades de wiring:
 - `prompt_optimizer.py`: Conectar `record_result()` e `select_best_variant()`
-
-
-

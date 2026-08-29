@@ -2,41 +2,37 @@ import pytest
 
 
 # ------------------------------------------------------------------
-# V1 — Understanding Lock + DISPOSICAO_FINAL
+# V1 — Revisao de design em 3 estagios
+#
+# Nome antigo desta secao era "Understanding Lock + DISPOSICAO_FINAL",
+# descrevendo estagios que a v2.0.0 aposentou. Atualizado em 2026-08-29
+# junto com a remocao do codigo morto correspondente.
 # ------------------------------------------------------------------
 
-class TestUnderstandingLock:
-    """skill: multi-agent-brainstorming — Understanding Lock obrigatorio antes dos revisores."""
+class TestRevisaoDeDesign:
+    """skill: multi-agent-brainstorming — Challenger, Constraint Guardian e
+    User Advocate, os 3 estagios que run() executa de verdade."""
 
     def test_versao_design_review_e_2_5_0(self):
         from nvdastudio.sub_agents.design_review_agent import MODULE_VERSION
-        assert MODULE_VERSION == "2.12.0"
+        assert MODULE_VERSION == "2.13.0"
 
-    def test_understanding_lock_system_existe(self):
-        from nvdastudio.sub_agents.design_review_agent import _UNDERSTANDING_LOCK_SYSTEM
-        assert "ADDON A CRIAR:" in _UNDERSTANDING_LOCK_SYSTEM
-        assert "TIPO DE ADDON:" in _UNDERSTANDING_LOCK_SYSTEM
-        assert "FUNCIONALIDADES PRINCIPAIS:" in _UNDERSTANDING_LOCK_SYSTEM
-        assert "ESCOPO NAO INCLUIDO:" in _UNDERSTANDING_LOCK_SYSTEM
+    # 2026-08-29: removidos os testes de _UNDERSTANDING_LOCK_SYSTEM,
+    # _REASONING_LOCK, _DECISION_LOG_SYSTEM e {understanding_lock}. O
+    # estagio 0 (Understanding Lock) e o Decision Log foram aposentados
+    # na v2.0.0, quando a revisao caiu de 6 para 3 estagios; os simbolos
+    # sobreviveram so como codigo morto ate 2026-08-29. Um teste que
+    # passa contra codigo que nao roda da falsa sensacao de cobertura.
+    def test_revisao_tem_os_tres_estagios_reais(self):
+        from nvdastudio.sub_agents.design_review_agent import (
+            _ADVOCATE_SYSTEM, _CHALLENGER_SYSTEM, _GUARDIAN_SYSTEM,
+        )
+        for prompt in (_CHALLENGER_SYSTEM, _GUARDIAN_SYSTEM, _ADVOCATE_SYSTEM):
+            assert isinstance(prompt, str) and len(prompt) > 50
 
     def test_understanding_lock_nao_fixa_modelo(self):
         from nvdastudio.sub_agents import design_review_agent
         assert not hasattr(design_review_agent, "MODEL_LOCK")
-
-    def test_reasoning_lock_existe(self):
-        from nvdastudio.sub_agents.design_review_agent import _REASONING_LOCK
-        assert isinstance(_REASONING_LOCK, dict)
-
-    def test_decision_log_tem_disposicao_final(self):
-        from nvdastudio.sub_agents.design_review_agent import _DECISION_LOG_SYSTEM
-        assert "DISPOSICAO_FINAL" in _DECISION_LOG_SYSTEM
-        assert "APROVADO" in _DECISION_LOG_SYSTEM
-        assert "REVISAR" in _DECISION_LOG_SYSTEM
-        assert "REJEITAR" in _DECISION_LOG_SYSTEM
-
-    def test_synthesis_template_tem_understanding_lock(self):
-        from nvdastudio.sub_agents.design_review_agent import _SYNTHESIS_TEMPLATE
-        assert "{understanding_lock}" in _SYNTHESIS_TEMPLATE
 
     def test_run_faz_tres_chamadas_llm(self, fake_api_key="gsk_test_fake"):
         """run() deve fazer exatamente 3 chamadas: Challenger, Guardian, Advocate."""
@@ -274,5 +270,3 @@ class TestCodeGeneratorNovosRegras:
         # Verifica que os itens 1-9 existem no checklist
         for i in range(1, 10):
             assert f"{i}." in _SYSTEM, f"Item {i} nao encontrado na VERIFICACAO FINAL"
-
-
