@@ -19,7 +19,8 @@ from nvdastudio.utils.project_policy import PROJECT_MIN_NVDA as _PROJECT_MIN_NVD
 # Carrega .env se existir (permite rodar via Bash sem exportar a key manualmente)
 try:
     from dotenv import load_dotenv
-    load_dotenv(dotenv_path=r"c:\nvdastudio\.env", override=False)
+    _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    load_dotenv(dotenv_path=os.path.join(_REPO_ROOT, ".env"), override=False)
 except ImportError:
     pass
 

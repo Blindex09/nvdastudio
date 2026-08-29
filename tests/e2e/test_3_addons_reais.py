@@ -3,11 +3,19 @@ import zipfile
 import tempfile
 import time
 from dataclasses import dataclass, field
-from dotenv import load_dotenv
-
 import pytest
 
-load_dotenv(dotenv_path=r"c:\nvdastudio\.env")
+# Carrega .env da raiz do repositorio se existir. Caminho derivado do proprio
+# arquivo (nao hardcoded em c:\nvdastudio) para que a suite rode em qualquer
+# checkout/CI; python-dotenv e opcional para nao quebrar a COLETA do pytest
+# quando ausente -- os testes deste modulo ja sao skipados sem as chaves.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(dotenv_path=os.path.join(_REPO_ROOT, ".env"), override=False)
+except ImportError:
+    pass
 
 HAS_OLLAMA = os.environ.get("OLLAMA_API_KEY", "").strip()
 # 2026-08-17: critic.py 3.19.0 -- o Critic agora SEMPRE usa OpenCode Go
