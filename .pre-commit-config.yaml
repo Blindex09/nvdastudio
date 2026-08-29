@@ -21,7 +21,7 @@ repos:
     rev: v0.4.4
     hooks:
       - id: ruff
-        args: ['--select=E,F,W,B,UP', '--ignore=E501,UP007,UP006,UP035,B904,W191,E101', '--fix']
+        args: ['--select=E,F,W,B,UP', '--ignore=E501,UP007,UP006,UP035,UP045,B904,W191,E101', '--fix']
         files: ^addon/
         exclude: ^addon/globalPlugins/nvdastudio/(lib|nvda_docs_cache)/
 

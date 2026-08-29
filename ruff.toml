@@ -20,4 +20,8 @@ select = ["E", "F", "W", "B", "UP"]
 # dict/list/T|None nativos) -- UP006/UP007 ja eram ignorados de proposito;
 # ignorar UP035 tambem evita reescrever ~36 imports contra uma convencao que
 # o proprio projeto ja optou por nao forcar.
-ignore = ["E501", "UP007", "UP006", "UP035", "B904", "W191", "E101"]
+# UP045 (2026-08-29): em ruff >= 0.9 a regra `Optional[X]` -> `X | None` foi
+# separada de UP007 e ganhou codigo proprio. E literalmente a mesma decisao de
+# estilo que UP006/UP007/UP035 acima -- ignorada pelos mesmos motivos, para nao
+# reescrever ~80 anotacoes contra uma convencao ja adotada de proposito.
+ignore = ["E501", "UP007", "UP006", "UP035", "UP045", "B904", "W191", "E101"]

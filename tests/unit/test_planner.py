@@ -172,7 +172,7 @@ class TestPlannerBuildSteps:
 			valid_plan_json["steps"], model_overrides={STEP_CODE_GENERATION: "deepseek-v4-flash"}
 		)
 		steps_sem_override = self.planner._build_steps(valid_plan_json["steps"])
-		for com, sem in zip(steps_com_override, steps_sem_override):
+		for com, sem in zip(steps_com_override, steps_sem_override, strict=True):
 			if com.step_type != STEP_CODE_GENERATION:
 				assert com.model_id == sem.model_id
 

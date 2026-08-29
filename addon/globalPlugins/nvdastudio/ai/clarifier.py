@@ -337,7 +337,7 @@ def build_enriched_query(
 
 	if questions and answers:
 		parts.append("\n\nInformacoes adicionais fornecidas pelo usuario:")
-		for q, a in zip(questions, answers):
+		for q, a in zip(questions, answers, strict=False):
 			if a and a.strip():
 				parts.append(f"- {q}: {a.strip()}")
 

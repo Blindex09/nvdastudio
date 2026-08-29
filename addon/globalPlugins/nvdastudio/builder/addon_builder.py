@@ -5,7 +5,6 @@ import json
 import os
 import re
 import shutil
-import socket
 import struct
 import sys
 import subprocess
@@ -104,7 +103,7 @@ def _package_exists_on_pypi(pkg: str) -> bool:
 		# 5xx, 403, etc — PyPI pode estar instavel, fail-open
 		_logger.info("[PYPI] Erro HTTP %d ao verificar '%s' — fail-open.", exc.code, pkg)
 		return True
-	except (socket.timeout, OSError) as exc:
+	except (TimeoutError, OSError) as exc:
 		# Sem internet ou timeout — nao bloqueia o bundle
 		_logger.info("[PYPI] Sem conectividade ao verificar '%s' (%s) — fail-open.", pkg, exc)
 		return True

@@ -1560,7 +1560,7 @@ class Orchestrator:
 
 		# Monta texto de contexto com perguntas + respostas
 		ctx_lines = ["Informacoes adicionais coletadas mid-pipeline:"]
-		for q, a in zip(questions, answers):
+		for q, a in zip(questions, answers, strict=False):
 			ctx_lines.append(f"- Pergunta: {q}")
 			ctx_lines.append(f"  Resposta: {a.strip() if a.strip() else '(sem resposta)'}")
 		context_output = "\n".join(ctx_lines)

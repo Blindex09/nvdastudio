@@ -139,9 +139,8 @@ class TestPackageExistsOnPypi:
         """Timeout nao deve bloquear instalacao — fail-open (True)."""
         from unittest.mock import patch
         from nvdastudio.builder.addon_builder import _package_exists_on_pypi
-        import socket
         with patch("urllib.request.urlopen",
-                   side_effect=socket.timeout("timeout")):
+                   side_effect=TimeoutError("timeout")):
             result = _package_exists_on_pypi("qualquer-pacote")
             assert result is True, "Timeout deve ser fail-open (True)"
 
