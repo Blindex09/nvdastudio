@@ -1,0 +1,109 @@
+{
+  "addon_name": "BuscaArquivos_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'BuscaArquivos' que busca texto em arquivos do computador ao pressionar NVDA+shift+F, processa em thread separada para nao travar o NVDA, e exibe os resultados em dia",
+  "timestamp": "2026-08-08T04:58:19.303626",
+  "plan_id": "1c653bf8",
+  "duration_seconds": 2035.18,
+  "total_tokens": 310665,
+  "total_retries": 5,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 80.0,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23451,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 143103,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27490,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 35777,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 80844,
+      "issues": [
+        "Critic retornou vazio ou sem JSON reconhecivel."
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "search_service.py",
+    "installTasks.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/BuscaArquivos/search_service.py",
+    "globalPlugins/BuscaArquivos/__init__.py",
+    "globalPlugins/BuscaArquivos_e2e/installTasks.py"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-008: Pasta globalPlugins/BuscaArquivos_e2e/ tem arquivos .py mas nao tem __init__.py. O NVDA so carrega __init__.py como GlobalPlugin — module_1.py, servicos e outros modulos sao ignorados. Renomeie o arquivo principal para __init__.py ou crie __init__.py com from .module_1 import *."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

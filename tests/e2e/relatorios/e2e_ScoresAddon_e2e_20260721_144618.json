@@ -1,0 +1,161 @@
+{
+  "addon_name": "ScoresAddon_e2e",
+  "query": "Crie um addon NVDA que monitora o clipboard e anuncia quando o conteudo muda.",
+  "timestamp": "2026-07-21T14:31:27.118020",
+  "plan_id": "8c2e75ff",
+  "complexity": "",
+  "duration_seconds": 890.97,
+  "total_tokens": 382105,
+  "total_retries": 9,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 65460,
+      "issues": [
+        "Faltam campos obrigatórios: name, version, summary",
+        "Linhas extras não pertencem ao manifest (FIXME, CORRECAO, Contexto adicional)"
+      ],
+      "output_preview": "```ini:manifest.ini\nname = ClipboardAnnouncer\nsummary = Anuncia automaticamente o conteúdo do clipboard\ndescription = Addon que monitora o clipboard do sistema e anuncia automaticamente quando o conteúdo muda, permitindo que usuários do NVDA acompanhem alterações sem precisar pressionar atalhos manu"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 124738,
+      "issues": [
+        "Nenhum código Python foi fornecido. O output contém apenas notas e exemplos, não um módulo Python completo com classe GlobalPlugin ou AppModule e imports."
+      ],
+      "output_preview": "[ERRO] O modelo nao produziu o codigo final apos esgotar as tentativas de uso de ferramentas."
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 36056,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ClipboardAnnouncer/__init__.py\nimport wx\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom logHandler import log\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tdef __init__(self, *args, **kwargs):\n\t\tsuper().__init__(*args, "
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21555,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ClipboardAnnouncer\nsummary = Anuncia automaticamente o conteudo do clipboard quando ele muda\ndescription = Addon para NVDA que monitora a area de transferencia e anuncia em voz alta sempre que o conteudo do clipboard e alterado, sem necessidade de acao manual do usuario.\nv"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27082,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ClipboardAnnouncer - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px "
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 99,
+      "retries_used": 0,
+      "tokens_used": 33934,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE\nAddon: ClipboardAnnouncer\nArquivo: globalPlugins/ClipboardAnnouncer/__init__.py\n\nPONTOS FORTES:\n\n- Ciclo de vida completo: terminate() para o timer, desregistra o evento e chama super().terminate() corretamente (NVDA-004, NVDA-030).\n- addonHandler.initTransla"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 73280,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ClipboardAnnouncer/__init__.py\nimport wx\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom logHandler import log\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\n\tdef __init__(self, *args, **kwargs):\n\t\tsuper().__init__(*args,"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ScoresAddon_e2e_20260721_144618",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ScoresAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ClipboardAnnouncer/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/ClipboardAnnouncer/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 73.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6",
+    "kimi-k2.7-code"
+  ]
+}

@@ -1,0 +1,205 @@
+{
+  "addon_name": "HoraPacote_e2e",
+  "query": "Crie GlobalPlugin NVDA 'HoraAddon' com atalho NVDA+H. manifest.ini com name=horaAddon, version=1.0.0, minimumNVDAVersion=2025.3.3, lastTestedNVDAVersion=2025.3.3.",
+  "timestamp": "2026-05-24T19:39:26.838230",
+  "plan_id": "c671095c",
+  "complexity": "Plano criado com 5 etapas. Iniciando...",
+  "duration_seconds": 365.95,
+  "total_tokens": 125026,
+  "total_retries": 1,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 20661,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = Addon para anunciar a hora atual no NVDA\ndescription = Este addon permite ao usuario ouvir a hora atual pressionando um atalho configuravel no NVDA.\nversion = 1.0.0\nauthor = NVDAStudio <contato@nvdastudio.local>\nurl = https://github.com/nvdastudio/horaa"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 28340,
+      "issues": [],
+      "output_preview": "Aqui esta o codigo completo do GlobalPlugin HoraAddon. Ele usa o atalho NVDA+H para anunciar a hora atual no formato brasileiro, sem bloquear a thread principal.\n\n```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25729,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>HoraAddon - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bord"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 50296,
+      "issues": [],
+      "output_preview": "=== RESUMO ===\n\nAddon HoraAddon montado com sucesso. Trata-se de um GlobalPlugin que anuncia a hora atual no formato brasileiro ao pressionar NVDA+H em qualquer contexto do Windows. A estrutura inclui o codigo Python, o manifesto de metadados e a documentacao HTML localizada em portugues do Brasil.\n"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "PLANO_CRIADO",
+      "Plano criado com 5 etapas. Iniciando..."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Criando o codigo do addon para anunciar a hora, Montando o manifesto do add"
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o codigo do addon para anunciar a hora..."
+    ],
+    [
+      "EXECUTANDO",
+      "Montando o manifesto do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Conferindo as informacoes do manifesto..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo segue as diretrizes do NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Verificando sintaxe do codigo gerado..."
+    ],
+    [
+      "AVALIANDO",
+      "Analisando resultado da validacao de sintaxe..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Escrevendo a documentacao do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Montando e empacotando o addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar correto..."
+    ],
+    [
+      "CORRIGINDO",
+      "Reorganizando os arquivos para corrigir problemas..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar correto..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "MONTANDO",
+      "Estamos montando o HoraAddon. Em instantes voce podera anunciar a hora atual com o NVDA+H."
+    ],
+    [
+      "CONCLUIDO",
+      "Pronto! Criei o HoraAddon. Agora basta pressionar NVDA+H em qualquer lugar para ouvir a hora atual p"
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraPacote_e2e_20260524_194532",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraPacote_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/HoraAddon/__init__.py"
+  ],
+  "struct_problems": [
+    "POLITICA-001: minimumNVDAVersion = 2025.3.3 abaixo do baseline oficial do projeto (2026.1). Remova compatibilidade legado.",
+    "POLITICA-002: lastTestedNVDAVersion = 2025.3.3 abaixo do baseline oficial do projeto (2026.1). Atualize o manifest.",
+    "NVDA-042: globalPlugins\\HoraAddon\\__init__.py: _() para string com contagem. Use ngettext()."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/HoraAddon/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 99.0,
+  "models_used": [
+    "kimi-k2.6"
+  ]
+}

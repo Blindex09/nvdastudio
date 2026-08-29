@@ -1,0 +1,163 @@
+{
+  "addon_name": "HoraManifest_e2e",
+  "query": "Crie addon NVDA HoraAddon com manifest.ini completo. name=horaAddon, version=1.0.0, minimumNVDAVersion=2026.1.1, lastTestedNVDAVersion=2026.1.1. GlobalPlugin com atalho NVDA+H para anunciar a hora.",
+  "timestamp": "2026-08-25T20:48:27.458569",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 344.43,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio.",
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Escalacao falhou: Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Aplicando análise mais aprofundada para gerar o código corretamente..."
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": [
+    "gpt-oss:20b"
+  ]
+}

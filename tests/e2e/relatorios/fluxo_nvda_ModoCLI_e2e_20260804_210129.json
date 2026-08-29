@@ -1,0 +1,35 @@
+{
+  "addon_name": "ModoCLI_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'ModoCLI' que suporta argumentos de linha de comando para ativar funcionalidades especiais ao iniciar o NVDA. O addon DEVE: 1) Definir uma funcao _handle_cli(cliArgum",
+  "timestamp": "2026-08-04T20:56:05.439575",
+  "plan_id": "6e60daac",
+  "duration_seconds": 323.86,
+  "total_tokens": 0,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "avg_score": 0.0,
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 116371,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de TABS (NVDA usa TABS como padrão de codificação)",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ]
+    }
+  ],
+  "events": [],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

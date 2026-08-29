@@ -1,0 +1,176 @@
+{
+  "addon_name": "HoraManifest_e2e",
+  "query": "Crie addon NVDA HoraAddon com manifest.ini completo. name=horaAddon, version=1.0.0, minimumNVDAVersion=2026.1.1, lastTestedNVDAVersion=2026.1.1. GlobalPlugin com atalho NVDA+H para anunciar a hora.",
+  "timestamp": "2026-07-21T13:55:27.675209",
+  "plan_id": "f400a845",
+  "complexity": "",
+  "duration_seconds": 902.16,
+  "total_tokens": 480017,
+  "total_retries": 10,
+  "replan_count": 2,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 2,
+      "tokens_used": 65374,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = An addon to announce the current time with NVDA+H\ndescription = This addon allows NVDA users to hear the current time by pressing NVDA+H. It provides a simple and accessible way to check the time without leaving the current application.\nversion = 1.0.0\n"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 101061,
+      "issues": [
+        "NVDA-009: Atalho hardcoded 'kb:NVDA+h' conflita com gesto core do NVDA (alternar modo de fala). Use atalho seguro como NVDA+shift+h ou NVDA+ctrl+h.",
+        "NVDA-021: Indentação com espaços em vez de TABS. NVDA exige TABS como padrão de codificação.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport ui\nimport globalPluginHandler\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"HoraAddon\"\n\n\tdef __init__(self, *args, **"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21727,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = Announces the current time with NVDA+H\ndescription = A simple NVDA addon that speaks the current system time when pressing NVDA+H. Useful for quick time checks without looking at the clock.\nversion = 1.0.0\nauthor = Your Name <your.email@example.com>\nurl"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 104138,
+      "issues": [
+        "Missing class definition (GlobalPlugin)",
+        "Missing imports (wx, datetime, ui, log, script)",
+        "Incomplete structure - no class declaration"
+      ],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport wx\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom logHandler import log\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"Hora"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 102660,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom logHandler import log\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"HoraAddon\"\n\n\td"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 35000,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE\nAddon: HoraAddon (globalPlugins/HoraAddon/__init__.py)\nData: 2026-07-20\n\nREGRA: NVDA-009  SEVERIDADE: Moderado  LOCAL: class GlobalPlugin, script_anunciarHora (linha 20)\nPROBLEMA: O atalho \"kb:NVDA+h\" conflita diretamente com o atalho nativo do NVDA para ativ"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 25936,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>HoraAddon — Anunciador de Hora para NVDA</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: "
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 24121,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom logHandler import log\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"HoraAddon\"\n\n\td"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraManifest_e2e_20260721_141029",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraManifest_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/HoraAddon/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 20: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/HoraAddon/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 76.1,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

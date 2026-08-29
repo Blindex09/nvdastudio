@@ -1,0 +1,67 @@
+{
+  "addon_name": "AppAutoloquente_e2e",
+  "query": "Crie um AppModule NVDA para um aplicativo de leitura de tela proprietario chamado 'VozApp' (vozapp.exe) que tem voz propria (autoloquente/self-voicing). O AppModule deve: 1) Ter sleepMode = True como ",
+  "timestamp": "2026-08-16T02:00:12.968063",
+  "plan_id": "dccecacb",
+  "duration_seconds": 34.07,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "avg_score": 0.0,
+  "steps": [
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ]
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ]
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ]
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

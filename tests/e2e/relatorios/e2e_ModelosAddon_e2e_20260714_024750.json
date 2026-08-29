@@ -1,0 +1,92 @@
+{
+  "addon_name": "ModelosAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA simples que anuncia o titulo da janela em foco ao pressionar NVDA+T.",
+  "timestamp": "2026-07-14T02:39:07.946337",
+  "plan_id": "7be50743",
+  "complexity": "",
+  "duration_seconds": 522.3,
+  "total_tokens": 244573,
+  "total_retries": 6,
+  "replan_count": 1,
+  "success": true,
+  "error": "Nenhum bloco de codigo coletado dos steps",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 19449,
+      "issues": [],
+      "output_preview": ":manifest.ini\nname = TituloJanela\nsummary = Anuncia o titulo da janela em foco\ndescription = Addon simples que anuncia o titulo da janela atualmente em foco ao pressionar NVDA+T.\nauthor = NVDAStudio AI <nvda@studio.ai>\nurl = https://github.com/nvdastudio/titulojanela\nversion = 1.0.0\ndocFileName = us"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 100064,
+      "issues": [
+        "Textos descritivos soltos no corpo da classe e dos metodos nao sao docstrings nem comentarios validos, causando SyntaxError.",
+        "O metodo construtor esta declarado como 'init' e a chamada super().init(args, kwargs) esta incorreta; deve ser 'init' com 'args, kwargs'.",
+        "Falta delimitacao por aspas triplas nos textos explicativos da classe e metodos."
+      ],
+      "output_preview": ":globalPlugins/TituloJanela/init.py\nimport globalPluginHandler\nimport api\nimport ui\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tGlobalPlugin que anuncia o titulo da janela em foco.\n\n\tscriptCategory = \"T"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 101202,
+      "issues": [
+        "O construtor esta nomeado 'init' em vez de 'init', impedindo inicializacao correta pelo NVDA.",
+        "As docstrings da classe e dos metodos nao possuem aspas triplas, resultando em strings soltas que geram SyntaxError.",
+        "O arquivo do pacote esta nomeado 'init.py' em vez de 'init.py'."
+      ],
+      "output_preview": ":globalPlugins/TituloJanela/init.py\nimport globalPluginHandler\nimport addonHandler\nimport api\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tGlobalPlugin que anuncia o titulo da janela em foco.\n\n\tdef init(self, args,"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23858,
+      "issues": [],
+      "output_preview": ":doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>TituloJanela – Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; border-r"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 50.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

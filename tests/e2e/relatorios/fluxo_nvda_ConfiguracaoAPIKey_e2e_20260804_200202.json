@@ -1,0 +1,34 @@
+{
+  "addon_name": "ConfiguracaoAPIKey_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'ConfiguracaoAPIKey' que permite ao usuario configurar uma chave de API de traducao via painel de configuracoes do NVDA (SettingsPanel). O addon deve: 1) Registrar um",
+  "timestamp": "2026-08-04T19:58:26.453135",
+  "plan_id": "9c57acbf",
+  "duration_seconds": 215.74,
+  "total_tokens": 0,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "avg_score": 0.0,
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 110944,
+      "issues": [
+        "API key hardcoded detectada (linha 32): Base64. Use config.conf ou variavel de ambiente."
+      ]
+    }
+  ],
+  "events": [],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

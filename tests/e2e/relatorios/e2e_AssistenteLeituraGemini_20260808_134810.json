@@ -1,0 +1,198 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-08T13:37:12.320450",
+  "plan_id": "028dc512",
+  "complexity": "",
+  "duration_seconds": 657.94,
+  "total_tokens": 274733,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Perguntar ao usuário: (1) Como prefere acessar as quatro funções do addon — apenas por atalhos de teclado globais, apenas pelo menu Ferramentas do NVDA, ou ambos? (2) O idioma padrão das respostas deve ser português do Brasil ou inglês? As r"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output e um bloco de codigo Python (```python:arquivo.py```), nao texto de pesquisa. web_research nunca escreve o addon -- isso e responsabilidade do step code_generation, separado."
+      ],
+      "output_preview": "```python:module_1.py\nimport google.generativeai as genai\ngenai.configure(api_key=\"SUA_CHAVE_AQUI\")\nmodel = genai.GenerativeModel(\"gemini-1.5-flash\")\nresponse = model.generate_content(\"Resuma este texto em português:\", tools=[\"google_search\"])\nprint(response.text)\n```"
+    },
+    {
+      "step_id": "s8",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23995,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando o Google Gemini\ndescription = Assistente de leitura com IA que usa a API do Google Gemini para resumir o texto selecionado, responder perguntas livres sobre o conteudo, complementar respostas com busca w"
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 92483,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSUPOSICOES QUE PODEM ESTAR ERRADAS:\n\n1. Supoe que o texto selecionado no foco atual pode ser extraido de forma confiavel via textInfo de qualquer objeto. Isso e falso na pratica: em browse mode (virtual buffer), em apps"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 129867,
+      "issues": [
+        "O output nao contem nenhum codigo Python, apenas uma mensagem de erro indicando falha na geracao."
+      ],
+      "output_preview": "[ERRO] O modelo nao produziu o codigo final apos esgotar as tentativas de uso de ferramentas."
+    },
+    {
+      "step_id": "s9",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 28388,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AssistenteLeituraGemini - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding:"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 1 pergunta(s) adicionais."
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "documentation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 65.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

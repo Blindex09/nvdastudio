@@ -1,0 +1,135 @@
+{
+  "addon_name": "SimbolosGrecos_e2e",
+  "query": "Crie um addon NVDA chamado 'SimbolosGrecos' que adiciona pronuncia de letras gregas ao NVDA para usuários de matematica e ciencia. O addon DEVE: 1) Criar arquivo locale/en/symbols-greek.dic com:    a)",
+  "timestamp": "2026-07-20T04:30:54.735063",
+  "plan_id": "a43e8fd0",
+  "duration_seconds": 306.82,
+  "total_tokens": 348179,
+  "total_retries": 7,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "avg_score": 73.5,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 64917,
+      "issues": [
+        "Contém seção [symbolDictionaries] e subseção [[greek]], o que não é permitido no formato plano do manifest.ini.",
+        "lastTestedNVDAVersion = 2026.1.0 é inferior ao mínimo exigido de 2026.1.1."
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 115137,
+      "issues": [
+        "Arquivo de dicionário de fala está em locale/en/symbols-greek.dic, mas deve estar em speechDicts/symbols-greek.dic conforme especificação.",
+        "Formato do arquivo .dic incorreto: contém cabeçalhos 'complexSymbols:' e 'symbols:', mas o formato padrão é pattern<TAB>replacement.",
+        "Código Python não carrega o dicionário de fala via addonHandler.getSpeechDicts(); usa símbolos hardcoded."
+      ]
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 42450,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 39411,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 26461,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 35710,
+      "issues": []
+    },
+    {
+      "step_id": "s6",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 24093,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "symbols-greek.dic",
+    "symbols-greek.dic",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/SimbolosGrecos/__init__.py",
+    "locale/en/symbols-greek.dic",
+    "speechDicts/symbols-greek.dic"
+  ],
+  "struct_problems": [
+    "NVDA-044: symbols-*.dic existe mas manifest.ini sem [symbolDictionaries].",
+    "NVDA-046: speechDicts/ existe mas manifest.ini sem [speechDictionaries]."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

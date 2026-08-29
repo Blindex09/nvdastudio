@@ -1,0 +1,137 @@
+{
+  "addon_name": "HoraPacote_e2e",
+  "query": "Crie GlobalPlugin NVDA 'HoraAddon' com atalho NVDA+H. manifest.ini com name=horaAddon, version=1.0.0, minimumNVDAVersion=2026.1.1, lastTestedNVDAVersion=2026.1.1.",
+  "timestamp": "2026-08-08T03:09:40.337810",
+  "plan_id": "e8e6cc48",
+  "complexity": "",
+  "duration_seconds": 500.69,
+  "total_tokens": 293829,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23867,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = Anuncia a hora atual com NVDA+H\ndescription = HoraAddon anuncia a hora atual ao pressionar NVDA+H. HoraAddon announces the current time when pressing NVDA+H.\nversion = 1.0.0\nauthor = Seu Nome <seuemail@exemplo.com>\nurl = https://github.com/seuusuario/Ho"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 72038,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\n\tdef __init__(self, *args, **kwargs):\n\t\tsuper().__init__(*ar"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 71430,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE — HoraAddon (globalPlugins/HoraAddon/__init__.py)\n\nVERIFICACAO POR REGRA (intervalos permitidos: NVDA-001..018 e WX-A11Y-001..014)\n\nNVDA-001 (nextHandler em event handler): NAO SE APLICA — o codigo nao define nenhum event handler (event_gainFocus, event_NVDAO"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 53449,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>HoraAddon - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bord"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 73045,
+      "issues": [
+        "NVDA-009: Atalho NVDA+H conflita com atalho do NVDA (input help). Use NVDA+shift+H ou outro atalho seguro.",
+        "NVDA-057: category=\"Hora Addon\" não usa constante SCRCAT_*. Use SCRCAT_TOOLS ou similar.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\n\tdef __init__(self, *args, **kwargs):\n\t\tsuper().__init__(*ar"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraPacote_e2e_20260808_031801",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraPacote_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/HoraAddon/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/HoraAddon/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 80.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

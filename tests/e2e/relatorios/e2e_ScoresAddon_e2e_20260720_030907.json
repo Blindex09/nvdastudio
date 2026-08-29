@@ -1,0 +1,136 @@
+{
+  "addon_name": "ScoresAddon_e2e",
+  "query": "Crie um addon NVDA que monitora o clipboard e anuncia quando o conteudo muda.",
+  "timestamp": "2026-07-20T03:03:43.011569",
+  "plan_id": "2575c0b2",
+  "complexity": "",
+  "duration_seconds": 324.11,
+  "total_tokens": 200409,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 20691,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ClipboardMonitor\nsummary = Monitora a area de transferencia e anuncia quando o conteudo muda\ndescription = Este addon monitora continuamente a area de transferencia do Windows e anuncia automaticamente quando o conteudo e alterado, permitindo que usuarios cegos ou com baix"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 41982,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ClipboardMonitor/__init__.py\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\nfrom logHandler import log\n\naddonHandler.initTranslation()\n\n\nclass _ClipboardTimer(wx.Timer):\n\tdef __init__(self, plugin):\n\t\tsuper().__i"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "Agent output 'SKIP' with reason 'Nenhum bloco Python encontrado no input para validar', but the provided context clearly contains Python code blocks. The agent failed to detect them, thus not performing the required syntax validation.",
+        "Output does not contain any syntax validation result (e.g., valid, errors, warnings)."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "aa_inj",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 34272,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE DA INTERFACE WX\n\nREGRA: WX-A11Y-004  SEVERIDADE: Serio  LOCAL: ClipboardMonitorDialog.__init__\nPROBLEMA: O dialogo nao possui tratamento para a tecla Escape. Usuarios cegos frequentemente usam Escape para fechar dialogs, e sem esse tratamento o dialogo perman"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25535,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ClipboardMonitor - Guia do Usuario</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6p"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 2,
+      "tokens_used": 77929,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ClipboardMonitor/__init__.py\n# -*- coding: utf-8 -*-\n# ClipboardMonitor: monitora a área de transferência e anuncia mudanças\n# Copyright (C) 2025 NVDAStudio\n# Licenciado sob GNU General Public License v2\n\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimp"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ScoresAddon_e2e_20260720_030907",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ScoresAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ClipboardMonitor/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/ClipboardMonitor/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 79.2,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

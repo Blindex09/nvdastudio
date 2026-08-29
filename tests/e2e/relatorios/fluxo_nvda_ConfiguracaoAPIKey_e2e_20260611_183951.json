@@ -1,0 +1,30 @@
+{
+  "addon_name": "ConfiguracaoAPIKey_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'ConfiguracaoAPIKey' que permite ao usuario configurar uma chave de API de traducao via painel de configuracoes do NVDA (SettingsPanel). O addon deve: 1) Registrar um",
+  "timestamp": "2026-06-11T18:39:51.374036",
+  "plan_id": "?",
+  "duration_seconds": 0.01,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "HermesLLMClient.chat() got an unexpected keyword argument 'reasoning_effort'",
+  "avg_score": 0.0,
+  "steps": [],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "ERRO",
+      "HermesLLMClient.chat() got an unexpected keyword argument 'reasoning_effort'"
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

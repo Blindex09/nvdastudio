@@ -1,0 +1,36 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-17T22:17:21.780036",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 22.39,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "[ERRO] Ollama Cloud API falhou: Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429",
+  "steps": [],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": []
+}

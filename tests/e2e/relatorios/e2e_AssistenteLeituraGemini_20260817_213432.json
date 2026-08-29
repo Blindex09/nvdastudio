@@ -1,0 +1,429 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-17T21:15:09.924881",
+  "plan_id": "cc7e6a96",
+  "complexity": "",
+  "duration_seconds": 1162.72,
+  "total_tokens": 1672949,
+  "total_retries": 27,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s11",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 29829,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de Leitura com Gemini\ndescription = Assistente de leitura que usa a API do Google Gemini para resumir textos, responder perguntas e pesquisar na web, com histórico local e tela de configurações\nauthor = Seu Nome <seu@email.com>\n"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 8299,
+      "issues": [
+        "Informações desatualizadas: google-generativeai 0.7.2 e modelos Gemini 1.5 não representam a API vigente.",
+        "Grounding com Google Search e classes Tool/SearchResult provavelmente usam sintaxe e tipos incorretos ou obsoletos.",
+        "A compatibilidade Python/NVDA está desatualizada e não valida dependências nem empacotamento de addons."
+      ],
+      "output_preview": "Pacote: google-generativeai\nVersão estável: 0.7.2\nInstalação: `pip install google-generativeai`\nAPI principal: \n- `genai.configure(api_key='YOUR_API_KEY')` – inicializa a biblioteca com a chave de API.\n- `genai.GenerativeModel(model_name, generation_config=None, safety_settings=None, tools=None)` – "
+    },
+    {
+      "step_id": "s3",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 90905,
+      "issues": [
+        "Faltam as oito seções Community Access obrigatórias: Descrição, Responsabilidades, Regras de Comportamento, Entradas, Saídas, Invariantes, Referências e Versão/Metadados.",
+        "O output contém conteúdo técnico excedente e não apresenta um template estruturado conforme o objetivo do step.",
+        "Confianca reduzida: score 60 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "<!-- AVISO DE ESTRUTURA: secoes Community Access ausentes: Descricao, Responsabilidades, Regras de Comportamento, Entradas, Saidas, Invariantes, Referencias, Versao, Metadados — o Critic ira solicitar correcao -->\n\n# Gemini Prompt Templates\n\n## Resumo\n**Prompt**\n```\nYou are a helpful assistant. Summ"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 545732,
+      "issues": [
+        "Faltam as três seções obrigatórias: Challenger, Guardian e User Advocate.",
+        "Não há riscos ou restrições identificados por perspectiva.",
+        "O output contém pesquisa técnica e FIXME, mas não uma revisão de design da arquitetura solicitada."
+      ],
+      "output_preview": "```ini:manifest.ini\n[AssistenteLeituraGemini]\napiKey = string(default='')\nresponseLanguage = string(default='pt-BR')\nenableWebSearch = boolean(default=True)\n```"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "agent_runner",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 75,
+      "retries_used": 3,
+      "tokens_used": 41920,
+      "issues": [
+        "O código usa _() sem importar ou definir a função de tradução, causando erro em vários caminhos de execução.",
+        "O output inclui conteúdo extra não solicitado, como templates de prompts e avisos de tentativas anteriores."
+      ],
+      "output_preview": "# AVISO DE ESTRUTURA — itens obrigatorios ausentes detectados:\n# [AVISO-ESTRUTURA] Ausente: cliente LLM importado lazy em run()\n# O Critic ira avaliar e solicitar correcao.\n\nVou criar o módulo agent_runner.py para o addon AssistenteLeituraGemini. Este módulo será o executor do agente que chama a API"
+    },
+    {
+      "step_id": "cg_summarizer",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 411325,
+      "issues": [
+        "O objetivo exige que summarizer.py chame o agent_runner em segundo plano, mas o código chama diretamente a API Gemini.",
+        "Foi incluído um manifest.ini/configuração extra não solicitado no subpacote.",
+        "O arquivo extra usa uma seção de configuração, não um manifest.ini de addon válido, podendo causar confusão na estrutura."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/summarizer/__init__.py\nimport wx\nimport gui\nimport addonHandler\nimport ui\nimport api\nimport tones\nfrom logHandler import log\nfrom scriptHandler import script\nimport globalPluginHandler\nimport threading\n\naddonHandler.initTranslation()\n\nfrom .summarizer "
+    },
+    {
+      "step_id": "cg_qa",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 274256,
+      "issues": [
+        "Nenhum código Python foi gerado.",
+        "Não foram entregues globalPlugins/AssistenteLeituraGemini/qa/__init__.py nem qa_service.py.",
+        "O output contém apenas configuração INI e observações FIXME, sem implementação funcional."
+      ],
+      "output_preview": "[ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429"
+    },
+    {
+      "step_id": "cg_web",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 270683,
+      "issues": [
+        "Nenhum código Python foi fornecido.",
+        "Não foram gerados __init__.py nem web_search_service.py conforme solicitado.",
+        "O output contém apenas um trecho de configuração INI e instruções de correção."
+      ],
+      "output_preview": "[ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429"
+    },
+    {
+      "step_id": "cg_history",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Nenhum código Python foi gerado.",
+        "Faltam os três módulos solicitados: __init__.py com wx.Dialog, storage.py e history_service.py.",
+        "O output contém apenas um bloco INI e instruções de correção."
+      ],
+      "output_preview": "[ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Não contém código Python funcional.",
+        "Não foram gerados configSpec.py nem settings_panel.py.",
+        "A saída contém apenas um bloco INI incorreto para o objetivo solicitado e mensagens de erro."
+      ],
+      "output_preview": "[ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "PARALELO",
+      "6"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Revisando a execução do agente em profundidade..."
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 17.3,
+  "models_used": [
+    "gpt-oss:20b",
+    "qwen3.5:397b"
+  ]
+}

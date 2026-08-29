@@ -1,0 +1,85 @@
+{
+  "addon_name": "SuiteOffice_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'SuiteOffice' que melhora a acessibilidade de todos os apps Microsoft Office (Word, Excel, PowerPoint). O addon deve: 1) No metodo __init__ do GlobalPlugin, chamar EX",
+  "timestamp": "2026-07-15T13:30:41.584139",
+  "plan_id": "?",
+  "duration_seconds": 332.12,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given",
+  "avg_score": 20.0,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

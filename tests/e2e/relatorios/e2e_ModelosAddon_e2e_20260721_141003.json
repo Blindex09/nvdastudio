@@ -1,0 +1,157 @@
+{
+  "addon_name": "ModelosAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA simples que anuncia o titulo da janela em foco ao pressionar NVDA+T.",
+  "timestamp": "2026-07-21T13:58:56.482948",
+  "plan_id": "47b8b210",
+  "complexity": "",
+  "duration_seconds": 666.81,
+  "total_tokens": 300466,
+  "total_retries": 5,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21615,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioTitulo\nsummary = Anuncia o titulo da janela em foco ao pressionar NVDA+T\ndescription = Addon simples que permite ouvir o titulo da janela ativa pressionando NVDA+T, util para identificar rapidamente qual aplicativo esta em primeiro plano sem precisar navegar manualm"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 103944,
+      "issues": [
+        "NVDA-009: Atalho 'kb:NVDA+T' conflita com atalho padrão do NVDA para anunciar título. Use um atalho seguro como NVDA+Shift+T ou NVDA+Ctrl+T.",
+        "NVDA-021: Indentação com espaços em vez de TABS. Substitua todos os espaços por tabs conforme convenção do NVDA."
+      ],
+      "output_preview": "```python:globalPlugins/AnuncioTitulo/__init__.py\nimport globalPluginHandler\nimport api\nimport ui\nimport controlTypes\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioTitulo\"\n\n\t# Tran"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 35207,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AnuncioTitulo/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport api\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioTitulo\"\n\n\tdef __init__(self, *args,"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 37674,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE\n\nArquivos analisados:\n- globalPlugins/AnuncioTitulo/__init__.py\n- manifest.ini\n\nREGRA: NVDA-001  SEVERIDADE: Critico  LOCAL: N/A\nPROBLEMA: Nao ha event handlers (event_gainFocus, event_loseFocus, etc.) no codigo. Apenas um script decorado com @script. Nao se "
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 78569,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>Anúncio do Título da Janela</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bord"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23457,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AnuncioTitulo/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport api\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioTitulo\"\n\n\tdef __init__(self, *args,"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ModelosAddon_e2e_20260721_141003",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html",
+    "installTasks.py"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ModelosAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AnuncioTitulo/__init__.py",
+    "globalPlugins/ModelosAddon_e2e/installTasks.py"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-008: Pasta globalPlugins/ModelosAddon_e2e/ tem arquivos .py mas nao tem __init__.py. O NVDA so carrega __init__.py como GlobalPlugin — module_1.py, servicos e outros modulos sao ignorados. Renomeie o arquivo principal para __init__.py ou crie __init__.py com from .module_1 import *.",
+    "NVDA-019: __init__.py: linha 19: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AnuncioTitulo/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "installTasks.py"
+    }
+  ],
+  "avg_score": 82.9,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6",
+    "kimi-k2.7-code"
+  ]
+}

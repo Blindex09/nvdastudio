@@ -1,0 +1,205 @@
+{
+  "addon_name": "RelatorioAddon_e2e",
+  "query": "Crie addon NVDA que anuncia 'Ola' ao pressionar NVDA+O.",
+  "timestamp": "2026-05-24T20:19:11.255961",
+  "plan_id": "fbb8a987",
+  "complexity": "Plano criado com 5 etapas. Iniciando...",
+  "duration_seconds": 252.56,
+  "total_tokens": 94781,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 19191,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = SaudacaoOla\nsummary = Anuncia Ola ao pressionar NVDA+O\ndescription = Este addon adiciona um atalho global que faz o NVDA anunciar a mensagem Ola quando o usuario pressiona NVDA+O. Util para testes e demonstracoes de addons.\nversion = 1.0.0\nauthor = NVDAStudio <contato@nvda"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 26469,
+      "issues": [],
+      "output_preview": "Aqui esta o addon completo. Como so usa modulos do core NVDA e stdlib Python, nao ha dependencias de terceiros.\n\n```ini:manifest.ini\nname = SaudacaoOla\nsummary = Anuncia Ola ao pressionar NVDA+O\ndescription = Addon simples que fala a mensagem Ola quando o usuario pressiona o atalho NVDA+O.\nauthor = "
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25289,
+      "issues": [],
+      "output_preview": "Aqui esta a documentacao do usuario em HTML para o addon SaudacaoOla.\n\n```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>SaudacaoOla - Guia do Usuario</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em;"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 23832,
+      "issues": [],
+      "output_preview": "=== AVISO DE MONTAGEM ===\n[AVISO-ESTRUTURA-B7] manifest.ini referencia docFileName mas nenhum bloco html:doc/ foi encontrado no output. Inclua o bloco ```html:doc/pt_BR/userGuide.html com a documentacao do addon.\n=== FIM DO AVISO ===\n\n=== RESUMO ===\n\nAddon SaudacaoOla criado e empacotado. Anuncia a "
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "PLANO_CRIADO",
+      "Plano criado com 5 etapas. Iniciando..."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Criando o codigo do addon, Registrando os dados do addon..."
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o codigo do addon..."
+    ],
+    [
+      "EXECUTANDO",
+      "Registrando os dados do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Conferindo as informacoes do manifesto..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo funciona corretamente com o NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Verificando sintaxe do codigo gerado..."
+    ],
+    [
+      "AVALIANDO",
+      "Analisando resultado da validacao de sintaxe..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Escrevendo a documentacao do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Montando o addon para voce..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar correto..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "MONTANDO",
+      "Montando o addon para voce..."
+    ],
+    [
+      "CONCLUIDO",
+      "Pronto! Criei o SaudacaoOla. Agora voce pode pressionar NVDA+O para ouvir uma saudacao amigavel."
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\RelatorioAddon_e2e_20260524_202323",
+  "files_saved": [
+    "manifest.ini",
+    "__init__.py",
+    "userGuide.html",
+    "userGuide.html",
+    "userGuide.html com a documentacao do addon.",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\RelatorioAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "doc/pt_BR/userGuide.html com a documentacao do addon",
+    "globalPlugins/RelatorioAddon_e2e/userGuide.html",
+    "globalPlugins/SaudacaoOla/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/SaudacaoOla/__init__.py"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html com a documentacao do addon."
+    },
+    {
+      "language": "html",
+      "filename": "userGuide.html"
+    }
+  ],
+  "avg_score": 99.0,
+  "models_used": [
+    "kimi-k2.6"
+  ]
+}

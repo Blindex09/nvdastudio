@@ -1,0 +1,184 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-07T23:43:20.486173",
+  "plan_id": "f0771190",
+  "complexity": "",
+  "duration_seconds": 2893.69,
+  "total_tokens": 542609,
+  "total_retries": 15,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Perguntar ao usuário qual ponto de entrada prefere para as ações do addon: atalhos globais, item no menu Ferramentas, ou ambos.\n  Resposta: Use um atalho NVDA+Shift+<letra> para a acao principal, e um item no menu Ferramentas do NVDA para ac"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "web_research",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output e um bloco de codigo Python (```python:arquivo.py```), nao texto de pesquisa. web_research nunca escreve o addon -- isso e responsabilidade do step code_generation, separado."
+      ],
+      "output_preview": "```python:__init__.py\nimport globalPluginHandler\nimport ui\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n    def script_helloWorld(self, gesture):\n        ui.message(\"Olá, mundo!\")\n    __gestures = {\"kb:NVDA+h\": \"helloWorld\"}\n```"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 48212,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando o Google Gemini\ndescription = Assistente de leitura com IA que usa a API do Google Gemini para resumir o texto selecionado, responder perguntas livres sobre ele, complementar respostas com busca web nati"
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 92,
+      "retries_used": 0,
+      "tokens_used": 90814,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSUPOSICOES QUE PODEM ESTAR ERRADAS:\n\n1. Supoe que existe uma forma universal e confiavel de extrair o \"texto selecionado no foco atual\" em qualquer aplicativo. O NVDA nao oferece uma API unica de selecao: cada app expoe"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "agent_template",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27675,
+      "issues": [],
+      "output_preview": "# AssistenteLeituraGemini Prompts\n\nMódulo Python com templates de prompt reutilizáveis para as três ações de IA do addon AssistenteLeituraGemini.\n\n## Descricao\nEste módulo centraliza as instruções de sistema, o formato de saída, o idioma padrão e os limites de tokens das três ações de IA do assisten"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Timeout global: step nao completou dentro do prazo."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg2",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 90,
+      "retries_used": 2,
+      "tokens_used": 207997,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/__init__.py\n# -*- coding: UTF-8 -*-\n\"\"\"GlobalPlugin do addon AssistenteLeituraGemini.\"\"\"\nfrom __future__ import annotations\n\nimport wx\nimport gui\nimport api\nimport textInfos\nimport ui\nimport globalPluginHandler\nimport addonHandler\nimport config\nfrom sc"
+    },
+    {
+      "step_id": "ar1",
+      "step_type": "agent_runner",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output não contém código Python algum; apenas mensagens de aviso e erro.",
+        "Ausência total da classe AgentRunner, método run() e reset_session().",
+        "Erro explícito: OllamaClient.chat() recebeu múltiplos valores para 'step_type', indicando falha na chamada."
+      ],
+      "output_preview": "# AVISO DE ESTRUTURA — itens obrigatorios ausentes detectados:\n# [AVISO-ESTRUTURA] Ausente: reset_session() publico\n# [AVISO-ESTRUTURA] Ausente: _fallback_chain definido\n# [AVISO-ESTRUTURA] Ausente: cliente LLM importado lazy em run()\n# [AVISO-ESTRUTURA] Ausente: try/except em chamada externa\n# [AVI"
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 28668,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AssistenteLeituraGemini - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding:"
+    },
+    {
+      "step_id": "aa1",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 38814,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE\nAddon: AssistenteLeituraGemini\nEscopo: rotulos dos controles do SettingsPanel e dos dialogos, ordem de tabulacao, mensagens de erro faladas pelo NVDA, gerenciamento de foco ao abrir/fechar janelas e acessibilidade dos comandos globais.\nMetodo: analise estatic"
+    },
+    {
+      "step_id": "ar1",
+      "step_type": "agent_runner",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output não contém código Python com a classe AgentRunner",
+        "Ausência dos métodos run() e reset_session()",
+        "Erro de argumento duplicado 'step_type' na chamada ao OllamaClient"
+      ],
+      "output_preview": "# AVISO DE ESTRUTURA — itens obrigatorios ausentes detectados:\n# [AVISO-ESTRUTURA] Ausente: reset_session() publico\n# [AVISO-ESTRUTURA] Ausente: _fallback_chain definido\n# [AVISO-ESTRUTURA] Ausente: cliente LLM importado lazy em run()\n# [AVISO-ESTRUTURA] Ausente: try/except em chamada externa\n# [AVI"
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 100429,
+      "issues": [
+        "NVDA-019: Faltam comentários # Translators antes de várias chamadas _() (settings_panel.py title, dialogs.py títulos dos diálogos).",
+        "NVDA-022: Import de requests e appdirs no topo de gemini_client.py e history_manager.py sem garantia de que estão em lib/; o assembly step não incluiu lib/ com essas dependências, o que pode impedir o carregamento do addon.",
+        "Bug funcional: No PerguntaDialog, o botão OK não está vinculado a _on_ok, então clicar OK não dispara a ação de perguntar."
+      ],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando o Google Gemini\ndescription = Assistente de leitura com IA que usa a API do Google Gemini para resumir o texto selecionado, responder perguntas livres sobre ele, complementar respostas com busca web nati"
+    }
+  ],
+  "events": [
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 2 pergunta(s) adicionais."
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 55.6,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "addon_name": "QualidadeCodigo_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'MonitorRecursos' que monitora uso de CPU e memoria RAM, anunciando ao pressionar NVDA+shift+M. O plugin deve: 1) Usar logHandler.log para registrar eventos — nunca p",
+  "timestamp": "2026-08-04T18:31:51.805930",
+  "plan_id": "?",
+  "duration_seconds": 0.01,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "Chave API para ollama nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio.",
+  "avg_score": 0.0,
+  "steps": [],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

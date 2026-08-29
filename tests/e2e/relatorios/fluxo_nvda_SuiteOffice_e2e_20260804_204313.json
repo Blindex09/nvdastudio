@@ -1,0 +1,107 @@
+{
+  "addon_name": "SuiteOffice_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'SuiteOffice' que melhora a acessibilidade de todos os apps Microsoft Office (Word, Excel, PowerPoint). O addon deve: 1) No metodo __init__ do GlobalPlugin, chamar EX",
+  "timestamp": "2026-08-04T20:35:38.019135",
+  "plan_id": "c51cc506",
+  "duration_seconds": 455.83,
+  "total_tokens": 233969,
+  "total_retries": 5,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 63.3,
+  "steps": [
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 38847,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "O step syntax_validation reportou SKIP alegando que não havia blocos Python no input, mas o input fornecido (compressed output do step cg1) continha código Python explícito (ex: decorator @script, chamadas a error(), etc.). O agente falhou em identificar e validar a sintaxe do código presente, o que compromete a finalidade do step."
+      ]
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 45669,
+      "issues": []
+    },
+    {
+      "step_id": "aa1",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 36349,
+      "issues": []
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26868,
+      "issues": []
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 86236,
+      "issues": [
+        "Critic retornou vazio ou sem JSON reconhecivel."
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "office_app.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "appModules/office_app.py",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/SuiteOffice/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

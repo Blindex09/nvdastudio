@@ -1,0 +1,80 @@
+{
+  "addon_name": "Regra9Addon_e2e",
+  "query": "Crie GlobalPlugin NVDA com acesso ao sistema de arquivos para listar a pasta do usuario. Atalho NVDA+L.",
+  "timestamp": "2026-07-20T03:19:04.174120",
+  "plan_id": "4dfacc4c",
+  "complexity": "",
+  "duration_seconds": 514.45,
+  "total_tokens": 0,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 20736,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = UserFolderLister\nsummary = Lista a pasta do usuário com atalho NVDA+L\ndescription = Um GlobalPlugin para NVDA que permite listar o conteúdo da pasta do usuário ao pressionar NVDA+L.\nversion = 1.0.0\nauthor = NVDAStudio <nvda@nvda.studio>\nurl = https://github.com/nvdastudio/"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 119169,
+      "issues": [
+        "Critic retornou vazio ou sem JSON reconhecivel."
+      ],
+      "output_preview": "```python:globalPlugins/UserFolderLister/__init__.py\nimport os\nimport threading\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\nfrom gui.message import MessageDialog, DefaultButtonSet\n\naddonHandler.initTranslation()\n\nclass ListagemDialog"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 114054,
+      "issues": [
+        "WX-A11Y-004: wx.Dialog sem tratamento de tecla Escape. O botão usa wx.ID_CLOSE, que não fecha com a tecla Escape. Adicione SetEscapeId(wx.ID_CANCEL) ou use StdDialogButtonSizer com wx.ID_CANCEL.",
+        "NVDA-021: Indentação com espaços em vez de TABS. Converta toda a indentação do arquivo para tabs (substitua cada 4 espaços por 1 tab)."
+      ],
+      "output_preview": "```python:globalPlugins/UserFolderLister/__init__.py\nimport os\nimport threading\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\nfrom logHandler import log\n\naddonHandler.initTranslation()\n\n\nclass UserFolderDialog(wx.Dialog):\n\tdef __init__"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25105,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n\t<meta charset=\"UTF-8\">\n\t<title>UserFolderLister – Guia do Usuário</title>\n\t<style>\n\t\tbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\n\t\tkbd { background: #eee; border: 1px solid #ccc; padding:"
+    }
+  ],
+  "events": [],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 50.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

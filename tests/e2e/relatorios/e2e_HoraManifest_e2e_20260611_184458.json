@@ -1,0 +1,36 @@
+{
+  "addon_name": "HoraManifest_e2e",
+  "query": "Crie addon NVDA HoraAddon com manifest.ini completo. name=horaAddon, version=1.0.0, minimumNVDAVersion=2025.3.3, lastTestedNVDAVersion=2025.3.3. GlobalPlugin com atalho NVDA+H para anunciar a hora.",
+  "timestamp": "2026-06-11T18:44:58.173125",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 0.01,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "HermesLLMClient.chat() got an unexpected keyword argument 'reasoning_effort'",
+  "steps": [],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "ERRO",
+      "HermesLLMClient.chat() got an unexpected keyword argument 'reasoning_effort'"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": []
+}

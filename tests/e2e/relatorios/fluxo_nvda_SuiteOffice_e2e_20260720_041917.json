@@ -1,0 +1,58 @@
+{
+  "addon_name": "SuiteOffice_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'SuiteOffice' que melhora a acessibilidade de todos os apps Microsoft Office (Word, Excel, PowerPoint). O addon deve: 1) No metodo __init__ do GlobalPlugin, chamar EX",
+  "timestamp": "2026-07-20T04:14:42.056581",
+  "plan_id": "56ab337c",
+  "duration_seconds": 275.48,
+  "total_tokens": 0,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "avg_score": 33.3,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21437,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 111915,
+      "issues": [
+        "Indentação deve usar TABS (caractere \\t) em vez de espaços, conforme instrução FIXME."
+      ]
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 106732,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de TABS nos arquivos Python. NVDA exige TABS como padrão de codificação.",
+        "NVDA-057: @script decorator em script_anunciarInfoOffice não especifica category usando constantes SCRCAT_*. Recomenda-se usar SCRCAT_TOOLS ou similar.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ]
+    }
+  ],
+  "events": [],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

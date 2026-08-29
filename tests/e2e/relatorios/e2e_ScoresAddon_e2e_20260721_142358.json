@@ -1,0 +1,80 @@
+{
+  "addon_name": "ScoresAddon_e2e",
+  "query": "Crie um addon NVDA que monitora o clipboard e anuncia quando o conteudo muda.",
+  "timestamp": "2026-07-21T14:10:03.502737",
+  "plan_id": "3897d216",
+  "complexity": "",
+  "duration_seconds": 834.64,
+  "total_tokens": 0,
+  "total_retries": 7,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 43277,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ClipboardMonitor\nsummary = Monitor de clipboard que anuncia mudancas de conteudo\ndescription = Este addon monitora o clipboard do Windows e anuncia automaticamente quando o conteudo muda, permitindo que usuarios de NVDA acompanhem copias e recortes sem precisar verificar m"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 110525,
+      "issues": [
+        "No Python code produced; model failed to generate code after exhausting tool attempts."
+      ],
+      "output_preview": "[ERRO] O modelo nao produziu o codigo final apos esgotar as tentativas de uso de ferramentas."
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 113034,
+      "issues": [
+        "Missing required field 'name'",
+        "Missing required field 'summary'"
+      ],
+      "output_preview": "[ERRO] O modelo nao produziu o codigo final apos esgotar as tentativas de uso de ferramentas."
+    },
+    {
+      "step_id": "s5",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 26220,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ClipboardMonitor - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6p"
+    }
+  ],
+  "events": [],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 47.5,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

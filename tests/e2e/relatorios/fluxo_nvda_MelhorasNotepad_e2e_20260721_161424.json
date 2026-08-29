@@ -1,0 +1,105 @@
+{
+  "addon_name": "MelhorasNotepad_e2e",
+  "query": "Crie um AppModule NVDA para o Notepad (notepad.exe) chamado 'MelhorasNotepad' que melhora a acessibilidade do editor de texto. O addon deve: 1) Ter classe AppModule que herda de appModuleHandler.AppMo",
+  "timestamp": "2026-07-21T16:08:55.476939",
+  "plan_id": "006ba59f",
+  "duration_seconds": 329.0,
+  "total_tokens": 230464,
+  "total_retries": 4,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 80.8,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21804,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 68628,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 26696,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 35707,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 77629,
+      "issues": [
+        "O output do assembly não inclui o código Python (appModules/notepad.py) junto com o manifest.ini. Apenas o manifest.ini e o userGuide.html foram fornecidos, mas o critério exige que ambos (manifest.ini e código Python) estejam presentes no mesmo output."
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "notepad.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "appModules/notepad.py",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-003: Pasta globalPlugins/ ausente."
+  ],
+  "has_init_py": false,
+  "has_manifest": true,
+  "has_doc": true
+}

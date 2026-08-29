@@ -1,0 +1,142 @@
+{
+  "addon_name": "RelatorioAddon_e2e",
+  "query": "Crie addon NVDA que anuncia 'Ola' ao pressionar NVDA+O.",
+  "timestamp": "2026-07-21T14:56:03.189649",
+  "plan_id": "06b8cc13",
+  "complexity": "",
+  "duration_seconds": 296.07,
+  "total_tokens": 216531,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 2,
+      "tokens_used": 65603,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioOla\nsummary = Anuncia 'Ola' ao pressionar NVDA+O\ndescription = Addon simples que anuncia a palavra 'Ola' quando o usuario pressiona a combinacao de teclas NVDA+O em qualquer aplicativo.\nversion = 1.0.0\nauthor = Seu Nome <seuemail@exemplo.com>\nurl = https://github.co"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 66530,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AnuncioOla/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioOla\"\n\n\tdef __init__(self, *args, **kwargs):\n\t\tsup"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25845,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AnuncioOla - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bor"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 35781,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA ESTATICA\nAddon: AnuncioOla\nArquivo: globalPlugins/AnuncioOla/__init__.py\n\nREGRA: NVDA-001  SEVERIDADE: Critico  LOCAL: N/A\nPROBLEMA: Nao ha event handlers no codigo. Nao se aplica.\nCORRECAO: Nenhuma necessaria.\n\nREGRA: NVDA-002  SEVERIDADE: Critico  LOCAL: N/A\nPROBLEMA: Nao ha"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 22772,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioOla\nsummary = Anuncia 'Ola' ao pressionar NVDA+O\ndescription = Addon simples que anuncia a palavra 'Ola' quando o usuario pressiona a combinacao de teclas NVDA+O em qualquer aplicativo.\nversion = 1.0.0\nauthor = Seu Nome <seuemail@exemplo.com>\nurl = https://github.co"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\RelatorioAddon_e2e_20260721_150059",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html",
+    "installTasks.py"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\RelatorioAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AnuncioOla/__init__.py",
+    "globalPlugins/RelatorioAddon_e2e/installTasks.py"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-008: Pasta globalPlugins/RelatorioAddon_e2e/ tem arquivos .py mas nao tem __init__.py. O NVDA so carrega __init__.py como GlobalPlugin — module_1.py, servicos e outros modulos sao ignorados. Renomeie o arquivo principal para __init__.py ou crie __init__.py com from .module_1 import *.",
+    "NVDA-019: __init__.py: linha 18: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AnuncioOla/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "installTasks.py"
+    }
+  ],
+  "avg_score": 98.3,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

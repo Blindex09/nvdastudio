@@ -1,0 +1,212 @@
+{
+  "addon_name": "TokensAddon_e2e",
+  "query": "Crie addon NVDA simples que anuncia o nome do processo em foco ao pressionar NVDA+P.",
+  "timestamp": "2026-05-24T20:10:59.865905",
+  "plan_id": "c6ef264e",
+  "complexity": "Plano criado com 5 etapas. Iniciando...",
+  "duration_seconds": 491.24,
+  "total_tokens": 148849,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 19127,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ProcessoEmFoco\nsummary = Anuncia o nome do processo em foco\ndescription = Este addon permite ao usuario anunciar o nome do processo da janela em foco ao pressionar o atalho NVDA+P. Util para identificar rapidamente qual aplicativo esta sendo executado.\nversion = 1.0.0\nauth"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 59966,
+      "issues": [],
+      "output_preview": "Aqui esta o codigo corrigido do addon, incluindo o manifest.ini e o GlobalPlugin com o atalho ajustado para NVDA+Shift+P, fluxo de erro isolado no except e retornos explicitos nos caminhos de sucesso.\n\n```ini:manifest.ini\nname = AnunciaProcesso\nsummary = Anuncia o nome do processo em foco\ndescriptio"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "O agente de syntax_validation retornou SKIP alegando que nenhum bloco Python foi encontrado, mas o contexto confirma que artefatos Python foram gerados no step anterior (globalPlugins/anunciaProcesso/__init__.py). O validador falhou em localizar e validar o código, não cumprindo sua função primária.",
+        "Confianca reduzida: score 65 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 25327,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ProcessoEmFoco</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; border-radius: 3p"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 44429,
+      "issues": [],
+      "output_preview": "=== RESUMO ===\n\nAddon ProcessoEmFoco criado com sucesso. Ele adiciona um atalho global NVDA+Shift+P que anuncia o nome do processo executavel da janela atualmente em foco. O pacote contem o manifesto, o codigo fonte do plugin e a documentacao do usuario em portugues do Brasil.\n\n=== ARQUIVOS DO ADDON"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "PLANO_CRIADO",
+      "Plano criado com 5 etapas. Iniciando..."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Criando o codigo do addon para anunciar o processo em foco, Criando o manif"
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o codigo do addon para anunciar o processo em foco..."
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o manifesto do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Conferindo as informacoes do manifesto..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo segue as diretrizes do NVDA..."
+    ],
+    [
+      "CORRIGINDO",
+      "Ajustando o codigo para corrigir os problemas encontrados..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo segue as diretrizes do NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Verificando sintaxe do codigo gerado..."
+    ],
+    [
+      "AVALIANDO",
+      "Analisando resultado da validacao de sintaxe..."
+    ],
+    [
+      "EXECUTANDO",
+      "Escrevendo a documentacao do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Montando o addon final..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar correto..."
+    ],
+    [
+      "CORRIGINDO",
+      "Reorganizando os arquivos para corrigir problemas..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar correto..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "MONTANDO",
+      "Montando o addon ProcessoEmFoco para voce..."
+    ],
+    [
+      "CONCLUIDO",
+      "Pronto! Criei o ProcessoEmFoco. Ao pressionar NVDA+P, o NVDA anuncia o nome do processo da janela em"
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\TokensAddon_e2e_20260524_201911",
+  "files_saved": [
+    "manifest.ini",
+    "__init__.py",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\TokensAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ProcessoEmFoco/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/anunciaProcesso/__init__.py"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/ProcessoEmFoco/__init__.py"
+    }
+  ],
+  "avg_score": 78.6,
+  "models_used": [
+    "kimi-k2.6"
+  ]
+}

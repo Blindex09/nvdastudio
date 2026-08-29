@@ -1,0 +1,105 @@
+{
+  "addon_name": "BrailleDisplay_e2e",
+  "query": "Crie um BrailleDisplayDriver NVDA completo chamado 'MeuBraille' para um display braille de 40 celulas. O driver deve: 1) Herdar de braille.BrailleDisplayDriver com name='meu_braille', description='Meu",
+  "timestamp": "2026-07-20T04:07:46.867618",
+  "plan_id": "5eb42220",
+  "duration_seconds": 414.83,
+  "total_tokens": 223138,
+  "total_retries": 4,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 80.8,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21557,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 72544,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26073,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 32012,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 70952,
+      "issues": [
+        "NVDA-022: Top-level import of 'serial' (third-party package) at module level. This will cause an ImportError and prevent the entire addon from loading if pyserial is not installed. The check() method already has a lazy import, but the top-level import overrides that. Remove the top-level 'import serial' line and rely solely on lazy imports inside check(), _connect(), and display() methods."
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "meu_braille.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "brailleDisplayDrivers/meu_braille.py",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-003: Pasta globalPlugins/ ausente."
+  ],
+  "has_init_py": false,
+  "has_manifest": true,
+  "has_doc": true
+}

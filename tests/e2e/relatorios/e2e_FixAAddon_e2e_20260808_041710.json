@@ -1,0 +1,137 @@
+{
+  "addon_name": "FixAAddon_e2e",
+  "query": "Crie GlobalPlugin NVDA 'FixAAddon' com atalho NVDA+A. Salve o codigo em globalPlugins/fixAAddon/__init__.py. Inclua manifest.ini.",
+  "timestamp": "2026-08-08T04:06:08.221543",
+  "plan_id": "ac1e752a",
+  "complexity": "",
+  "duration_seconds": 662.19,
+  "total_tokens": 326578,
+  "total_retries": 7,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23173,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = FixAAddon\nsummary = Corrige e anuncia informações do objeto focado com o atalho NVDA+A\ndescription = O FixAAddon é um complemento para o NVDA que corrige e anuncia informações detalhadas do objeto atualmente focado, ativado pelo atalho NVDA+A, funcionando em qualquer aplic"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 70212,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/FixAAddon/__init__.py\nimport globalPluginHandler\nimport ui\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"FixAAddon\"\n\n\tdef __init__(self, *args, **kwargs):\n\t\tsuper"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 53640,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>FixAAddon - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bord"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 106656,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE — FixAAddon\n\nREGRA: NVDA-009  SEVERIDADE: Moderado  LOCAL: GlobalPlugin.script_exibirMensagem (decorator @script)\nPROBLEMA: A tarefa original pedia o atalho NVDA+A, mas o codigo usa NVDA+shift+a. Isso NAO e um erro de acessibilidade — pelo contrario, e a esco"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 72897,
+      "issues": [
+        "O script 'script_exibirMensagem' apenas exibe uma mensagem de teste, não implementa a funcionalidade de anunciar informações do objeto focado (nome, papel, estados) conforme descrito no spec.",
+        "scriptCategory usa string livre 'FixAAddon' em vez de constante SCRCAT_* (NVDA-057).",
+        "Inconsistência de atalho: o código usa NVDA+shift+a, mas o manifest e o guia do usuário mencionam NVDA+A. Alinhe os artefatos."
+      ],
+      "output_preview": "```python:globalPlugins/FixAAddon/__init__.py\nimport globalPluginHandler\nimport ui\nimport api\nimport addonHandler\nfrom scriptHandler import script\nfrom NVDAObjects import NVDAObject\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"FixAAddon\"\n"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\FixAAddon_e2e_20260808_041710",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\FixAAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/FixAAddon/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/FixAAddon/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 80.8,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

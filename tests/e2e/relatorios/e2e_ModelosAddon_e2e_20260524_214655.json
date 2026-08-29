@@ -1,0 +1,207 @@
+{
+  "addon_name": "ModelosAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA simples que anuncia o titulo da janela em foco ao pressionar NVDA+T.",
+  "timestamp": "2026-05-24T21:37:53.786585",
+  "plan_id": "87a5700a",
+  "complexity": "Plano criado com 5 etapas. Iniciando...",
+  "duration_seconds": 541.87,
+  "total_tokens": 126390,
+  "total_retries": 1,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 19933,
+      "issues": [],
+      "output_preview": "Segue o manifest.ini completo e valido para o addon AnuncioTitulo:\n\n```ini:manifest.ini\nname = AnuncioTitulo\nsummary = Anuncia o titulo da janela ativa ao pressionar NVDA+T\ndescription = GlobalPlugin simples para NVDA que anuncia o titulo da janela em foco quando o usuario pressiona NVDA+T. Simple N"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27269,
+      "issues": [],
+      "output_preview": "Atenção: o atalho NVDA+T e reservado pelo NVDA core para anunciar a hora. Seguindo a regra NVDA-009, utilizei NVDA+Shift+T para evitar conflito.\n\n```python:globalPlugins/anunciaTitulo/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport api\nimport ui\nfrom scriptHandler import script\n\nad"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 55042,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AnuncioTitulo — Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; line-height: 1.6; }\nkbd { background: #eee; border: 1px solid #ccc; "
+    },
+    {
+      "step_id": "s4",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 24146,
+      "issues": [],
+      "output_preview": "=== RESUMO ===\n\nAddon AnuncioTitulo criado. GlobalPlugin simples que anuncia o titulo da janela em foco ao pressionar NVDA+Shift+T. Inclui manifesto valido, codigo principal e guia do usuario em portugues do Brasil.\n\n=== ARQUIVOS ===\n\n```python:globalPlugins/AnuncioTitulo/__init__.py\nimport globalPl"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "PLANO_CRIADO",
+      "Plano criado com 5 etapas. Iniciando..."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Criando o codigo do addon, Criando o manifesto do addon..."
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o codigo do addon..."
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o manifesto do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Conferindo as informacoes do manifesto..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo funciona corretamente com o NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Verificando sintaxe do codigo gerado..."
+    ],
+    [
+      "AVALIANDO",
+      "Analisando resultado da validacao de sintaxe..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Escrevendo a documentacao do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "CORRIGINDO",
+      "Refinando a documentacao com base nas correcoes necessarias..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Montando o addon final..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar correto..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "MONTANDO",
+      "Montando o addon para anunciar titulos de janelas..."
+    ],
+    [
+      "CONCLUIDO",
+      "Pronto! Criei o AnuncioTitulo. Pressione NVDA+T para ouvir o titulo da janela em foco."
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ModelosAddon_e2e_20260524_214655",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ModelosAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AnuncioTitulo/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 18: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/anunciaTitulo/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AnuncioTitulo/__init__.py"
+    }
+  ],
+  "avg_score": 97.0,
+  "models_used": [
+    "kimi-k2.6"
+  ]
+}

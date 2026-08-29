@@ -1,0 +1,103 @@
+{
+  "addon_name": "ModoCLI_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'ModoCLI' que suporta argumentos de linha de comando para ativar funcionalidades especiais ao iniciar o NVDA. O addon DEVE: 1) Definir uma funcao _handle_cli(cliArgum",
+  "timestamp": "2026-08-08T06:03:27.818143",
+  "plan_id": "ebd79620",
+  "duration_seconds": 311.8,
+  "total_tokens": 206269,
+  "total_retries": 2,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 97.5,
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 47235,
+      "issues": []
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 70706,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27333,
+      "issues": []
+    },
+    {
+      "step_id": "aa_inj",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 35833,
+      "issues": []
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25162,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ModoCLI/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-042: globalPlugins\\ModoCLI\\__init__.py: _() para string com contagem. Use ngettext()."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

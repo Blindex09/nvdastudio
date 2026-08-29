@@ -1,0 +1,154 @@
+{
+  "addon_name": "DocAddon_e2e",
+  "query": "Crie um addon NVDA que anuncia informacoes sobre a janela em foco ao pressionar NVDA+F. Inclua documentacao completa em doc/pt_BR/userGuide.html e doc/en/userGuide.html. manifest.ini com version=1.0.0",
+  "timestamp": "2026-07-21T13:47:01.219629",
+  "plan_id": "2a5aadd2",
+  "complexity": "",
+  "duration_seconds": 651.57,
+  "total_tokens": 296959,
+  "total_retries": 7,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 43570,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = WindowAnnouncer\nsummary = An addon to announce window changes\ndescription = An addon that announces information about the focused window when pressing NVDA+F.\nversion = 1.0.0\nauthor = Your Name <your.email@example.com>\nurl = https://example.com\ndocFileName = userGuide.html"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 101361,
+      "issues": [
+        "Nenhum código Python foi produzido. A saída contém apenas uma mensagem de erro indicando falha na geração."
+      ],
+      "output_preview": "[ERRO] O modelo nao produziu o codigo final apos esgotar as tentativas de uso de ferramentas."
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 37899,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/WindowAnnouncer/__init__.py\nimport api\nimport ui\nimport controlTypes\nimport addonHandler\nfrom scriptHandler import script\nimport globalPluginHandler\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"WindowAnnouncer\"\n\n\td"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 2,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 35879,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE\nAddon: WindowAnnouncer\nArquivo auditado: globalPlugins/WindowAnnouncer/__init__.py\n\nREGRA: NVDA-001  SEVERIDADE: Critico  LOCAL: N/A\nPROBLEMA: Nao ha event handlers no codigo. Apenas um script simples.\nCORRECAO: Nao se aplica. Nenhuma violacao.\n\nREGRA: NVDA-0"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 52994,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>WindowAnnouncer – Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 25256,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/WindowAnnouncer/__init__.py\n# -*- coding: utf-8 -*-\n# WindowAnnouncer: anuncia informações da janela em foco ao pressionar NVDA+F\n\nimport api\nimport ui\nimport controlTypes\nimport addonHandler\nfrom scriptHandler import script\nimport globalPluginHandler\n\naddonHandler.initTransl"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\DocAddon_e2e_20260721_135752",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\DocAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/WindowAnnouncer/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 20: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 29: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 30: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 34: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 35: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 36: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/WindowAnnouncer/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 82.9,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6",
+    "kimi-k2.7-code"
+  ]
+}

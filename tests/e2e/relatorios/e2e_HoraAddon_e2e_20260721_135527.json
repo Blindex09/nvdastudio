@@ -1,0 +1,83 @@
+{
+  "addon_name": "HoraAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado HoraAddon que anuncia a hora atual ao pressionar NVDA+Shift+H. Use ui.message() para anunciar. Inclua addonHandler.initTranslation() e terminate(). Inclua manifest.in",
+  "timestamp": "2026-07-21T13:47:27.787455",
+  "plan_id": "b5a00728",
+  "complexity": "",
+  "duration_seconds": 479.82,
+  "total_tokens": 0,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21750,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = Anuncia a hora atual com NVDA+Shift+H\ndescription = HoraAddon e um plugin global para o NVDA que permite ao usuario ouvir a hora atual do sistema pressionando NVDA+Shift+H. Utiliza ui.message() para anunciar a hora de forma clara e rapida.\nversion = 1.0"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 101960,
+      "issues": [
+        "Código Python incompleto: a definição da classe (nome e herança) está ausente.",
+        "Faltam imports essenciais: ui, datetime, script decorator, gettext.",
+        "Indentação usa espaços em vez de tabs (convenção do NVDA)."
+      ],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\t\"\"\"GlobalPlugin que anuncia a hora atual ao pressionar NVDA"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 104176,
+      "issues": [
+        "Missing addonHandler.initTranslation() call after imports",
+        "Indentation uses spaces instead of tabs (NVDA standard requires tabs)",
+        "Code may be incomplete (no __init__ method or other required elements?)"
+      ],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"HoraAddon\"\n\n\t# Translators: Descricao do "
+    },
+    {
+      "step_id": "s5",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25982,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>HoraAddon - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bord"
+    }
+  ],
+  "events": [],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 50.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

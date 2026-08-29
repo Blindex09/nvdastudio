@@ -1,0 +1,36 @@
+{
+  "addon_name": "GeminiMultimodal",
+  "query": "Crie um addon NVDA complexo chamado GeminiMultimodal: um assistente multimodal que usa a API do Google Gemini internamente para acessibilidade de midia. Funcionalidades: (1) descrever em texto uma ima",
+  "timestamp": "2026-08-17T21:34:32.704252",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 17.14,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "[ERRO] Ollama Cloud API falhou: Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429",
+  "steps": [],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": []
+}

@@ -1,0 +1,26 @@
+{
+  "addon_name": "PronunciaCorreta_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'PronunciaCorreta' que melhora a pronuncia de termos tecnicos. O addon DEVE: 1) Criar arquivo speechDicts/pronuncia.dic com pelo menos 3 regras de pronuncia.    Cada ",
+  "timestamp": "2026-08-04T18:31:56.326319",
+  "plan_id": "?",
+  "duration_seconds": 0.0,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "Chave API para ollama nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio.",
+  "avg_score": 0.0,
+  "steps": [],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

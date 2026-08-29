@@ -1,0 +1,112 @@
+{
+  "addon_name": "HoraManifest_e2e",
+  "query": "Crie addon NVDA HoraAddon com manifest.ini completo. name=horaAddon, version=1.0.0, minimumNVDAVersion=2026.1.1, lastTestedNVDAVersion=2026.1.1. GlobalPlugin com atalho NVDA+H para anunciar a hora.",
+  "timestamp": "2026-07-15T12:27:51.757389",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 322.77,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s5",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    }
+  ],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 16.7,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "addon_name": "HoraPacote_e2e",
+  "query": "Crie GlobalPlugin NVDA 'HoraAddon' com atalho NVDA+H. manifest.ini com name=horaAddon, version=1.0.0, minimumNVDAVersion=2026.1.1, lastTestedNVDAVersion=2026.1.1.",
+  "timestamp": "2026-08-04T18:17:29.781376",
+  "plan_id": "8d2ee55f",
+  "complexity": "",
+  "duration_seconds": 536.88,
+  "total_tokens": 322422,
+  "total_retries": 5,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22221,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = Anuncia a hora atual com NVDA+H\ndescription = Addon simples que anuncia a hora atual do sistema ao pressionar NVDA+H. Ideal para acesso rapido a hora sem precisar olhar para o relogio.\nversion = 1.0.0\nauthor = NVDAStudio\nurl = https://github.com/NVDAStu"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 102285,
+      "issues": [
+        "Gesture 'kb:NVDA+shift+h' may conflict with NVDA's help command; should be changed to 'kb:NVDA+shift+H' or 'kb:NVDA+ctrl+H' as per FIXME instructions."
+      ],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\nfrom logHandler import log\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"HoraAddon\"\n\n\td"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 69521,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script, SCRCAT_UTILITIES\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = SCRCAT_UTILITIES\n\n\tdef _"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 26379,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>HoraAddon - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bord"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 78658,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE — HoraAddon\n\nREGRA: NVDA-001  SEVERIDADE: Critico  LOCAL: N/A\nPROBLEMA: Nenhum event handler (event_gainFocus, event_caret, etc.) definido — regra nao se aplica.\nCORRECAO: Nao aplicavel.\n\nREGRA: NVDA-002  SEVERIDADE: Critico  LOCAL: script_anunciarHora\nPROBLE"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23358,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = horaAddon\nsummary = Anuncia a hora atual do sistema\ndescription = Complemento para o NVDA que anuncia a hora atual ao pressionar NVDA+H.\nauthor = Seu Nome <seu@email.com>\nurl = https://github.com/seu-usuario/horaAddon\ndocFileName = userGuide.html\nversion = 1.0.0\nminimumNVD"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraPacote_e2e_20260804_182626",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraPacote_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/HoraAddon/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/HoraAddon/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 82.9,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

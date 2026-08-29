@@ -1,0 +1,975 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-17T10:27:30.327569",
+  "plan_id": "7f4e04fa",
+  "complexity": "",
+  "duration_seconds": 5074.14,
+  "total_tokens": 3930165,
+  "total_retries": 29,
+  "replan_count": 2,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s0",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Perguntar ao usuario como prefere acessar as funcoes do addon: menu Ferramentas do NVDA, atalhos de teclado globais, ou ambos. A resposta sera usada no code_generation do __init__.py raiz do AssistenteLeituraGemini.\n  Resposta: Use um atalho"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "[CACHE] Estou pesquisando a documentação oficial do SDK google-generativeai, verificando a versão mais recente, os métodos de autenticação, os modelos recomendados, a forma de habilitar a busca nativa, a configuração de geração, tratamento de erros e como obter o texto selecionado no NVDA.  \n\n**Paco"
+    },
+    {
+      "step_id": "s12",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 59774,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando o Google Gemini\ndescription = Assistente de leitura que resume textos selecionados, responde perguntas, pesquisa na web e salva histórico, usando a API do Google Gemini\nauthor = Seu Nome <seu@email.com>\n"
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 170382,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nEstou revisando o design do addon AssistenteLeituraGemini. Vou listar as suposições que podem estar erradas, os cenários de falha previstos e as ambiguidades que precisam ser resolvidas antes de escrever código. Depois,"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 90525,
+      "issues": [
+        "Faltam todas as 8 seções Community Access obrigatórias (Descricao, Responsabilidades, Regras de Comportamento, Entradas, Saidas, Invariantes, Referencias, Versao, Metadados).",
+        "O output contém apenas o código Python e um comentário indicando a ausência das seções, sem a estrutura de template exigida.",
+        "Há notas FIXME no output que não fazem parte do template final."
+      ],
+      "output_preview": "<!-- AVISO DE ESTRUTURA: secoes Community Access ausentes: Descricao, Responsabilidades, Regras de Comportamento, Entradas, Saidas, Invariantes, Referencias, Versao, Metadados — o Critic ira solicitar correcao -->\n\n# globalPlugins/AssistenteLeituraGemini/agent/prompts.py\n\n# Prompt templates for the "
+    },
+    {
+      "step_id": "s5",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 136094,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t\"\"\"\n\tAplica o schema de configuração para o addon AssistenteLeituraGemini.\n\tDeve ser chamado antes de qualquer acesso a config.conf[\"AssistenteLeituraGemini\"].\n\t\"\"\"\n\t_spec = {\n\t\t# Translato"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 414405,
+      "issues": [
+        "NVDA-003: client.py usa _() sem inicializar traduções; o placeholder `_ = lambda s: s` não traduz as mensagens, violando a regra de gettext.",
+        "Possível KeyError em config.conf[\"AssistenteLeituraGemini\"] se a seção não existir; usar config.conf.get() para robustez.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/gemini/__init__.py\n# Subpacote de integracao com a API do Google Gemini\n# Exporta a classe principal GeminiService\n\nfrom .client import GeminiService\n\n__all__ = [\"GeminiService\"]\n```\n\n```python:globalPlugins/AssistenteLeituraGemini/gemini/client.py\n# C"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 128829,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t_spec = {\n\t\t\"apiKey\": \"string(default='')\",\n\t\t\"responseLanguage\": \"string(default='pt_BR')\",\n\t\t\"enableWebSearch\": \"boolean(default=True)\",\n\t}\n\tif \"AssistenteLeituraGemini\" not in config.con"
+    },
+    {
+      "step_id": "at_fix",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 33637,
+      "issues": [],
+      "output_preview": "# AssistenteLeituraGemini\n\n## Descricao\nO AssistenteLeituraGemini é um addon NVDA que integra a API do Google Gemini para oferecer funcionalidades de leitura inteligente. Ele permite resumir o texto selecionado no foco atual, responder perguntas livres sobre esse texto, buscar informações adicionais"
+    },
+    {
+      "step_id": "cg_client",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 266265,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/client.py\nimport threading\nimport wx\nimport config\nfrom logHandler import log\nimport addonHandler\nimport ui\n\n# NVDA-003: Inicializar traduções corretamente - SEM placeholder lambda\naddonHandler.initTranslation()\n\n\nclass GeminiClient:\n\t\"\"\"Serviço de int"
+    },
+    {
+      "step_id": "sv_settings",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "sv_client",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "ar1",
+      "step_type": "agent_runner",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 92,
+      "retries_used": 2,
+      "tokens_used": 131652,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/agent/runner.py\n# -*- coding: utf-8 -*-\n\"\"\"Runner do agente AssistenteLeituraGemini - orquestra chamadas ao Google Gemini.\"\"\"\n\nimport os\nimport json\nimport threading\nimport wx\nimport ui\nimport config\nimport NVDAState\nfrom logHandler import log\nfrom typ"
+    },
+    {
+      "step_id": "cg_summarizer",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 265188,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/summarizer/__init__.py\n# AssistenLeituraGemini - Subpacote summarizer\n# Modulo principal que expoe a interface publica do servico de resumo\n\nfrom .service import SummarizerService, ResumoResult\n\n__all__ = [\"SummarizerService\", \"ResumoResult\"]\n```\n\n```p"
+    },
+    {
+      "step_id": "cg_web_search",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 264072,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/web_search/__init__.py\n# Subpacote web_search - busca web complementar com Gemini\n# Este modulo expoe a classe WebSearchService para uso pelo addon\n\nfrom .service import WebSearchService\n\n__all__ = [\"WebSearchService\"]\n```\n\n```python:globalPlugins/Assi"
+    },
+    {
+      "step_id": "cg_qa",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 265647,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/qa/__init__.py\n# Subpacote qa: dialogo de perguntas e respostas sobre o texto selecionado.\n# Este modulo expoe a classe PerguntaDialog e o servico PerguntaService.\nfrom .dialog import PerguntaDialog\nfrom .service import PerguntaService\n\n__all__ = [\"Per"
+    },
+    {
+      "step_id": "cg_history",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 543848,
+      "issues": [
+        "Erro de sintaxe no dialog.py: a linha 'self._lista.Bind(wx.EVT_LISTBOX, _on_selecao_mudou)' está fora de qualquer método, no nível da classe, causando SyntaxError.",
+        "O bind de EVT_LISTBOX deveria estar dentro do __init__ para que a seleção atualize o painel de resposta.",
+        "Falta import de gettext para usar _() (embora possa ser definido globalmente pelo addon, não está presente no código)."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/history/__init__.py\n# Subpacote history: gerencia historico de interacoes com o Gemini\n# Este arquivo serve apenas como marcador de pacote\n```\n\n```python:globalPlugins/AssistenteLeituraGemini/history/service.py\nimport json\nimport threading\nimport wx\nfr"
+    },
+    {
+      "step_id": "sv_summarizer",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Não realizou a validação de sintaxe solicitada, retornando apenas SKIP sem justificativa adequada",
+        "Não extraiu o código Python do input comprimido, mesmo havendo trechos de código no contexto",
+        "Não reportou erros de sintaxe, imports faltantes ou problemas de indentação"
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "sv_web_search",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "O agente pulou a validação de sintaxe mesmo havendo código Python no contexto (__init__.py, service.py).",
+        "Não analisou nenhum arquivo Python e não reportou erros de sintaxe ou problemas estruturais.",
+        "O output é apenas um SKIP sem justificativa válida, ignorando a correção obrigatória solicitada."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "sv_client",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output é apenas 'RESULTADO: SKIP' sem nenhuma validação real de sintaxe",
+        "Não foi fornecida análise de SyntaxError, imports faltantes ou problemas de indentação",
+        "O contexto continha código Python do step anterior que deveria ter sido validado"
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_dialog_fix",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 264589,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/qa/dialog.py\nimport gettext\nimport wx\nimport gui\nimport ui\nfrom gui.message import MessageDialog\nfrom gui import guiHelper\n\n_ = gettext.gettext\n\n\nclass HistoricoDialog(wx.Dialog):\n\t\"\"\"Diálogo para visualizar histórico de perguntas e respostas.\"\"\"\n\n\tdef"
+    },
+    {
+      "step_id": "cg_history",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 402133,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/history/__init__.py\nimport config\nimport NVDAState\nfrom logHandler import log\nfrom typing import List, Dict, Any\nfrom datetime import datetime\n\n# Nome da secao de configuracao - DEVE ser identico ao name do manifest.ini\n_HISTORICO_SECAO = \"AssistenteLe"
+    },
+    {
+      "step_id": "sv_qa",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "sv_history",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Agente retornou SKIP sem processar o código Python disponível no contexto",
+        "Não realizou a validação de sintaxe solicitada",
+        "Não verificou se o bind de wx.EVT_LISTBOX está dentro do __init__"
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 412524,
+      "issues": [
+        "Erro de execucao real (import/instanciacao): en importlib._bootstrap>\", line 690, in _load_unlocked\n  File \"<frozen importlib._bootstrap_external>\", line 940, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 241, in _call_with_frames_removed\n  File \"C:\\Users\\olive\\AppData\\Local\\Temp\\nvdastudio_execcheck_f_5q4xn8\\globalPlugins\\AssistenteLeituraGemini\\__init__.py\", line 12, in <module>\n    from .cg_settings.configSpec import apply_config_spec\nModuleNotFoundError: No module named 'globalPlugins.AssistenteLeituraGemini.cg_settings'\n",
+        "Erro de execucao real (import/instanciacao): \", line 1147, in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 690, in _load_unlocked\n  File \"<frozen importlib._bootstrap_external>\", line 940, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 241, in _call_with_frames_removed\n  File \"C:\\Users\\olive\\AppData\\Local\\Temp\\nvdastudio_execcheck_fft9qwsc\\globalPlugins\\AssistenteLeituraGemini\\__init__.py\", line 11, in <module>\n    from gui.message import MessageDialog\nModuleNotFoundError: No module named 'gui.message'\n",
+        "Erro de execucao real (import/instanciacao): ad_unlocked\n  File \"<frozen importlib._bootstrap>\", line 690, in _load_unlocked\n  File \"<frozen importlib._bootstrap_external>\", line 940, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 241, in _call_with_frames_removed\n  File \"C:\\Users\\olive\\AppData\\Local\\Temp\\nvdastudio_execcheck_3qo9s_c5\\globalPlugins\\AssistenteLeituraGemini\\__init__.py\", line 9, in <module>\n    from gui.message import MessageDialog, DefaultButtonSet, ReturnCode\nModuleNotFoundError: No module named 'gui.message'\n"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/__init__.py\nimport wx\nimport gui\nimport ui\nimport addonHandler\nimport globalPluginHandler\nimport config\nfrom scriptHandler import script\nfrom gui.settingsDialogs import NVDASettingsDialog\nfrom gui.message import MessageDialog, DefaultButtonSet, ReturnC"
+    },
+    {
+      "step_id": "tg_tests",
+      "step_type": "test_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 40925,
+      "issues": [],
+      "output_preview": "```python:tests/test_gemini_integration.py\nimport sys\nimport types\nimport unittest\nfrom unittest.mock import MagicMock, patch\n\n# Mockar módulos NVDA antes de importar o addon\nui = MagicMock()\napi = MagicMock()\nconfig = MagicMock()\nwx = MagicMock()\nspeech = MagicMock()\nnvwave = MagicMock()\ntones = Ma"
+    },
+    {
+      "step_id": "aa_audit",
+      "step_type": "accessibility_audit",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Timeout: step excedeu 180s."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "doc_guide",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 39676,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AssistenteLeituraGemini</title>\n<style>\nbody{font-family:sans-serif;max-width:800px;margin:auto;padding:1em;}\nkbd{background:#eee;border:1px solid #ccc;padding:2px 6px;border-radius:3px;}\ntable{"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 1 pergunta(s) adicionais."
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "APROVADO",
+      "agent_template"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "APROVADO",
+      "agent_runner"
+    ],
+    [
+      "PARALELO",
+      "4"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "5"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "test_generation"
+    ],
+    [
+      "AVALIANDO",
+      "test_generation"
+    ],
+    [
+      "APROVADO",
+      "test_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "documentation"
+    ],
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteLeituraGemini_20260817_115204",
+  "files_saved": [
+    "configSpec.py",
+    "settings_panel.py",
+    "client.py",
+    "__init__.py",
+    "service.py",
+    "__init__.py",
+    "service.py",
+    "__init__.py",
+    "service.py",
+    "dialog.py",
+    "__init__.py",
+    "dialog.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html",
+    "runner.py"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteLeituraGemini.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AssistenteLeituraGemini/client.py",
+    "globalPlugins/AssistenteLeituraGemini/configSpec.py",
+    "globalPlugins/AssistenteLeituraGemini/settings_panel.py",
+    "globalPlugins/AssistenteLeituraGemini/agent/runner.py",
+    "globalPlugins/AssistenteLeituraGemini/history/dialog.py",
+    "globalPlugins/AssistenteLeituraGemini/history/__init__.py",
+    "globalPlugins/AssistenteLeituraGemini/qa/dialog.py",
+    "globalPlugins/AssistenteLeituraGemini/qa/service.py",
+    "globalPlugins/AssistenteLeituraGemini/qa/__init__.py",
+    "globalPlugins/AssistenteLeituraGemini/summarizer/service.py",
+    "globalPlugins/AssistenteLeituraGemini/summarizer/__init__.py",
+    "globalPlugins/AssistenteLeituraGemini/web_search/service.py",
+    "globalPlugins/AssistenteLeituraGemini/web_search/__init__.py"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-008: Pasta globalPlugins/AssistenteLeituraGemini/ tem arquivos .py mas nao tem __init__.py. O NVDA so carrega __init__.py como GlobalPlugin — module_1.py, servicos e outros modulos sao ignorados. Renomeie o arquivo principal para __init__.py ou crie __init__.py com from .module_1 import *.",
+    "NVDA-015: globalPlugins\\AssistenteLeituraGemini\\client.py: usa config.conf sem config.conf.spec. Crie configSpec.py.",
+    "NVDA-015: globalPlugins\\AssistenteLeituraGemini\\settings_panel.py: usa config.conf sem config.conf.spec. Crie configSpec.py.",
+    "NVDA-015: globalPlugins\\AssistenteLeituraGemini\\qa\\service.py: usa config.conf sem config.conf.spec. Crie configSpec.py.",
+    "NVDA-015: globalPlugins\\AssistenteLeituraGemini\\summarizer\\service.py: usa config.conf sem config.conf.spec. Crie configSpec.py.",
+    "NVDA-028: globalPlugins\\AssistenteLeituraGemini\\qa\\dialog.py: usa Optional/Union. Use X | None e X | Y nativos.",
+    "NVDA-042: globalPlugins\\AssistenteLeituraGemini\\history\\dialog.py: _() para string com contagem. Use ngettext().",
+    "NVDA-049: globalPlugins\\AssistenteLeituraGemini\\history\\dialog.py: wx.MessageDialog proibido. Use gui.message.MessageDialog."
+  ],
+  "has_init_py": false,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/configSpec.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/settings_panel.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/client.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/summarizer/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/summarizer/service.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/web_search/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/web_search/service.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/qa/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/qa/service.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/qa/dialog.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/history/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/history/dialog.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteLeituraGemini/agent/runner.py"
+    },
+    {
+      "language": "python",
+      "filename": "tests/test_gemini_integration.py"
+    },
+    {
+      "language": "python",
+      "filename": "tests/test_history.py"
+    }
+  ],
+  "avg_score": 64.7,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code",
+    "qwen3.5:397b"
+  ]
+}

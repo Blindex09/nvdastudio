@@ -1,0 +1,248 @@
+{
+  "addon_name": "HoraAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado HoraAddon que anuncia a hora atual ao pressionar NVDA+Shift+H. Use ui.message() para anunciar. Inclua addonHandler.initTranslation() e terminate(). Inclua manifest.in",
+  "timestamp": "2026-05-24T20:21:44.176841",
+  "plan_id": "cbae13f0",
+  "complexity": "Plano criado com 6 etapas. Iniciando...",
+  "duration_seconds": 484.46,
+  "total_tokens": 208507,
+  "total_retries": 5,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 20477,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = Anuncia a hora atual ao pressionar NVDA+Shift+H\ndescription = Addon para NVDA que permite ao usuario ouvir a hora atual atraves de um atalho de teclado simples.\nauthor = NVDAStudio <contato@nvdastudio.com>\nurl = https://github.com/nvdastudio/horaaddon\nv"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 92,
+      "retries_used": 1,
+      "tokens_used": 59305,
+      "issues": [],
+      "output_preview": "Aqui estao os artefatos corrigidos e completos do addon HoraAddon.\n\n```ini:manifest.ini\nname = horaAddon\nsummary = Anuncia a hora atual\ndescription = Addon que anuncia a hora atual ao pressionar NVDA+Shift+H\nauthor = NVDAStudio <nvda@example.com>\nurl = https://github.com/usuario/horaAddon\ndocFileNam"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "O step syntax_validation retornou SKIP sem executar validação sintática real, falhando em seu objetivo principal.",
+        "O contexto indica artefatos Python (__init__.py) gerados no step anterior, mas o agente não conseguiu localizar/extrair blocos Python para validar.",
+        "Confianca reduzida: score 60 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 92,
+      "retries_used": 0,
+      "tokens_used": 25555,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>HoraAddon</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; border-radius: 3px; }\n"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 77733,
+      "issues": [
+        "O output menciona diversos itens de acessibilidade (gestos, ui.message, ciclo de vida, initTranslation, manifest, documentação) mas não identifica nenhuma regra pelo ID do framework (NVDA-001..018 ou WX-A11Y-001..014).",
+        "Não conclui explicitamente que o código auditado não tem violações encontradas, nem vincula os itens listados aos IDs obrigatórios, caracterizando 'problemas sem IDs'.",
+        "Confianca reduzida: score 65 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "RELATORIO DE AUDITORIA - HoraAddon\n\n**Artefatos fornecidos:** Apenas um trecho parcial de código contendo a linha `error(\"Erro ao anunciar hora: %s\", exc, exc_info=True)`. Os arquivos completos (`globalPlugins/HoraAddon/__init__.py`, `manifest.ini`, `doc/pt_BR/userGuide.html`) não foram disponibiliz"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25437,
+      "issues": [],
+      "output_preview": "=== RESUMO ===\n\nFoi criado o addon HoraAddon, um GlobalPlugin para o NVDA que anuncia a hora atual ao pressionar NVDA+Shift+H. O pacote inclui o codigo Python principal, o manifesto de compatibilidade e a documentacao em portugues do Brasil.\n\n=== ARQUIVOS DO ADDON ===\n\n```python:globalPlugins/HoraAd"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "PLANO_CRIADO",
+      "Plano criado com 6 etapas. Iniciando..."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Criando o codigo do addon que anuncia a hora, Montando o manifesto do addon"
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o codigo do addon que anuncia a hora..."
+    ],
+    [
+      "EXECUTANDO",
+      "Montando o manifesto do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Conferindo as informacoes do manifesto..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo segue as diretrizes do NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "CORRIGINDO",
+      "Ajustando o codigo para corrigir os problemas encontrados..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo segue as diretrizes do NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Verificando sintaxe do codigo gerado..."
+    ],
+    [
+      "AVALIANDO",
+      "Analisando resultado da validacao de sintaxe..."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Revisando a acessibilidade do addon, Escrevendo a documentacao do usuario.."
+    ],
+    [
+      "EXECUTANDO",
+      "Revisando a acessibilidade do addon..."
+    ],
+    [
+      "EXECUTANDO",
+      "Escrevendo a documentacao do usuario..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o addon e acessivel e seguro..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "CORRIGINDO",
+      "Revisando o codigo com base nos problemas de acessibilidade..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o addon e acessivel e seguro..."
+    ],
+    [
+      "CORRIGINDO",
+      "Revisando o codigo com base nos problemas de acessibilidade..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o addon e acessivel e seguro..."
+    ],
+    [
+      "EXECUTANDO",
+      "Montando os arquivos do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar correto..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "MONTANDO",
+      "Estamos montando o HoraAddon para voce. So um instante..."
+    ],
+    [
+      "CONCLUIDO",
+      "Pronto! Criei o HoraAddon. Ao pressionar NVDA+Shift+H, o NVDA anuncia a hora atual em portugues. O a"
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraAddon_e2e_20260524_202948",
+  "files_saved": [
+    "manifest.ini",
+    "__init__.py",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/HoraAddon/__init__.py"
+  ],
+  "struct_problems": [
+    "POLITICA-001: minimumNVDAVersion = 2025.3.3 abaixo do baseline oficial do projeto (2026.1). Remova compatibilidade legado.",
+    "POLITICA-002: lastTestedNVDAVersion = 2025.3.3 abaixo do baseline oficial do projeto (2026.1). Atualize o manifest."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/HoraAddon/__init__.py"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 64.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

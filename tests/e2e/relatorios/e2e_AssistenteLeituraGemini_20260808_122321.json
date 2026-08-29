@@ -1,0 +1,199 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-08T10:58:58.545759",
+  "plan_id": "62a9d116",
+  "complexity": "",
+  "duration_seconds": 5062.85,
+  "total_tokens": 122242,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 92553,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSUPOSICOES QUE PODEM ESTAR ERRADAS:\n\n1. Assumir que o texto selecionado no foco atual e sempre obtivel via api.getFocusObject(). Na pratica, muitos objetos de foco (janelas, botoes, listas, paineis) nao expoem selecao d"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 3680,
+      "issues": [
+        "Output e um bloco de codigo Python (```python:arquivo.py```), nao texto de pesquisa. web_research nunca escreve o addon -- isso e responsabilidade do step code_generation, separado."
+      ],
+      "output_preview": "```python:module_1.py\nimport google.generativeai as genai\ngenai.configure(api_key=\"SUA_CHAVE_AQUI\")\nmodel = genai.GenerativeModel(\"gemini-1.5-flash\")\nresponse = model.generate_content(\"Resuma este texto em português:\", tools=[\"google_search\"])\nprint(response.text)\n```"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "agent_template",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26009,
+      "issues": [],
+      "output_preview": "# Agente de Leitura Gemini\n\nAgente de leitura com IA que resume, responde perguntas e pesquisa na web usando a API do Google Gemini, integrado ao addon NVDA AssistenteLeituraGemini.\n\n## Descricao\nVoce e o Agente de Leitura Gemini, o nucleo de inteligencia do addon NVDA\nAssistenteLeituraGemini. Sua f"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "agent_runner",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output não contém código Python com a classe AgentRunner.",
+        "Ausência dos métodos run() e reset_session().",
+        "Apenas relata avisos de estrutura ausente e um erro de execução, sem entregar a implementação solicitada."
+      ],
+      "output_preview": "# AVISO DE ESTRUTURA — itens obrigatorios ausentes detectados:\n# [AVISO-ESTRUTURA] Ausente: reset_session() publico\n# [AVISO-ESTRUTURA] Ausente: _fallback_chain definido\n# [AVISO-ESTRUTURA] Ausente: cliente LLM importado lazy em run()\n# [AVISO-ESTRUTURA] Ausente: try/except em chamada externa\n# [AVI"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Timeout: step excedeu 1200s."
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "APROVADO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 38.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

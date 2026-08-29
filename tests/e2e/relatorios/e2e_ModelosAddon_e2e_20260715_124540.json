@@ -1,0 +1,114 @@
+{
+  "addon_name": "ModelosAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA simples que anuncia o titulo da janela em foco ao pressionar NVDA+T.",
+  "timestamp": "2026-07-15T12:40:33.789822",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 306.35,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s4",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s5",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "addon_name": "SimbolosGrecos_e2e",
+  "query": "Crie um addon NVDA chamado 'SimbolosGrecos' que adiciona pronuncia de letras gregas ao NVDA para usuários de matematica e ciencia. O addon DEVE: 1) Criar arquivo locale/en/symbols-greek.dic com:    a)",
+  "timestamp": "2026-07-21T17:23:38.134044",
+  "plan_id": "d20f5ae5",
+  "duration_seconds": 299.94,
+  "total_tokens": 215078,
+  "total_retries": 2,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 98.8,
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 100,
+      "retries_used": 2,
+      "tokens_used": 104959,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22410,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 34969,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 27107,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25633,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "dictionary_data.py",
+    "symbols-greek.dic",
+    "SimbolosGrecos.dic",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/SimbolosGrecos/dictionary_data.py",
+    "globalPlugins/SimbolosGrecos/__init__.py",
+    "locale/en/symbols-greek.dic",
+    "speechDicts/SimbolosGrecos.dic"
+  ],
+  "struct_problems": [
+    "NVDA-046: speechDicts/ existe mas manifest.ini sem [speechDictionaries]."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

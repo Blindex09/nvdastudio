@@ -1,0 +1,81 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-07T21:07:22.651743",
+  "plan_id": "6c16678c",
+  "complexity": "",
+  "duration_seconds": 1320.43,
+  "total_tokens": 281031,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s7",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 23470,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando o Google Gemini\ndescription = Assistente de leitura com IA que usa a API do Google Gemini para resumir o texto selecionado, responder perguntas livres sobre o conteudo, complementar respostas com busca w"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output é código Python, não resultados de pesquisa web",
+        "Nenhuma informação factual ou relevante sobre NVDA, addons ou tópico solicitado",
+        "Ignora as correções obrigatórias que pediam dados concretos e fontes"
+      ],
+      "output_preview": "```python:__init__.py\nimport globalPluginHandler\nimport ui\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n    def script_helloWorld(self, gesture):\n        ui.message(\"Olá, mundo!\")\n    __gestures = {\"kb:NVDA+h\": \"helloWorld\"}\n```"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 90907,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSUPOSICOES QUE PODEM ESTAR ERRADAS\n\n1. O formato da API do Gemini está sendo tratado como fato consolidado. O design assume a \"Interactions API\" (POST /v1/interactions) com parsing de response[\"output_text\"], mas essa é"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 166654,
+      "issues": [
+        "Critic retornou vazio ou sem JSON reconhecivel."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t\"\"\"Registra a especificação de configuração do addon no config.conf do NVDA.\"\"\"\n\t_spec = {\n\t\t\"apiKey\": \"string(default='')\",\n\t\t\"responseLanguage\": \"string(default='pt-BR')\",\n\t\t\"enableWebSea"
+    }
+  ],
+  "events": [],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 47.5,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

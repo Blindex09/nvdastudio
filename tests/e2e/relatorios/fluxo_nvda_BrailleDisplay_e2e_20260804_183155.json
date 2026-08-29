@@ -1,0 +1,26 @@
+{
+  "addon_name": "BrailleDisplay_e2e",
+  "query": "Crie um BrailleDisplayDriver NVDA completo chamado 'MeuBraille' para um display braille de 40 celulas. O driver deve: 1) Herdar de braille.BrailleDisplayDriver com name='meu_braille', description='Meu",
+  "timestamp": "2026-08-04T18:31:55.161679",
+  "plan_id": "?",
+  "duration_seconds": 0.0,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "Chave API para ollama nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio.",
+  "avg_score": 0.0,
+  "steps": [],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

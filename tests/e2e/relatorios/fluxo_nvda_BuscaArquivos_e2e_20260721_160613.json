@@ -1,0 +1,128 @@
+{
+  "addon_name": "BuscaArquivos_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'BuscaArquivos' que busca texto em arquivos do computador ao pressionar NVDA+shift+F, processa em thread separada para nao travar o NVDA, e exibe os resultados em dia",
+  "timestamp": "2026-07-21T15:47:26.419776",
+  "plan_id": "d25d6f9a",
+  "duration_seconds": 1126.82,
+  "total_tokens": 325678,
+  "total_retries": 9,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "avg_score": 56.4,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21902,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 111337,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de TABS. Todo o código Python do addon deve usar tabs (NVDA coding standard).",
+        "Em search_service.py, o método _search_in_file captura Exception e passa silenciosamente sem logar. Embora não seja uma violação direta de NVDA-012 (que exige except: bare), é uma má prática que dificulta depuração. Considere adicionar log.debug ou log.exception.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ]
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 45861,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Agent incorrectly reported no Python blocks found despite presence of Python code in input.",
+        "Agent skipped syntax validation when it should have validated the provided Python code."
+      ]
+    },
+    {
+      "step_id": "s5",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27083,
+      "issues": []
+    },
+    {
+      "step_id": "s6",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 35027,
+      "issues": []
+    },
+    {
+      "step_id": "s7",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 84468,
+      "issues": [
+        "WX-A11Y-004: wx.Dialog sem StdDialogButtonSizer nem handler de tecla Escape. Adicione SetEscapeId(wx.ID_CANCEL) ou crie StdDialogButtonSizer.",
+        "WX-A11Y-013: EVT_KEY_DOWN em ListBox pode conflitar com leitores de tela. Use EVT_CHAR_HOOK ou EVT_LISTBOX_DCLICK para Enter.",
+        "NVDA-012: except Exception sem log em _on_abrir_arquivo. Adicione log.exception() para registrar o erro."
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "search_service.py",
+    "__init__.py",
+    "installTasks.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/BuscaArquivos/search_service.py",
+    "globalPlugins/BuscaArquivos/__init__.py",
+    "globalPlugins/BuscaArquivos_e2e/installTasks.py"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-008: Pasta globalPlugins/BuscaArquivos_e2e/ tem arquivos .py mas nao tem __init__.py. O NVDA so carrega __init__.py como GlobalPlugin — module_1.py, servicos e outros modulos sao ignorados. Renomeie o arquivo principal para __init__.py ou crie __init__.py com from .module_1 import *."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

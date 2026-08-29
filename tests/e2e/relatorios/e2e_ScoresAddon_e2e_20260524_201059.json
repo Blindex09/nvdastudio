@@ -1,0 +1,229 @@
+{
+  "addon_name": "ScoresAddon_e2e",
+  "query": "Crie um addon NVDA que monitora o clipboard e anuncia quando o conteudo muda.",
+  "timestamp": "2026-05-24T20:04:11.023203",
+  "plan_id": "c1724cb4",
+  "complexity": "Plano criado com 6 etapas. Iniciando...",
+  "duration_seconds": 408.65,
+  "total_tokens": 149776,
+  "total_retries": 1,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 19200,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ClipboardMonitor\nsummary = Monitor de area de transferencia para NVDA\ndescription = Este addon monitora o clipboard do Windows e anuncia automaticamente quando o conteudo da area de transferencia e alterado, permitindo ao usuario acompanhar mudancas de texto e arquivos cop"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 28395,
+      "issues": [],
+      "output_preview": "Aqui esta o arquivo completo do GlobalPlugin.\n\n```python:globalPlugins/ClipboardMonitor/__init__.py\nimport wx\nimport ui\nimport globalPluginHandler\nimport addonHandler\nfrom logHandler import log\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tdef __init__(self,"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26447,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ClipboardMonitor - Guia do Usuario</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6p"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 52582,
+      "issues": [],
+      "output_preview": "Nenhuma violação encontrada nas regras NVDA-001..018 e WX-A11Y-001..014."
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 23152,
+      "issues": [],
+      "output_preview": "=== RESUMO ===\n\nAddon ClipboardMonitor criado. Monitora a area de transferencia do Windows via timer wx a cada 500 milissegundos e anuncia pelo NVDA quando o texto muda, truncando em 150 caracteres. Estrutura completa com GlobalPlugin, manifest.ini e documentacao HTML prontos para empacotamento.\n\n=="
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "PLANO_CRIADO",
+      "Plano criado com 6 etapas. Iniciando..."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Criando o codigo do monitor de clipboard, Criando o manifesto do addon..."
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o codigo do monitor de clipboard..."
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o manifesto do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Conferindo as informacoes do manifesto..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo funciona corretamente com o NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Verificando sintaxe do codigo gerado..."
+    ],
+    [
+      "AVALIANDO",
+      "Analisando resultado da validacao de sintaxe..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Revisando a acessibilidade do monitor de clipboard, Escrevendo a documentac"
+    ],
+    [
+      "EXECUTANDO",
+      "Revisando a acessibilidade do monitor de clipboard..."
+    ],
+    [
+      "EXECUTANDO",
+      "Escrevendo a documentacao do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o anuncio nao interfere na navegacao..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "CORRIGINDO",
+      "Ajustando a logica de anuncio com base nos problemas encontrados..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o anuncio nao interfere na navegacao..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Montando os arquivos do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao nos lugares corretos..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "MONTANDO",
+      "Montando o addon de monitoramento do clipboard..."
+    ],
+    [
+      "CONCLUIDO",
+      "Pronto! Criei o ClipboardMonitor. O addon monitora o clipboard em tempo real e anuncia automaticamen"
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ScoresAddon_e2e_20260524_201059",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ScoresAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ClipboardMonitor/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/ClipboardMonitor/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 98.8,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

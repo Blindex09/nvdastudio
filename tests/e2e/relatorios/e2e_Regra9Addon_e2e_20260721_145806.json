@@ -1,0 +1,123 @@
+{
+  "addon_name": "Regra9Addon_e2e",
+  "query": "Crie GlobalPlugin NVDA com acesso ao sistema de arquivos para listar a pasta do usuario. Atalho NVDA+L.",
+  "timestamp": "2026-07-21T14:47:30.454379",
+  "plan_id": "74b7bc0c",
+  "complexity": "",
+  "duration_seconds": 635.97,
+  "total_tokens": 0,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21674,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ListadorPastaUsuario\nsummary = Lista o conteudo da pasta do usuario\ndescription = Este addon adiciona um atalho NVDA+L para listar os arquivos e pastas dentro do diretorio do usuario atual, exibindo o resultado em uma mensagem falada.\nversion = 1.0.0\nauthor = Seu Nome <seu"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 104506,
+      "issues": [
+        "Código Python presente, mas incompleto: falta a definição da classe (GlobalPlugin ou AppModule) e os imports necessários (os, threading, wx, ui).",
+        "Uso de constante SCRCAT_TOOLS não definida no trecho fornecido.",
+        "A estrutura do script está parcial, sem a classe que contém o método script_listarPastaUsuario."
+      ],
+      "output_preview": "```python:globalPlugins/ListadorPastaUsuario/__init__.py\nimport os\nimport threading\nimport wx\nimport ui\nimport addonHandler\nimport globalPluginHandler\nfrom scriptHandler import script, SCRCAT_TOOLS\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory"
+    },
+    {
+      "step_id": "s2_manifest",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 43325,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ListadorPastaUsuario\nsummary = Lista o conteudo da pasta do usuario\ndescription = Este addon adiciona um atalho NVDA+L para listar os arquivos e pastas dentro da pasta do usuario atual, exibindo o resultado em uma janela de texto.\nversion = 1.0.0\nauthor = Seu Nome <seuemai"
+    },
+    {
+      "step_id": "s1_code",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 100,
+      "retries_used": 2,
+      "tokens_used": 105939,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ListadorPastaUsuario/__init__.py\nimport os\nimport threading\nimport wx\nimport ui\nimport globalPluginHandler\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"ListadorPa"
+    },
+    {
+      "step_id": "s3_syntax",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4_docs",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 26912,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ListadorPastaUsuario - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2p"
+    },
+    {
+      "step_id": "s5_audit",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 33729,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE\n\nREGRA: NVDA-009  SEVERIDADE: Moderado  LOCAL: globalPlugins/ListadorPastaUsuario/__init__.py, linha do decorator @script(gesture=\"kb:NVDA+L\")\nPROBLEMA: O atalho NVDA+L ja e usado pelo proprio NVDA como atalho padrao para abrir a lista de comandos (input help"
+    },
+    {
+      "step_id": "s6_assembly",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 24031,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ListadorPastaUsuario/__init__.py\nimport os\nimport threading\nimport wx\nimport ui\nimport globalPluginHandler\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"ListadorPa"
+    }
+  ],
+  "events": [],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 86.9,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

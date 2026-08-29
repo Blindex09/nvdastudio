@@ -1,0 +1,187 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-08T18:25:34.595103",
+  "plan_id": "4a9a0d30",
+  "complexity": "",
+  "duration_seconds": 430.04,
+  "total_tokens": 307850,
+  "total_retries": 8,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque o arquivo manifest.ini não foi gerado e aprovado.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Perguntar ao usuário qual ponto de entrada prefere para as quatro funções do addon: menu Ferramentas do NVDA, atalhos globais de teclado, ou ambos.\n  Resposta: Use um atalho NVDA+Shift+<letra> para a acao principal, e um item no menu Ferrame"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "web_research",
+      "model_used": "opencode_go/gpt-5.6-luna",
+      "approved": true,
+      "score": 95,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "**Pacote:** `google-generativeai` (SDK legado da API Gemini; para projetos novos, o Google recomenda `google-genai`)\n\n**Versao estavel:** `0.8.5` para `google-generativeai` (versao conhecida no treinamento; confirme no PyPI antes de fixar). O pacote legado pode não acompanhar imediatamente os modelo"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 98132,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSUPOSICOES QUE PODEM ESTAR ERRADAS\n\n1. Obter \"texto selecionado no foco atual\" de forma confiavel. O NVDA nao tem uma API universal de \"pegar a selecao atual\". A selecao so e acessivel de forma confiavel em objetos de t"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 126545,
+      "issues": [
+        "Nenhum código Python foi gerado; apenas mensagem de erro.",
+        "Não há classe GlobalPlugin/AppModule, imports ou qualquer artefato esperado."
+      ],
+      "output_preview": "[ERRO] O modelo nao produziu o codigo final apos esgotar as tentativas de uso de ferramentas."
+    },
+    {
+      "step_id": "s7",
+      "step_type": "agent_template",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 83173,
+      "issues": [],
+      "output_preview": "# Assistente de Leitura Gemini Agent\n\nAgente interno do addon AssistenteLeituraGemini que define as instruções de sistema para resumo, perguntas e respostas, busca web e formatação de histórico via Google Gemini.\n\n## Descricao\nVoce e o agente de IA interno do addon NVDA AssistenteLeituraGemini. Sua "
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 2 pergunta(s) adicionais."
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "APROVADO",
+      "agent_template"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 77.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code",
+    "opencode_go/gpt-5.6-luna"
+  ]
+}

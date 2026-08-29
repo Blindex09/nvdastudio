@@ -1,0 +1,139 @@
+{
+  "addon_name": "Regra9Addon_e2e",
+  "query": "Crie GlobalPlugin NVDA com acesso ao sistema de arquivos para listar a pasta do usuario. Atalho NVDA+L.",
+  "timestamp": "2026-07-21T15:13:33.433812",
+  "plan_id": "7fd0c4c8",
+  "complexity": "",
+  "duration_seconds": 455.3,
+  "total_tokens": 286396,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21773,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ListadorDeArquivos\nsummary = Lista o conteudo da pasta do usuario\ndescription = Addon para NVDA que permite listar rapidamente os arquivos e pastas do diretorio do usuario atual com o atalho NVDA+L, exibindo os resultados em uma janela acessivel.\nversion = 1.0.0\nauthor = N"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 101688,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ListadorDeArquivos/__init__.py\nimport os\nimport threading\nimport wx\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"Listador de"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 34581,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE E USABILIDADE\n\nAddon: Listador de Arquivos (GlobalPlugin)\nArquivo: globalPlugins/ListadorDeArquivos/__init__.py\n\n--- REGRAS VERIFICADAS ---\n\nNVDA-001 [Critico] nextHandler() em event handler\n  LOCAL: N/A — nao ha event handlers no codigo (apenas scripts).\n  R"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 54664,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>Listador de Arquivos – Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2p"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 73690,
+      "issues": [
+        "Missing import for 'gui' module. The code references gui.mainFrame but gui is not imported. This will cause a NameError at runtime.",
+        "ARCH-002: I/O operations (os.listdir, os.path.isdir) performed on the main thread without threading. Consider using threading.Thread to avoid blocking the UI.",
+        "NVDA-021: Indentation uses spaces instead of tabs. NVDA coding standard requires tabs. Convert indentation to tabs."
+      ],
+      "output_preview": "```python:globalPlugins/ListadorDeArquivos/__init__.py\n# -*- coding: utf-8 -*-\n# ListadorDeArquivos: addon para NVDA que lista o conteudo da pasta do usuario\n# Copyright (C) 2025 NVDAStudio\n# Licenciado sob GNU General Public License v2\n\nimport wx\nimport os\nimport globalPluginHandler\nimport addonHan"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\Regra9Addon_e2e_20260721_152108",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\Regra9Addon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ListadorDeArquivos/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 21: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/ListadorDeArquivos/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 81.7,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

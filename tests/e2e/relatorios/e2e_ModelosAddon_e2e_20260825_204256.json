@@ -1,0 +1,229 @@
+{
+  "addon_name": "ModelosAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA simples que anuncia o titulo da janela em foco ao pressionar NVDA+T.",
+  "timestamp": "2026-08-25T20:30:59.917607",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 716.84,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio.",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 14.3,
+  "models_used": [
+    "gpt-oss:20b",
+    "qwen3.5:397b"
+  ]
+}

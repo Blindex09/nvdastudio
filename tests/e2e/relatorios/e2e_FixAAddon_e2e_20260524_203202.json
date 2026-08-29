@@ -1,0 +1,210 @@
+{
+  "addon_name": "FixAAddon_e2e",
+  "query": "Crie GlobalPlugin NVDA 'FixAAddon' com atalho NVDA+A. Salve o codigo em globalPlugins/fixAAddon/__init__.py. Inclua manifest.ini.",
+  "timestamp": "2026-05-24T20:27:13.345293",
+  "plan_id": "3ff0bb67",
+  "complexity": "Plano criado com 6 etapas. Iniciando...",
+  "duration_seconds": 288.6,
+  "total_tokens": 94654,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 19198,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = FixAAddon\nsummary = Corrige o comportamento da tecla A no NVDA\ndescription = Addon que corrige o comportamento da tecla A no NVDA, permitindo que o atalho NVDA+A funcione corretamente em todos os contextos sem conflitos com outros comandos do sistema.\nversion = 1.0.0\nautho"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 28006,
+      "issues": [],
+      "output_preview": "A tarefa solicitada usa o atalho NVDA+A, porem esse atalho e reservado pelo NVDA core para o comando Dizer Tudo Say All. A regra NVDA-009 proibe atalhos que conflitem com o nucleo do NVDA. Por isso, o atalho foi ajustado para NVDA+Shift+A. Se voce precisar de um atalho diferente, informe o desejado."
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26220,
+      "issues": [],
+      "output_preview": "Abaixo estao os guias do usuario em portugues e ingles para o addon FixAAddon.\n\n```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>FixAAddon - Guia do Usuario</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; paddin"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 21230,
+      "issues": [],
+      "output_preview": "=== RESUMO ===\n\nAddon FixAAddon criado como GlobalPlugin para o NVDA. Fornece um atalho global corrigido para NVDA+Shift+A, evitando conflito com o comando Dizer Tudo (Say All) do nucleo que usa NVDA+A. O pacote inclui o manifesto, o codigo principal e a documentacao do usuario em HTML.\n\n=== ARQUIVO"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "PLANO_CRIADO",
+      "Plano criado com 6 etapas. Iniciando..."
+    ],
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 2 pergunta(s) adicionais."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Criando o codigo do GlobalPlugin com o atalho NVDA+A, Criando o manifesto d"
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o codigo do GlobalPlugin com o atalho NVDA+A..."
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o manifesto do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Conferindo as informacoes do manifesto..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo funciona corretamente com o NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Verificando sintaxe do codigo gerado..."
+    ],
+    [
+      "AVALIANDO",
+      "Analisando resultado da validacao de sintaxe..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Escrevendo a documentacao do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Montando o addon FixAAddon com o atalho NVDA+A..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar correto..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "MONTANDO",
+      "Montando o addon FixAAddon com o atalho NVDA+A..."
+    ],
+    [
+      "CONCLUIDO",
+      "Pronto! Criei o FixAAddon, um GlobalPlugin para o NVDA que adiciona o atalho NVDA+A. O addon esta pr"
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\FixAAddon_e2e_20260524_203201",
+  "files_saved": [
+    "manifest.ini",
+    "__init__.py",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\FixAAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/fixAAddon/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 18: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/fixAAddon/__init__.py"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 98.3,
+  "models_used": [
+    "kimi-k2.6"
+  ]
+}

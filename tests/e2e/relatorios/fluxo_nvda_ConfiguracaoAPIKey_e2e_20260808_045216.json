@@ -1,0 +1,107 @@
+{
+  "addon_name": "ConfiguracaoAPIKey_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'ConfiguracaoAPIKey' que permite ao usuario configurar uma chave de API de traducao via painel de configuracoes do NVDA (SettingsPanel). O addon deve: 1) Registrar um",
+  "timestamp": "2026-08-08T04:41:22.024832",
+  "plan_id": "6a8abe4d",
+  "duration_seconds": 653.92,
+  "total_tokens": 220744,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 80.3,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23676,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 84323,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "O agente retornou SKIP alegando não haver bloco Python no input, mas o contexto do step anterior indica que código Python foi gerado (__init__.py, globalPlugins, settings_panel.py). A validação de sintaxe não foi executada."
+      ]
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 27501,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 92,
+      "retries_used": 0,
+      "tokens_used": 35955,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 49289,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "settings_panel.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ConfiguracaoAPIKey/settings_panel.py",
+    "globalPlugins/ConfiguracaoAPIKey/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-015: globalPlugins\\ConfiguracaoAPIKey\\settings_panel.py: usa config.conf sem config.conf.spec. Crie configSpec.py."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

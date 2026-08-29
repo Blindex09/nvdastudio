@@ -1,0 +1,460 @@
+{
+  "addon_name": "UtilitariosRapidos",
+  "query": "Crie um addon NVDA chamado UtilitariosRapidos com 3 funcionalidades independentes e simples, cada uma so lendo informacao ja disponivel no sistema (sem API externa, sem rede, sem tela de configuracoes",
+  "timestamp": "2026-08-17T17:40:42.951757",
+  "plan_id": "99c7d5ed",
+  "complexity": "",
+  "duration_seconds": 1713.45,
+  "total_tokens": 1016794,
+  "total_retries": 19,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "cg_datetime",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 125293,
+      "issues": [],
+      "output_preview": "import addonHandler\nimport ui\nimport scriptHandler\nimport datetime\n\naddonHandler.initTranslation()\n\n# Translators: Description of the script that announces the current date and time\n@scriptHandler.script(gesture=\"kb:NVDA+shift+h\", description=_(\"Anuncia a hora e data atuais\"))\ndef script_announce_da"
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 29632,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = UtilitariosRapidos\nsummary = Utilitários Rápidos\ndescription = Addon que anuncia hora, bateria e título da janela em três atalhos simples\nauthor = Seu Nome <seu@email.com>\nurl = https://github.com/usuario/UtilitariosRapidos\ndocFileName = userGuide.html\nversion = 1.0.0\nlast"
+    },
+    {
+      "step_id": "cg_window",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 3,
+      "tokens_used": 127078,
+      "issues": [],
+      "output_preview": "import addonHandler\naddonHandler.initTranslation()\n\nimport globalPluginHandler\nimport scriptHandler\nimport ui\nimport api\nimport winUser\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\\t@scriptHandler.script(gesture=\"kb:NVDA+shift+v\", description=_(\"Anuncia o nome da janela em primeiro plano\""
+    },
+    {
+      "step_id": "cg_battery",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 80,
+      "retries_used": 3,
+      "tokens_used": 125547,
+      "issues": [
+        "Caminho do arquivo incorreto: foi entregue como addon/__init__.py, mas o objetivo especifica globalPlugins/UtilitariosRapidos/battery_announcement/__init__.py",
+        "Comentários FIXME presentes no output final, devem ser removidos",
+        "Confianca reduzida: score 80 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:addon/__init__.py\nimport addonHandler\nimport gettext\nimport ctypes\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n_ = gettext.gettext\n\nclass _SYSTEM_POWER_STATUS(ctypes.Structure):\n\t_fields_ = [\n\t\t(\"ACLineStatus\", ctypes.c_byte),\n\t\t(\"BatteryFlag\", ctypes.c_byte)"
+    },
+    {
+      "step_id": "sv_datetime",
+      "step_type": "syntax_validation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "O agente retornou SKIP sem executar a validação de sintaxe solicitada.",
+        "Não verificou a existência do arquivo globalPlugins/UtilitariosRapidos/datetime_announcement/__init__.py.",
+        "Não usou ast.parse para validar o código."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "sv_window",
+      "step_type": "syntax_validation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "O agente retornou SKIP sem realizar a validação de sintaxe solicitada.",
+        "Não tentou obter o código do step anterior (cg_window) conforme instruções do FIXME.",
+        "Não forneceu evidência do input vazio (ex: conteúdo recebido ou mensagem de arquivo ausente)."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_battery_fix",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 128231,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/UtilitariosRapidos/battery_announcement/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass BatteryAnnouncement(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"UtilitariosRapidos\"\n"
+    },
+    {
+      "step_id": "sv_battery",
+      "step_type": "syntax_validation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 254024,
+      "issues": [],
+      "output_preview": "import addonHandler\naddonHandler.initTranslation()\n\nfrom .datetime_announcement import DatetimeAnnouncement\nfrom .battery_announcement import BatteryAnnouncement\nfrom .window_announcement import GlobalPlugin as WindowAnnouncement\n\nclass GlobalPlugin(DatetimeAnnouncement, BatteryAnnouncement, WindowA"
+    },
+    {
+      "step_id": "sv_core",
+      "step_type": "syntax_validation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output não é JSON válido",
+        "Não executou a validação de sintaxe com ast.parse",
+        "Ignorou o código Python fornecido no contexto"
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 38521,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>UtilitariosRapidos</title>\n<style>\nbody{font-family:sans-serif;max-width:800px;margin:auto;padding:1em;}\nkbd{background:#eee;border:1px solid #ccc;padding:2px 6px;border-radius:3px;}\ntable{borde"
+    },
+    {
+      "step_id": "audit1",
+      "step_type": "accessibility_audit",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 89132,
+      "issues": [],
+      "output_preview": "Nenhuma violacao encontrada nas regras NVDA-001..038, NVDA-040, NVDA-042..050, WX-A11Y-001..014 e DTK-A11Y-001..012."
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 99336,
+      "issues": [
+        "NVDA-030: battery_announcement/__init__.py e window_announcement/__init__.py referenciam globalPluginHandler.GlobalPlugin sem importar globalPluginHandler — NameError ao carregar o módulo.",
+        "NVDA-007: datetime_announcement/__init__.py define script_announce_datetime como função solta, não como método de classe GlobalPlugin — o NVDA não registra scripts de funções soltas; o atalho NVDA+Shift+H não funcionará.",
+        "NVDA-007: battery_announcement/__init__.py usa @script sem importar scriptHandler.script (ou scriptHandler) — NameError no decorator."
+      ],
+      "output_preview": "```python:globalPlugins/UtilitariosRapidos/datetime_announcement/__init__.py\nimport addonHandler\nimport scriptHandler\nimport ui\nimport datetime\n\naddonHandler.initTranslation()\n\n# Translators: Description of the script that announces the current date and time\n@scriptHandler.script(gesture=\"kb:NVDA+sh"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "4"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Revisando com mais cuidado o anunciador de janela..."
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Revisando com mais cuidado o anunciador de bateria..."
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "APROVADO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 65.0,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code",
+    "qwen3.5:397b"
+  ]
+}

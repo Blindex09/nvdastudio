@@ -1,0 +1,135 @@
+{
+  "addon_name": "TokensAddon_e2e",
+  "query": "Crie addon NVDA simples que anuncia o nome do processo em foco ao pressionar NVDA+P.",
+  "timestamp": "2026-08-08T03:39:41.871779",
+  "plan_id": "6411ad38",
+  "complexity": "",
+  "duration_seconds": 695.75,
+  "total_tokens": 324216,
+  "total_retries": 4,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 103340,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ProcessoEmFoco/__init__.py\nimport api\nimport ui\nimport addonHandler\nimport globalPluginHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\t\"\"\"GlobalPlugin que anuncia o nome do processo da janela em"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23599,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ProcessoEmFoco\nsummary = Anuncia o nome do processo da janela em foco\ndescription = Este addon anuncia o nome do processo da janela em foco ao pressionar NVDA+P, facilitando a identificação do aplicativo ativo em qualquer contexto.\nversion = 1.0.0\nauthor = NVDAStudio <cont"
+    },
+    {
+      "step_id": "aa_inj",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 34189,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE DA INTERFACE WX\nAddon: ProcessoEmFoco (GlobalPlugin que anuncia o nome do processo em foco ao pressionar NVDA+P)\n\nANALISE GERAL:\nO addon gerado e um GlobalPlugin puramente baseado em script. Nao contem nenhuma interface wx: nao ha wx.Dialog, wx.Frame, wx.Pane"
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27069,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ProcessoEmFoco - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px;"
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 2,
+      "tokens_used": 136019,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ProcessoEmFoco/__init__.py\nimport api\nimport ui\nimport addonHandler\nimport globalPluginHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\t\"\"\"GlobalPlugin que anuncia o nome do processo da janela em"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\TokensAddon_e2e_20260808_035117",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\TokensAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ProcessoEmFoco/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-042: globalPlugins\\ProcessoEmFoco\\__init__.py: _() para string com contagem. Use ngettext()."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/ProcessoEmFoco/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 96.7,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

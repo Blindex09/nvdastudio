@@ -1,0 +1,65 @@
+{
+  "addon_name": "RelatorioAddon_e2e",
+  "query": "Crie addon NVDA que anuncia 'Ola' ao pressionar NVDA+O.",
+  "timestamp": "2026-07-15T12:50:20.274828",
+  "plan_id": "bd621384",
+  "complexity": "",
+  "duration_seconds": 85.1,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 1,
+  "success": true,
+  "error": "Nenhum bloco de codigo coletado dos steps",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": [
+    "kimi-k2.6"
+  ]
+}

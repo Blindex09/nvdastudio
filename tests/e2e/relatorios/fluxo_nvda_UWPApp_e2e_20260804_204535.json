@@ -1,0 +1,103 @@
+{
+  "addon_name": "UWPApp_e2e",
+  "query": "Crie um AppModule NVDA para um aplicativo UWP (Universal Windows Platform) que roda em wwahost.exe. O AppModule deve: 1) Herdar de nvdaBuiltin.appModules.wwahost.AppModule (NAO de appModuleHandler.App",
+  "timestamp": "2026-08-04T20:43:14.134044",
+  "plan_id": "e5abd6f1",
+  "duration_seconds": 141.73,
+  "total_tokens": 167253,
+  "total_retries": 1,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 99.2,
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 33575,
+      "issues": []
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 44876,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26514,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 38063,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 24225,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "wwahost.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "appModules/wwahost.py",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-003: Pasta globalPlugins/ ausente."
+  ],
+  "has_init_py": false,
+  "has_manifest": true,
+  "has_doc": true
+}

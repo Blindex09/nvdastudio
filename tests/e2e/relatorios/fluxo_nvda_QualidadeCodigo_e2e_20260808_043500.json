@@ -1,0 +1,112 @@
+{
+  "addon_name": "QualidadeCodigo_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'MonitorRecursos' que monitora uso de CPU e memoria RAM, anunciando ao pressionar NVDA+shift+M. O plugin deve: 1) Usar logHandler.log para registrar eventos — nunca p",
+  "timestamp": "2026-08-08T04:28:19.670325",
+  "plan_id": "a8f2537b",
+  "duration_seconds": 400.83,
+  "total_tokens": 212121,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 78.7,
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 92,
+      "retries_used": 0,
+      "tokens_used": 39549,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "O step de syntax_validation retornou SKIP sem validar o código Python gerado no step anterior, apesar de existir código Python no contexto (ex: __init__.py, resource_monitor.py).",
+        "A validação sintática não foi executada, o que pode permitir erros de sintaxe passarem despercebidos."
+      ]
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 48690,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 68935,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26936,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 28011,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "resource_monitor.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html",
+    "__init__.py",
+    "README.txt"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/MonitorRecursos/resource_monitor.py",
+    "globalPlugins/MonitorRecursos/__init__.py",
+    "lib/README.txt",
+    "lib/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-012: globalPlugins\\MonitorRecursos\\resource_monitor.py: except: bare. Especifique a excecao."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

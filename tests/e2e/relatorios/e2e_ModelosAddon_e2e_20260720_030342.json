@@ -1,0 +1,155 @@
+{
+  "addon_name": "ModelosAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA simples que anuncia o titulo da janela em foco ao pressionar NVDA+T.",
+  "timestamp": "2026-07-20T02:56:52.213401",
+  "plan_id": "3a3be08f",
+  "complexity": "",
+  "duration_seconds": 410.68,
+  "total_tokens": 398113,
+  "total_retries": 9,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 20684,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioTitulo\nsummary = Anuncia o titulo da janela em foco ao pressionar NVDA+T\ndescription = Este addon para NVDA permite que o usuario pressione NVDA+T para ouvir o titulo da janela atualmente em foco, facilitando a identificacao rapida de aplicativos e documentos aberto"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 104825,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de tabs. Substitua todos os espaços de indentação por tabs (caractere \\t) conforme padrão de codificação do NVDA.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/AnuncioTitulo/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport api\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioTitulo\"\n\n\tdef __init__(self, *args,"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 90,
+      "retries_used": 2,
+      "tokens_used": 106366,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/anuncioTitulo/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport api\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioTitulo\"\n\n\tdef __init__(self, *args,"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s6",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 25348,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AnuncioTitulo — Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; "
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 95196,
+      "issues": [
+        "Output is a code snippet, not an accessibility audit. No identification of NVDA or WX accessibility rules, nor a conclusion that no violations were found."
+      ],
+      "output_preview": "```python:__init__.py\nfrom scriptHandler import SCRCAT_NAVIGATION\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = SCRCAT_NAVIGATION\n```"
+    },
+    {
+      "step_id": "s7",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 45694,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioTitulo\nsummary = Anuncia o titulo da janela em foco ao pressionar NVDA+T\ndescription = Este addon para NVDA permite que o usuario pressione NVDA+T para ouvir o titulo da janela atualmente em foco, facilitando a identificacao rapida de aplicativos e documentos aberto"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ModelosAddon_e2e_20260720_030342",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ModelosAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AnuncioTitulo/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 19: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/anuncioTitulo/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AnuncioTitulo/__init__.py"
+    }
+  ],
+  "avg_score": 69.3,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

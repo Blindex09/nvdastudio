@@ -1,0 +1,114 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-07T21:43:51.083509",
+  "plan_id": "b142182a",
+  "complexity": "",
+  "duration_seconds": 711.77,
+  "total_tokens": 288010,
+  "total_retries": 10,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque o arquivo manifest.ini não foi gerado e aprovado.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Perguntar ao usuário como prefere acionar as funções do addon: atalhos globais do NVDA, item no menu Ferramentas, ou ambos. Esta escolha impacta diretamente a geração do GlobalPlugin em code_generation.\n  Resposta: Use NVDA+Shift+G para resu"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "web_research",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "O output é um bloco de código Python, não uma resposta de pesquisa web com informações factuais sobre NVDA, addons ou o tópico solicitado.",
+        "Não atende ao formato livre esperado para web_research, que deveria conter conteúdo informativo em markdown ou texto.",
+        "As correções obrigatórias solicitadas não foram aplicadas; o mesmo código foi repetido."
+      ],
+      "output_preview": "```python:__init__.py\nimport globalPluginHandler\nimport ui\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n    def script_helloWorld(self, gesture):\n        ui.message(\"Olá, mundo!\")\n    __gestures = {\"kb:NVDA+h\": \"helloWorld\"}\n```"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 90554,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSUPOSICOES QUE PODEM ESTAR ERRADAS\n\n1. Persistir o historico em config.conf. O config.conf do NVDA e um arquivo de configuracoes, nao um banco de dados de log. Um historico de perguntas e respostas cresce sem limite e, "
+    },
+    {
+      "step_id": "s4",
+      "step_type": "agent_template",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 80415,
+      "issues": [
+        "Output não contém as 8 seções Community Access obrigatórias (Visão Geral, Instalação, Uso, Configuração, Solução de Problemas, Contribuição, Licença, Agradecimentos).",
+        "O conteúdo atual é uma descrição de módulo, não um template de agente.",
+        "Confianca reduzida: score 60 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "# AssistenteLeituraGemini Prompts\n\nMódulo de modelos de instrução (prompts) para o assistente de leitura com IA do addon AssistenteLeituraGemini.\n\n## Descricao\nEste módulo concentra todos os textos de instrução enviados ao Google Gemini:\nsystem prompts para resumo de texto selecionado, resposta a pe"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "agent_runner",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output não contém classe AgentRunner.",
+        "Ausência dos métodos run() e reset_session().",
+        "Erro de chamada ao sub-agente: argumento duplicado 'step_type'."
+      ],
+      "output_preview": "# AVISO DE ESTRUTURA — itens obrigatorios ausentes detectados:\n# [AVISO-ESTRUTURA] Ausente: reset_session() publico\n# [AVISO-ESTRUTURA] Ausente: _fallback_chain definido\n# [AVISO-ESTRUTURA] Ausente: cliente LLM importado lazy em run()\n# [AVISO-ESTRUTURA] Ausente: try/except em chamada externa\n# [AVI"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 117041,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport config\nimport ui\nimport api\nimport textInfos\nimport gui\nimport wx\nimport globalVars\nimport NVDAState\nfrom scriptHandler import script\nfrom gui.settingsDialogs import NVDASettingsDialog\nf"
+    }
+  ],
+  "events": [
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 1 pergunta(s) adicionais."
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 48.3,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

@@ -1,0 +1,135 @@
+{
+  "addon_name": "FluxoNVDA_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'AnunciadorStatus' que anuncia o status da bateria ao pressionar NVDA+shift+B. O plugin deve: 1) Ter classe GlobalPlugin com @script decorator; 2) Chamar addonHandler",
+  "timestamp": "2026-07-21T17:52:49.246604",
+  "plan_id": "49a1e01d",
+  "duration_seconds": 755.03,
+  "total_tokens": 363899,
+  "total_retries": 7,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "avg_score": 73.1,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21771,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 104380,
+      "issues": [
+        "Missing import of globalPluginHandler"
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 35830,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22539,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26837,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 76297,
+      "issues": []
+    },
+    {
+      "step_id": "s6",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 76245,
+      "issues": [
+        "NVDA-019: Faltam comentários '# Translators:' antes de várias chamadas _() (linhas para 'ligada a energia', 'usando bateria', 'percentual desconhecido', '{percent}%', 'tempo restante desconhecido', '{hours} horas e {minutes} minutos restantes').",
+        "NVDA-052: Uso de ctypes.windll.kernel32.GetSystemPowerStatus em vez de winBindings.kernel32 (NVDA 2026.1+ recomenda winBindings).",
+        "Confianca reduzida: score 80 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AnunciadorStatus/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 42: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 44: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 47: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 49: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 52: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 56: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-042: globalPlugins\\AnunciadorStatus\\__init__.py: _() para string com contagem. Use ngettext()."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

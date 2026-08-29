@@ -1,0 +1,32 @@
+{
+  "addon_name": "GeminiNoticiasIA",
+  "query": "Crie um addon NVDA que resume as principais noticias do dia usando IA e mostra o resultado numa pagina web acessivel (HTML) dentro do proprio addon, alem de anunciar um resumo por voz. O usuario deve ",
+  "timestamp": "2026-08-04T17:08:14.324665",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 4.62,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "Falha no provedor gemini: Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1/interactions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429",
+  "steps": [],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": []
+}

@@ -1,0 +1,73 @@
+{
+  "addon_name": "BrailleDisplay_e2e",
+  "query": "Crie um BrailleDisplayDriver NVDA completo chamado 'MeuBraille' para um display braille de 40 celulas. O driver deve: 1) Herdar de braille.BrailleDisplayDriver com name='meu_braille', description='Meu",
+  "timestamp": "2026-07-15T13:26:14.461767",
+  "plan_id": "?",
+  "duration_seconds": 266.78,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given",
+  "avg_score": 23.8,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

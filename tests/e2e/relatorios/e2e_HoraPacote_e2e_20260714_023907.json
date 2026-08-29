@@ -1,0 +1,32 @@
+{
+  "addon_name": "HoraPacote_e2e",
+  "query": "Crie GlobalPlugin NVDA 'HoraAddon' com atalho NVDA+H. manifest.ini com name=horaAddon, version=1.0.0, minimumNVDAVersion=2026.1.1, lastTestedNVDAVersion=2026.1.1.",
+  "timestamp": "2026-07-14T02:39:06.751201",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 0.25,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "[ERRO] Ollama Cloud API falhou: [Errno 11004] getaddrinfo failed",
+  "steps": [],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": []
+}

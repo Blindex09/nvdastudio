@@ -1,0 +1,36 @@
+{
+  "addon_name": "FixAAddon_e2e",
+  "query": "Crie GlobalPlugin NVDA 'FixAAddon' com atalho NVDA+A. Salve o codigo em globalPlugins/fixAAddon/__init__.py. Inclua manifest.ini.",
+  "timestamp": "2026-05-24T19:22:01.303464",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 0.0,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "[ERRO] Chave Ollama API nao configurada. Configure em NVDA > Preferencias > Configuracoes > NVDAStudio, ou obtenha sua chave em https://ollama.com/settings/keys",
+  "steps": [],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "ERRO",
+      "[ERRO] Chave Ollama API nao configurada. Configure em NVDA > Preferencias > Configuracoes > NVDAStud"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": []
+}

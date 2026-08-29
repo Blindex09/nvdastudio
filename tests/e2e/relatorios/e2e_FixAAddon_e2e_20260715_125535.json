@@ -1,0 +1,61 @@
+{
+  "addon_name": "FixAAddon_e2e",
+  "query": "Crie GlobalPlugin NVDA 'FixAAddon' com atalho NVDA+A. Salve o codigo em globalPlugins/fixAAddon/__init__.py. Inclua manifest.ini.",
+  "timestamp": "2026-07-15T12:53:15.908109",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 139.5,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": [
+    "kimi-k2.6"
+  ]
+}

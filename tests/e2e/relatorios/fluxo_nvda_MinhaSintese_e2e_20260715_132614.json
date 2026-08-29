@@ -1,0 +1,55 @@
+{
+  "addon_name": "MinhaSintese_e2e",
+  "query": "Crie um SynthDriver NVDA completo chamado 'MinhaSintese' que implementa sintese de voz personalizada. O SynthDriver deve: 1) Herdar de synthDriverHandler.SynthDriver com name='minha_sintese', descript",
+  "timestamp": "2026-07-15T13:23:50.771294",
+  "plan_id": "827b0493",
+  "duration_seconds": 143.48,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 1,
+  "success": true,
+  "error": "Nenhum bloco de codigo extraido dos steps aprovados",
+  "avg_score": 0.0,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

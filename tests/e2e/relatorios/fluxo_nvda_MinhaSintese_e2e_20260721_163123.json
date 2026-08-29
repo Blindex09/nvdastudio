@@ -1,0 +1,113 @@
+{
+  "addon_name": "MinhaSintese_e2e",
+  "query": "Crie um SynthDriver NVDA completo chamado 'MinhaSintese' que implementa sintese de voz personalizada. O SynthDriver deve: 1) Herdar de synthDriverHandler.SynthDriver com name='minha_sintese', descript",
+  "timestamp": "2026-07-21T16:25:57.294975",
+  "plan_id": "dff6eb90",
+  "duration_seconds": 325.85,
+  "total_tokens": 231438,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 98.1,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21963,
+      "issues": []
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 84188,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 35788,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 27114,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 92,
+      "retries_used": 0,
+      "tokens_used": 37294,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25091,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "minha_sintese.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "synthDrivers/minha_sintese.py"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-003: Pasta globalPlugins/ ausente."
+  ],
+  "has_init_py": false,
+  "has_manifest": true,
+  "has_doc": true
+}

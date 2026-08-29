@@ -1,0 +1,138 @@
+{
+  "addon_name": "SimbolosGrecos_e2e",
+  "query": "Crie um addon NVDA chamado 'SimbolosGrecos' que adiciona pronuncia de letras gregas ao NVDA para usuários de matematica e ciencia. O addon DEVE: 1) Criar arquivo locale/en/symbols-greek.dic com:    a)",
+  "timestamp": "2026-08-08T06:10:39.438146",
+  "plan_id": "95642605",
+  "duration_seconds": 602.63,
+  "total_tokens": 471566,
+  "total_retries": 12,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "avg_score": 61.2,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 74274,
+      "issues": [
+        "Seção [symbolDictionaries] presente no manifest.ini; o formato exige apenas chave=valor na raiz, sem seções."
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 110295,
+      "issues": [
+        "O bloco de dicionário está em 'locale/en/symbols-greek.dic', mas o requisito exige o caminho 'speechDicts/*.dic' (ex.: speechDicts/symbols-greek.dic).",
+        "O código Python está correto, mas o dicionário de fala não está no local obrigatório."
+      ]
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23655,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 72874,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 34064,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 82595,
+      "issues": [
+        "A seção 'Configuração' menciona 'Greek Symbols' como opção para desativar o dicionário, mas o dicionário do addon é chamado 'SimbolosGrecos' (ou similar). Ajuste o texto para refletir o nome real do dicionário, ou remova a referência específica se não for aplicável.",
+        "A documentação refere-se ao recurso como 'dicionário de símbolos', mas o addon fornece um dicionário de fala (speech dictionary). Considere usar 'dicionário de fala' para precisão técnica.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ]
+    },
+    {
+      "step_id": "s6",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 2,
+      "tokens_used": 73809,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "_dict_data.py",
+    "SimbolosGrecos.dic",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html",
+    "symbols-greek.dic"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/SimbolosGrecos/_dict_data.py",
+    "globalPlugins/SimbolosGrecos/__init__.py",
+    "speechDicts/SimbolosGrecos.dic",
+    "speechDicts/symbols-greek.dic"
+  ],
+  "struct_problems": [
+    "NVDA-046: speechDicts/ existe mas manifest.ini sem [speechDictionaries]."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

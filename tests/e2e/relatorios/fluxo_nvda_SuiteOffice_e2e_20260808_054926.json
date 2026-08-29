@@ -1,0 +1,103 @@
+{
+  "addon_name": "SuiteOffice_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'SuiteOffice' que melhora a acessibilidade de todos os apps Microsoft Office (Word, Excel, PowerPoint). O addon deve: 1) No metodo __init__ do GlobalPlugin, chamar EX",
+  "timestamp": "2026-08-08T05:46:34.963808",
+  "plan_id": "46f9d098",
+  "duration_seconds": 171.71,
+  "total_tokens": 178035,
+  "total_retries": 1,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 97.5,
+  "steps": [
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 39348,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 48606,
+      "issues": []
+    },
+    {
+      "step_id": "aa1",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 37592,
+      "issues": []
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27374,
+      "issues": []
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25115,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "office_app.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "appModules/office_app.py",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/SuiteOffice/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

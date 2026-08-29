@@ -1,0 +1,139 @@
+{
+  "addon_name": "TokensAddon_e2e",
+  "query": "Crie addon NVDA simples que anuncia o nome do processo em foco ao pressionar NVDA+P.",
+  "timestamp": "2026-07-20T03:09:07.245166",
+  "plan_id": "5fb8366c",
+  "complexity": "",
+  "duration_seconds": 196.9,
+  "total_tokens": 181510,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 20600,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnunciadorProcesso\nsummary = Anuncia o nome do processo em foco ao pressionar NVDA+P\ndescription = Este addon permite que o usuario pressione NVDA+P para ouvir o nome do processo (executavel) da janela atualmente em foco, facilitando a identificacao de aplicativos em uso.\n"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 34083,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/anunciadorProcesso/__init__.py\nimport globalPluginHandler\nimport api\nimport ui\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"Anunciador de Processo\"\n\n\tdef __init__"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 25183,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>Anunciador de Processo</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; border-ra"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 31923,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA ESTATICA\n\nREGRA: Nenhuma violacao encontrada nas regras NVDA-001..059, NVDA-UX-001..003 e WX-A11Y-001..014.\n\nO codigo analisado (globalPlugins/anunciadorProcesso/__init__.py) atende a todos os criterios de acessibilidade, nao bloqueia a thread principal e utiliza ui.message co"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 69721,
+      "issues": [
+        "NVDA-009: Atalho NVDA+P conflita com o gesto padrão do NVDA para pausar a fala. Use um atalho seguro como NVDA+Shift+P ou NVDA+Ctrl+P.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/anunciadorProcesso/__init__.py\nimport globalPluginHandler\nimport api\nimport ui\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"Anunciador de Processo\"\n\n\tdef __init__"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\TokensAddon_e2e_20260720_031224",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\TokensAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/anunciadorProcesso/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-009: __init__.py: linha 16: gesture 'kb:nvda+p' e reservado pelo NVDA core â€” redefinir esse atalho quebra comandos globais do NVDA. Escolha um gesture diferente para este script.",
+    "NVDA-042: globalPlugins\\anunciadorProcesso\\__init__.py: _() para string com contagem. Use ngettext()."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/anunciadorProcesso/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 81.7,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

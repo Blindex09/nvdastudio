@@ -1,0 +1,97 @@
+{
+  "addon_name": "MelhorasNotepad_e2e",
+  "query": "Crie um AppModule NVDA para o Notepad (notepad.exe) chamado 'MelhorasNotepad' que melhora a acessibilidade do editor de texto. O addon deve: 1) Ter classe AppModule que herda de appModuleHandler.AppMo",
+  "timestamp": "2026-08-04T20:02:02.457207",
+  "plan_id": "d0654512",
+  "duration_seconds": 564.44,
+  "total_tokens": 0,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "avg_score": 69.7,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22509,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 114511,
+      "issues": [
+        "Indentação com espaços, deveria ser tabs conforme padrão NVDA"
+      ]
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "glm-5.2",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 33464,
+      "issues": []
+    },
+    {
+      "step_id": "sv1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 27200,
+      "issues": []
+    },
+    {
+      "step_id": "aa1",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 35248,
+      "issues": []
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 74378,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de tabs. O código usa 4 espaços para indentação, mas o padrão do NVDA é tabs. Corrigir para usar tabs.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ]
+    }
+  ],
+  "events": [],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

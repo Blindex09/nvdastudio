@@ -1,0 +1,71 @@
+{
+  "addon_name": "TokensAddon_e2e",
+  "query": "Crie addon NVDA simples que anuncia o nome do processo em foco ao pressionar NVDA+P.",
+  "timestamp": "2026-07-21T14:23:58.210859",
+  "plan_id": "b27ad013",
+  "complexity": "",
+  "duration_seconds": 374.1,
+  "total_tokens": 0,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21832,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ProcessoEmFoco\nsummary = Anuncia o nome do processo em foco\ndescription = Addon simples que anuncia o nome do processo do aplicativo em foco ao pressionar NVDA+P.\nversion = 1.0.0\nauthor = NVDAStudio <nvda@nvda.studio>\nurl = https://github.com/nvda-studio/ProcessoEmFoco\ndoc"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 102275,
+      "issues": [
+        "Indentação ainda usa espaços em vez de tabs, conforme solicitado nas instruções FIXME.",
+        "Confianca reduzida: score 80 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/ProcessoEmFoco/__init__.py\nimport addonHandler\nimport ui\nimport api\nimport globalPluginHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"Processo em Foco\"\n\n\tdef __init__(self, *a"
+    },
+    {
+      "step_id": "s1_fix",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 101366,
+      "issues": [
+        "Classe GlobalPlugin não herda de globalPluginHandler.GlobalPlugin",
+        "Faltam imports básicos (api, ui, globalPluginHandler, script)",
+        "Método __init__ não definido"
+      ],
+      "output_preview": "```python:globalPlugins/ProcessoEmFoco/__init__.py\nimport api\nimport ui\nimport addonHandler\nimport globalPluginHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"Processo em Foco\"\n\n\tdef __init__(self, *a"
+    }
+  ],
+  "events": [],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 33.3,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

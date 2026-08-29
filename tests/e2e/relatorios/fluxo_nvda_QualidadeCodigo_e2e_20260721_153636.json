@@ -1,0 +1,130 @@
+{
+  "addon_name": "QualidadeCodigo_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'MonitorRecursos' que monitora uso de CPU e memoria RAM, anunciando ao pressionar NVDA+shift+M. O plugin deve: 1) Usar logHandler.log para registrar eventos — nunca p",
+  "timestamp": "2026-07-21T15:21:13.311130",
+  "plan_id": "f3a8bfbc",
+  "duration_seconds": 923.44,
+  "total_tokens": 353806,
+  "total_retries": 9,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "avg_score": 73.8,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 44045,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 67975,
+      "issues": [
+        "Nenhum código Python foi gerado. O output contém apenas uma mensagem de erro indicando falha na geração."
+      ]
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22451,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 78308,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 26658,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 36899,
+      "issues": []
+    },
+    {
+      "step_id": "s6",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 77470,
+      "issues": [
+        "Missing import of 'speech' module in __init__.py. The code uses speech.filter_speechSequence but does not import speech. This will cause a NameError when the addon loads.",
+        "Missing # Translators comment before _() calls in resource_monitor.py (lines with 'Coleta já em andamento.' and the CPU/RAM message). Add comments like '# Translators: ...' before each translatable string."
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "resource_monitor.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/MonitorRecursos/resource_monitor.py",
+    "globalPlugins/MonitorRecursos/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-042: globalPlugins\\MonitorRecursos\\resource_monitor.py: _() para string com contagem. Use ngettext()."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

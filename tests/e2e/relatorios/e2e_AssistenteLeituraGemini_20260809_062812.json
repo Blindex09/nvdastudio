@@ -1,0 +1,296 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-09T05:53:18.188513",
+  "plan_id": "cedbed6c",
+  "complexity": "",
+  "duration_seconds": 2094.7,
+  "total_tokens": 460946,
+  "total_retries": 12,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s7",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21084,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando Google Gemini\ndescription = Addon que resume textos selecionados, responde perguntas, pesquisa na web e mantém histórico, configurável via chave de API, idioma e busca web.\nauthor = João Silva <joao.silv"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "opencode_go/gpt-5.6-luna",
+      "approved": true,
+      "score": 95,
+      "retries_used": 3,
+      "tokens_used": 3209,
+      "issues": [],
+      "output_preview": "**Pacote:** `google-generativeai` (SDK legado; para projetos novos, o Google recomenda `google-genai`)\n\n**Versao estavel:** `0.8.5` para `google-generativeai` — confirme no PyPI antes de fixar, pois esse SDK legado pode não receber os recursos mais recentes. O SDK atual é `google-genai`.\n\n**Instalac"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 92,
+      "retries_used": 0,
+      "tokens_used": 79734,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSupondo que o addon será implementado como GlobalPlugin, há risco de não registrar corretamente o painel de configurações no NVDASettingsDialog, resultando em duplicação ou ausência do painel. Se o código usar config.co"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 120480,
+      "issues": [
+        "Output não contém nenhuma das 8 seções Community Access obrigatórias; apenas um aviso de ausência."
+      ],
+      "output_preview": "<!-- AVISO DE ESTRUTURA: secoes Community Access ausentes: Descricao, Responsabilidades, Regras de Comportamento, Entradas, Saidas, Invariantes, Referencias, Versao, Metadados — o Critic ira solicitar correcao -->\n\n"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 129145,
+      "issues": [
+        "NVDA-016: HistoryStore acessa disco sem verificar NVDAState.shouldWriteToDisk() em cada método (save_entry, clear_history, _ensure_dir). A proteção no __init__ não cobre chamadas diretas.",
+        "NVDA-062: Scripts (script_resumir, script_abrir_historico) não verificam appArgs.secure antes de executar ações que podem acessar rede ou disco.",
+        "NVDA-UX-001: Em dialogs.py, _on_sucesso atualiza _resposta_ctrl.SetValue(resposta) sem ui.message, deixando o usuário cego sem feedback sonoro."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/__init__.py\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimport config\nimport ui\nimport api\nimport threading\nimport os\nimport json\nfrom scriptHandler import script\nfrom gui.settingsDialogs import NVDASettingsDialog\nfrom logHandle"
+    },
+    {
+      "step_id": "s8",
+      "step_type": "agent_runner",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 80315,
+      "issues": [
+        "Critic retornou vazio ou sem JSON reconhecivel."
+      ],
+      "output_preview": "```python:tests/simular_fluxos_agente.py\n# -*- coding: utf-8 -*-\n\"\"\"\nSimulacao dos fluxos do agente de leitura AssistenteLeituraGemini.\nValida transicoes entre resumo, pergunta, busca web e historico.\nNao faz chamadas de rede reais - usa mocks da API Gemini.\n\"\"\"\n\nimport sys\nimport os\nimport unittest"
+    },
+    {
+      "step_id": "s9",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26979,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AssistenteLeituraGemini</title>\n<style>\nbody{font-family:sans-serif;max-width:800px;margin:auto;padding:1em;}\nkbd{background:#eee;border:1px solid #ccc;padding:2px 6px;border-radius:3px;}\ntable{"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "documentation"
+    ],
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteLeituraGemini_20260809_062812",
+  "files_saved": [
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html",
+    "module_1.py"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteLeituraGemini.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AssistenteLeituraGemini/module_1.py"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-008: Pasta globalPlugins/AssistenteLeituraGemini/ tem arquivos .py mas nao tem __init__.py. O NVDA so carrega __init__.py como GlobalPlugin — module_1.py, servicos e outros modulos sao ignorados. Renomeie o arquivo principal para __init__.py ou crie __init__.py com from .module_1 import *.",
+    "NVDA-022: module_1.py: import 'google.generativeai' em nivel de modulo — se nao bundlado em lib/, impede carregamento do addon inteiro (settings panel nunca aparece). Mova para dentro do metodo: 'import google.generativeai' dentro de def meu_metodo(self)."
+  ],
+  "has_init_py": false,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "module_1.py"
+    }
+  ],
+  "avg_score": 54.6,
+  "models_used": [
+    "gpt-oss:20b",
+    "opencode_go/gpt-5.6-luna",
+    "qwen3.5:397b"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "addon_name": "Regra9Addon_e2e",
+  "query": "Crie GlobalPlugin NVDA com acesso ao sistema de arquivos para listar a pasta do usuario. Atalho NVDA+L.",
+  "timestamp": "2026-08-08T04:17:10.537144",
+  "plan_id": "982f374e",
+  "complexity": "",
+  "duration_seconds": 669.1,
+  "total_tokens": 106002,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 106002,
+      "issues": [
+        "Critic retornou vazio ou sem JSON reconhecivel."
+      ],
+      "output_preview": "```python:globalPlugins/UserFolderLister/__init__.py\nimport os\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"UserFolderLister\"\n\n\tdef __init__(self, *"
+    }
+  ],
+  "events": [],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": [
+    "kimi-k2.7-code"
+  ]
+}

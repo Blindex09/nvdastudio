@@ -1,0 +1,229 @@
+{
+  "addon_name": "AcoesRapidasSeguras",
+  "query": "Crie um addon NVDA de acoes rapidas no computador: abrir aplicativos comuns (calculadora, bloco de notas, navegador padrao), consultar informacoes simples do sistema (hora atual, nivel de bateria, esp",
+  "timestamp": "2026-08-04T17:21:53.687595",
+  "plan_id": "8c92741f",
+  "complexity": "",
+  "duration_seconds": 832.03,
+  "total_tokens": 300815,
+  "total_retries": 5,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 47465,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AcoesRapidas/__init__.py\nimport wx\nimport gui\nimport globalPluginHandler\nimport globalVars\nimport addonHandler\nimport ui\nimport tones\nfrom logHandler import log\nfrom scriptHandler import script\n\nfrom .apps import AppLauncher\nfrom .system_info import SystemQueries\nfrom .url im"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "Output incorrectly claims no Python blocks found despite presence of Python code in input. Syntax validation not performed."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22715,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AcoesRapidas\nsummary = Acoes rapidas no computador: abrir aplicativos, consultar sistema e abrir URLs\ndescription = Este addon oferece acoes rapidas e seguras no computador: abrir calculadora, bloco de notas e navegador padrao; consultar hora atual, nivel de bateria e espa"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 37301,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE — ADDON ACOES RAPIDAS\n\nREGRA: NVDA-003  SEVERIDADE: Serio  LOCAL: globalPlugins/acoes_rapidas/__init__.py (provavel)\nPROBLEMA: O arquivo principal usa _() para traduzir strings (scriptCategory, mensagens de erro, descricoes de scripts) mas pode nao estar cham"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "test_generation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 72784,
+      "issues": [],
+      "output_preview": "```python:tests/test_app_launcher.py\nimport sys\nimport unittest\nfrom unittest.mock import MagicMock, patch\n\n# Mock modules before importing the module under test\nsubprocess = MagicMock()\nsys.modules[\"subprocess\"] = subprocess\n\n# Mock NVDA modules\nui = MagicMock()\nsys.modules[\"ui\"] = ui\n\napi = MagicM"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 28707,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AcoesRapidas - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; b"
+    },
+    {
+      "step_id": "s7",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 91843,
+      "issues": [
+        "NVDA-052: Uso de APIs legadas winKernel (ctypes.windll.kernel32) em system_queries.py. Migre para winBindings.* submodules (NVDA 2026.1+).",
+        "NVDA-057: @script category usa string livre em vez de constante SCRCAT_*. Considere usar SCRCAT_* ou manter string traduzida, mas a regra recomenda constantes.",
+        "ARCH-007: Addon possui 3+ features (app_launcher, system_queries, url_opener) em arquivos soltos na raiz do pacote. Organize em subpacotes nomeados pela funcionalidade (ex: app_launcher/, system_queries/, url/)."
+      ],
+      "output_preview": "```ini:manifest.ini\nname = AcoesRapidas\nsummary = Acoes rapidas no computador: abrir aplicativos, consultar sistema e abrir URLs\ndescription = Este addon oferece acoes rapidas e seguras no computador: abrir calculadora, bloco de notas e navegador padrao; consultar hora atual, nivel de bateria e espa"
+    }
+  ],
+  "events": [
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 1 pergunta(s) adicionais."
+    ],
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AcoesRapidasSeguras_20260804_173545",
+  "files_saved": [
+    "__init__.py",
+    "__init__.py",
+    "app_launcher.py",
+    "__init__.py",
+    "system_queries.py",
+    "__init__.py",
+    "url_opener.py",
+    "url_dialog.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AcoesRapidasSeguras.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AcoesRapidas/__init__.py",
+    "globalPlugins/AcoesRapidas/apps/app_launcher.py",
+    "globalPlugins/AcoesRapidas/apps/__init__.py",
+    "globalPlugins/AcoesRapidas/system_info/system_queries.py",
+    "globalPlugins/AcoesRapidas/system_info/__init__.py",
+    "globalPlugins/AcoesRapidas/url/url_dialog.py",
+    "globalPlugins/AcoesRapidas/url/url_opener.py",
+    "globalPlugins/AcoesRapidas/url/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-007: __init__.py: __gestures detectado — use @script decorator.",
+    "ESTRUTURA-005: __init__.py: classe GlobalPlugin ou AppModule ausente.",
+    "NVDA-003: __init__.py: addonHandler.initTranslation() ausente.",
+    "NVDA-004: __init__.py: metodo terminate() ausente.",
+    "ESTRUTURA-005: __init__.py: classe GlobalPlugin ou AppModule ausente.",
+    "NVDA-003: __init__.py: addonHandler.initTranslation() ausente.",
+    "NVDA-004: __init__.py: metodo terminate() ausente.",
+    "ESTRUTURA-005: __init__.py: classe GlobalPlugin ou AppModule ausente.",
+    "NVDA-003: __init__.py: addonHandler.initTranslation() ausente.",
+    "NVDA-004: __init__.py: metodo terminate() ausente.",
+    "ESTRUTURA-009: __init__.py: 'from .apps import ...' mas apps.py nao encontrado em globalPlugins/AcoesRapidas/. O modulo ausente impede o carregamento do addon pelo NVDA.",
+    "ESTRUTURA-009: __init__.py: 'from .system_info import ...' mas system_info.py nao encontrado em globalPlugins/AcoesRapidas/. O modulo ausente impede o carregamento do addon pelo NVDA.",
+    "ESTRUTURA-009: __init__.py: 'from .url import ...' mas url.py nao encontrado em globalPlugins/AcoesRapidas/. O modulo ausente impede o carregamento do addon pelo NVDA."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AcoesRapidas/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AcoesRapidas/apps/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AcoesRapidas/apps/app_launcher.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AcoesRapidas/system_info/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AcoesRapidas/system_info/system_queries.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AcoesRapidas/url/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AcoesRapidas/url/url_opener.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AcoesRapidas/url/url_dialog.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "tests/test_app_launcher.py"
+    },
+    {
+      "language": "python",
+      "filename": "tests/test_system_queries.py"
+    }
+  ],
+  "avg_score": 72.9,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

@@ -1,0 +1,155 @@
+{
+  "addon_name": "HoraAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado HoraAddon que anuncia a hora atual ao pressionar NVDA+Shift+H. Use ui.message() para anunciar. Inclua addonHandler.initTranslation() e terminate(). Inclua manifest.in",
+  "timestamp": "2026-07-20T02:44:09.978304",
+  "plan_id": "b6219497",
+  "complexity": "",
+  "duration_seconds": 275.71,
+  "total_tokens": 260087,
+  "total_retries": 3,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 20911,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = Anuncia a hora atual ao pressionar NVDA+Shift+H\ndescription = Este addon permite que o usuario ouça a hora atual pressionando NVDA+Shift+H. Utiliza ui.message() para anunciar a hora no formato HH:MM. Inclui suporte a traducao e cleanup adequado.\nversion"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 102792,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de TABS (NVDA usa TABS como padrão de codificação)",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/HoraAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport ui\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"HoraAddon\"\n\n\tdef __init__(self, *args, **k"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 36346,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/horaAddon/__init__.py\nimport datetime\nimport globalPluginHandler\nimport ui\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"HoraAddon\"\n\n\tdef __init__(self, *args, **k"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 97,
+      "retries_used": 0,
+      "tokens_used": 25112,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>HoraAddon – Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bord"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "test_generation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 21791,
+      "issues": [],
+      "output_preview": "```python:tests/test_horaAddon.py\nimport sys\nimport unittest\nfrom unittest.mock import MagicMock, patch, PropertyMock\n\n# Mock NVDA modules before any imports of the addon\nmock_globalPluginHandler = MagicMock()\nmock_ui = MagicMock()\nmock_addonHandler = MagicMock()\nmock_scriptHandler = MagicMock()\nmoc"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 30788,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE\n\nREGRA: NVDA-001  SEVERIDADE: Critico  LOCAL: N/A\nPROBLEMA: Nenhum event handler presente no codigo.\nCORRECAO: Nao se aplica.\n\nREGRA: NVDA-002  SEVERIDADE: Critico  LOCAL: N/A\nPROBLEMA: Nao ha operacoes bloqueantes na thread principal.\nCORRECAO: Nao se aplica"
+    },
+    {
+      "step_id": "s7",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22347,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = HoraAddon\nsummary = Anuncia a hora atual ao pressionar NVDA+Shift+H\ndescription = Este addon permite que o usuario ouça a hora atual pressionando NVDA+Shift+H. Utiliza ui.message() para anunciar a hora no formato HH:MM. Inclui suporte a traducao e cleanup adequado.\nversion"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraAddon_e2e_20260720_024845",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\HoraAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/HoraAddon/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/horaAddon/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/HoraAddon/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "tests/test_horaAddon.py"
+    }
+  ],
+  "avg_score": 84.6,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

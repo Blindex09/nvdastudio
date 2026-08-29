@@ -1,0 +1,196 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-09T07:01:30.569402",
+  "plan_id": "30c8909f",
+  "complexity": "",
+  "duration_seconds": 1719.77,
+  "total_tokens": 254444,
+  "total_retries": 4,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s3",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Perguntar ao usuário como prefere acessar as ações do assistente: apenas pelo menu Ferramentas do NVDA, apenas por atalhos de teclado, ou ambos. A resposta será usada para gerar o GlobalPlugin correto.\n  Resposta: Use um atalho NVDA+Shift+<l"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21351,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando Google Gemini\ndescription = Um assistente que resume textos selecionados, responde perguntas, pesquisa na web e mantém histórico, configurável via chave de API, idioma e busca web\nauthor = Seu Nome <seu@"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 6135,
+      "issues": [],
+      "output_preview": "Pacote: google-generativeai\nVersão estavel: 0.7.2 (última versão publicada no PyPI em 2024-07)\nInstalacao: pip install google-generativeai\nAPI principal: \n- generativeai.configure(api_key=\"YOUR_API_KEY\") – configura a chave de API global.\n- generativeai.GenerativeModel – construtor do modelo. Parâme"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 92277,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nVou analisar a proposta de arquitetura do addon AssistenteLeituraGemini. Primeiro, as suposições que podem estar erradas: 1) A biblioteca google-generativeai funciona sem restrições em addons NVDA; na prática, a dependê"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 134681,
+      "issues": [
+        "NVDA-062: Falta checagem de globalVars.appArgs.secure nos scripts e diálogos que acessam API externa e config. Em secure mode (tela de login, UAC), os scripts continuam executáveis e podem vazar dados sensíveis ou gravar configurações indevidamente.",
+        "WX-A11Y-004: O diálogo PerguntaDialog não possui SetEscapeId nem StdDialogButtonSizer, impossibilitando fechar com a tecla Escape. Usuários de teclado ficam presos sem alternativa de fechamento via teclado.",
+        "NVDA-012 (menor): Em _get_texto_selecionado, a exceção é capturada com except Exception: sem logar o erro. Recomenda-se logar para diagnóstico."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/__init__.py\nimport wx\nimport gui\nimport ui\nimport tones\nimport globalPluginHandler\nimport addonHandler\nimport config\nimport api\nimport textInfos\nfrom scriptHandler import script\nfrom logHandler import log\nfrom gui.settingsDialogs import NVDASettingsDia"
+    },
+    {
+      "step_id": "s10",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Timeout: step excedeu 180s."
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 1 pergunta(s) adicionais."
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "documentation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 64.2,
+  "models_used": [
+    "gpt-oss:20b",
+    "qwen3.5:397b"
+  ]
+}

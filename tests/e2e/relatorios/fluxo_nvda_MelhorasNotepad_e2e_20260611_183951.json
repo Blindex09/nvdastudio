@@ -1,0 +1,30 @@
+{
+  "addon_name": "MelhorasNotepad_e2e",
+  "query": "Crie um AppModule NVDA para o Notepad (notepad.exe) chamado 'MelhorasNotepad' que melhora a acessibilidade do editor de texto. O addon deve: 1) Ter classe AppModule que herda de appModuleHandler.AppMo",
+  "timestamp": "2026-06-11T18:39:51.810221",
+  "plan_id": "?",
+  "duration_seconds": 0.0,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "HermesLLMClient.chat() got an unexpected keyword argument 'reasoning_effort'",
+  "avg_score": 0.0,
+  "steps": [],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "ERRO",
+      "HermesLLMClient.chat() got an unexpected keyword argument 'reasoning_effort'"
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

@@ -1,0 +1,115 @@
+{
+  "addon_name": "ConfiguracaoAPIKey_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'ConfiguracaoAPIKey' que permite ao usuario configurar uma chave de API de traducao via painel de configuracoes do NVDA (SettingsPanel). O addon deve: 1) Registrar um",
+  "timestamp": "2026-07-20T03:45:41.941200",
+  "plan_id": "4e3d70c3",
+  "duration_seconds": 261.27,
+  "total_tokens": 256430,
+  "total_retries": 3,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "avg_score": 82.9,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21166,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 116420,
+      "issues": [
+        "API key hardcoded detectada (linha 93): Base64. Use config.conf ou variavel de ambiente."
+      ]
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 36450,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s6",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 25480,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 32506,
+      "issues": []
+    },
+    {
+      "step_id": "s7",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 24408,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ConfiguracaoAPIKey/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 22: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

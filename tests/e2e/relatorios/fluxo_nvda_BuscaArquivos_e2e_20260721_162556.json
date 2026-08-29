@@ -1,0 +1,102 @@
+{
+  "addon_name": "BuscaArquivos_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'BuscaArquivos' que busca texto em arquivos do computador ao pressionar NVDA+shift+F, processa em thread separada para nao travar o NVDA, e exibe os resultados em dia",
+  "timestamp": "2026-07-21T16:14:24.897429",
+  "plan_id": "b802eec2",
+  "duration_seconds": 692.02,
+  "total_tokens": 0,
+  "total_retries": 9,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque o arquivo manifest.ini não foi gerado e aprovado.",
+  "avg_score": 55.7,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22181,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 104566,
+      "issues": [
+        "Nenhum código Python foi produzido. O output contém apenas uma mensagem de erro indicando falha na geração."
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 46110,
+      "issues": []
+    },
+    {
+      "step_id": "s2",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output is not valid JSON; it contains non-JSON text 'RESULTADO: SKIP' and a compressed code block.",
+        "Agent claimed no Python blocks found, but the compressed output contains Python code, indicating failure to properly parse the input.",
+        "No syntax validation was performed."
+      ]
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27300,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 38591,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 80266,
+      "issues": [
+        "Missing import: from gui.settingsDialogs import SettingsPanel (needed for BuscaArquivosSettingsPanel)",
+        "Missing import: guiHelper not imported; use gui.guiHelper.BoxSizerHelper or import gui.guiHelper",
+        "NVDA-015: Configuracoes sem config.conf.spec - defina config.conf.spec['BuscaArquivos'] com os campos"
+      ]
+    }
+  ],
+  "events": [],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

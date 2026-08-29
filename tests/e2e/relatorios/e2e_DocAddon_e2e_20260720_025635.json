@@ -1,0 +1,144 @@
+{
+  "addon_name": "DocAddon_e2e",
+  "query": "Crie um addon NVDA que anuncia informacoes sobre a janela em foco ao pressionar NVDA+F. Inclua documentacao completa em doc/pt_BR/userGuide.html e doc/en/userGuide.html. manifest.ini com version=1.0.0",
+  "timestamp": "2026-07-20T02:53:27.978981",
+  "plan_id": "9c774b1f",
+  "complexity": "",
+  "duration_seconds": 187.67,
+  "total_tokens": 162229,
+  "total_retries": 1,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 20913,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = WindowFocusInfo\nsummary = Anuncia informacoes sobre a janela em foco ao pressionar NVDA+F\ndescription = Este addon permite que o usuario pressione NVDA+F para ouvir informacoes detalhadas sobre a janela atualmente em foco, incluindo titulo, classe, processo e dimensoes.\nve"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 36370,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/windowInfo/__init__.py\nimport globalPluginHandler\nimport api\nimport ui\nimport addonHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"Informacoes da Janela\"\n\n\tdef __init__(self, *"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "aa_inj",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 30176,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE DA INTERFACE WX\n\nNenhuma violacao encontrada nas regras WX-A11Y-001 a WX-A11Y-014.\n\nO addon \"windowInfo\" nao possui interface wx (nenhum dialog, painel, lista, botao ou outro controle wx). O codigo consiste unicamente em um GlobalPlugin que, ao pressionar NVD"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 26115,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>WindowFocusInfo - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 48655,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = WindowFocusInfo\nsummary = Anuncia informacoes sobre a janela em foco ao pressionar NVDA+F\ndescription = Este addon permite que o usuario pressione NVDA+F para ouvir informacoes detalhadas sobre a janela atualmente em foco, incluindo titulo, classe, processo e dimensoes.\nve"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\DocAddon_e2e_20260720_025635",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\DocAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/WindowFocusInfo/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 19: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 25: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 26: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 27: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 35: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: __init__.py: linha 46: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/windowInfo/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/WindowFocusInfo/__init__.py"
+    }
+  ],
+  "avg_score": 97.5,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6"
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "addon_name": "ModelosAddon_e2e",
+  "query": "Crie um GlobalPlugin NVDA simples que anuncia o titulo da janela em foco ao pressionar NVDA+T.",
+  "timestamp": "2026-07-21T14:25:23.865204",
+  "plan_id": "13c0f827",
+  "complexity": "",
+  "duration_seconds": 363.12,
+  "total_tokens": 246687,
+  "total_retries": 5,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21704,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioTitulo\nsummary = Anuncia o titulo da janela em foco ao pressionar NVDA+T\ndescription = Addon simples que permite ao usuario pressionar NVDA+T para ouvir o titulo da janela atualmente em foco, facilitando a navegacao entre aplicacoes.\nversion = 1.0.0\nauthor = Autor <"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 67141,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AnuncioTitulo/__init__.py\nimport api\nimport ui\nimport addonHandler\nimport globalPluginHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioTitulo\"\n\n\t# Translators: Descricao "
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "Código Python presente, mas não contém uma classe GlobalPlugin, AppModule ou driver.",
+        "Faltam imports básicos (ex.: import globalPluginHandler, ui, api).",
+        "Código incompleto: apenas um método script foi fornecido, sem a estrutura completa da classe."
+      ],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 34690,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA ESTATICA - GlobalPlugin AnuncioTitulo\n\nArquivo analisado: globalPlugins/AnuncioTitulo/__init__.py\n\n---\n\nREGRA: NVDA-001  SEVERIDADE: Critico  LOCAL: N/A\nPROBLEMA: Nao se aplica. O codigo nao possui event handlers (event_gainFocus, event_loseFocus, etc.) que exijam nextHandler("
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 52236,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AnuncioTitulo - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; "
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 2,
+      "tokens_used": 70916,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AnuncioTitulo/__init__.py\nimport api\nimport ui\nimport addonHandler\nimport globalPluginHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioTitulo\"\n\n\t# Translators: Descricao "
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ModelosAddon_e2e_20260721_143126",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ModelosAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AnuncioTitulo/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-004: __init__.py: metodo terminate() ausente.",
+    "NVDA-019: __init__.py: linha 16: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AnuncioTitulo/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 80.8,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

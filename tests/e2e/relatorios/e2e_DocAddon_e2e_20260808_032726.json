@@ -1,0 +1,133 @@
+{
+  "addon_name": "DocAddon_e2e",
+  "query": "Crie um addon NVDA que anuncia informacoes sobre a janela em foco ao pressionar NVDA+F. Inclua documentacao completa em doc/pt_BR/userGuide.html e doc/en/userGuide.html. manifest.ini com version=1.0.0",
+  "timestamp": "2026-08-08T03:18:01.171282",
+  "plan_id": "dda12176",
+  "complexity": "",
+  "duration_seconds": 564.91,
+  "total_tokens": 292255,
+  "total_retries": 4,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23317,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioJanela\nsummary = Anuncia informações da janela em foco\ndescription = Este addon anuncia informações detalhadas sobre a janela em foco ao pressionar NVDA+F, incluindo título, classe, processo e posição da janela, funcionando em qualquer aplicativo do Windows.\nversion"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 107819,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AnuncioJanela/__init__.py\nimport api\nimport ui\nimport controlTypes\nimport globalPluginHandler\nimport addonHandler\nfrom scriptHandler import script\nfrom globalCommands import SCRCAT_OBJECTNAVIGATION\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.Globa"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 27308,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AnuncioJanela - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; "
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 107963,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE — ADDON ANUNCIOJANELA\n\nESCOPO: revisao do codigo globalPlugins/AnuncioJanela/__init__.py sob a otica de acessibilidade: clareza e concisao da mensagem anunciada, adequacao do gesto NVDA+F e risco de travamento do NVDA.\n\nPONTOS FORTES (sem violacao):\n\nREGRA: N"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 25848,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AnuncioJanela/__init__.py\nimport api\nimport ui\nimport globalPluginHandler\nimport addonHandler\nfrom scriptHandler import script\nfrom globalCommands import SCRCAT_OBJECTNAVIGATION\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCat"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\DocAddon_e2e_20260808_032726",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\DocAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AnuncioJanela/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AnuncioJanela/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 96.7,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

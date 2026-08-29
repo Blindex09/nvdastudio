@@ -1,0 +1,162 @@
+{
+  "addon_name": "RelatorioAddon_e2e",
+  "query": "Crie addon NVDA que anuncia 'Ola' ao pressionar NVDA+O.",
+  "timestamp": "2026-07-21T14:30:12.383682",
+  "plan_id": "ca476183",
+  "complexity": "",
+  "duration_seconds": 655.89,
+  "total_tokens": 350564,
+  "total_retries": 7,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 43314,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioOla\nsummary = Anuncia Ola ao pressionar NVDA+O\ndescription = Addon simples que anuncia a palavra Ola sempre que o usuario pressiona a combinacao de teclas NVDA+O em qualquer aplicativo.\nversion = 1.0.0\nauthor = Seu Nome <seu@email.com>\nurl = https://github.com/seu-u"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 100549,
+      "issues": [
+        "Código não é Python válido: falta definição de classe, decorator @script dentro de __init__, __gestures dentro de __init__, terminate dentro de __init__.",
+        "NVDA-003: Módulo usa _() sem addonHandler.initTranslation() — necessário para traduções.",
+        "NVDA-021: Indentação usa espaços em vez de TABS (padrão NVDA)."
+      ],
+      "output_preview": "```python:globalPlugins/AnuncioOla/__init__.py\nimport addonHandler\nimport ui\nimport globalPluginHandler\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioOla\"\n\n\tdef __init__(self, *args, **kwargs):\n\t\tsup"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 34713,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AnuncioOla/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"AnuncioOla\"\n\n\tdef __init__(self, *args, **kwargs):\n\t\tsup"
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 32147,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE\nAddon: AnuncioOla\nArquivo: globalPlugins/AnuncioOla/__init__.py\n\nNenhuma violacao encontrada nas regras NVDA-001..059, NVDA-UX-001..003, WX-A11Y-001..014 e ARCH-001..006.\n\nOBSERVACOES:\n\n- addonHandler.initTranslation() presente (NVDA-003 OK).\n- terminate() pr"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21803,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioOla\nsummary = Anuncia Ola ao pressionar NVDA+O\ndescription = Addon simples que anuncia a palavra Ola quando o usuario pressiona o atalho NVDA+O em qualquer contexto.\nversion = 1.0.0\nauthor = Seu Nome <seuemail@exemplo.com>\nurl = https://github.com/seuusuario/Anuncio"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "test_generation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 67643,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de TABS. O arquivo de teste usa 4 espaços, mas o padrão do NVDA é TABS. Corrigir para TABS."
+      ],
+      "output_preview": "```python:tests/test_AnuncioOla.py\nimport sys\nimport unittest\nfrom unittest.mock import MagicMock, patch\n\n# Mock NVDA modules before importing the addon\nmock_globalPluginHandler = MagicMock()\nmock_addonHandler = MagicMock()\nmock_ui = MagicMock()\nmock_scriptHandler = MagicMock()\nmock_scriptHandler.sc"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 26226,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AnuncioOla - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bor"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 24169,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AnuncioOla\nsummary = Anuncia Ola ao pressionar NVDA+O\ndescription = Addon simples que anuncia a palavra Ola quando o usuario pressiona o atalho NVDA+O em qualquer contexto.\nversion = 1.0.0\nauthor = Seu Nome <seuemail@exemplo.com>\nurl = https://github.com/seuusuario/Anuncio"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\RelatorioAddon_e2e_20260721_144108",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\RelatorioAddon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AnuncioOla/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AnuncioOla/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 73.8,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.6",
+    "kimi-k2.7-code"
+  ]
+}

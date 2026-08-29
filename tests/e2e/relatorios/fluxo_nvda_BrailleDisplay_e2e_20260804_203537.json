@@ -1,0 +1,44 @@
+{
+  "addon_name": "BrailleDisplay_e2e",
+  "query": "Crie um BrailleDisplayDriver NVDA completo chamado 'MeuBraille' para um display braille de 40 celulas. O driver deve: 1) Herdar de braille.BrailleDisplayDriver com name='meu_braille', description='Meu",
+  "timestamp": "2026-08-04T20:31:07.490341",
+  "plan_id": "f5c9a999",
+  "duration_seconds": 270.13,
+  "total_tokens": 0,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "avg_score": 47.5,
+  "steps": [
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 83318,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 112869,
+      "issues": [
+        "Indentação usa espaços em vez de tabs, conforme exigido pelo NVDA."
+      ]
+    }
+  ],
+  "events": [],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

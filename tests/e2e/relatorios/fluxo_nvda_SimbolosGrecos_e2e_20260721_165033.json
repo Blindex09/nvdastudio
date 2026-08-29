@@ -1,0 +1,116 @@
+{
+  "addon_name": "SimbolosGrecos_e2e",
+  "query": "Crie um addon NVDA chamado 'SimbolosGrecos' que adiciona pronuncia de letras gregas ao NVDA para usuários de matematica e ciencia. O addon DEVE: 1) Criar arquivo locale/en/symbols-greek.dic com:    a)",
+  "timestamp": "2026-07-21T16:45:44.811397",
+  "plan_id": "7885b99c",
+  "duration_seconds": 288.09,
+  "total_tokens": 188718,
+  "total_retries": 4,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "avg_score": 64.2,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 66628,
+      "issues": [
+        "O manifesto contém seções ([symbolDictionaries], [[greek]]) que não são permitidas no formato raiz do AddonManifest. Apenas pares chave=valor no nível raiz devem estar presentes.",
+        "As instruções FIXME explicitamente solicitam a remoção dessas seções.",
+        "Confianca reduzida: score 65 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 34797,
+      "issues": []
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "Agent claimed no Python block found, but input contains Python code."
+      ]
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26822,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 36404,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 24067,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "greek_data.py",
+    "symbols-greek.dic",
+    "userGuide.html",
+    "userGuide.html",
+    "manifest.ini",
+    "installTasks.py"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/SimbolosGrecos/greek_data.py",
+    "globalPlugins/SimbolosGrecos/__init__.py",
+    "globalPlugins/SimbolosGrecos_e2e/installTasks.py",
+    "locale/en/symbols-greek.dic"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-008: Pasta globalPlugins/SimbolosGrecos_e2e/ tem arquivos .py mas nao tem __init__.py. O NVDA so carrega __init__.py como GlobalPlugin — module_1.py, servicos e outros modulos sao ignorados. Renomeie o arquivo principal para __init__.py ou crie __init__.py com from .module_1 import *.",
+    "NVDA-019: __init__.py: linha 23: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

@@ -1,0 +1,758 @@
+{
+  "addon_name": "GeminiMultimodal",
+  "query": "Crie um addon NVDA complexo chamado GeminiMultimodal: um assistente multimodal que usa a API do Google Gemini internamente para acessibilidade de midia. Funcionalidades: (1) descrever em texto uma ima",
+  "timestamp": "2026-08-17T11:52:04.993699",
+  "plan_id": "c3be2c41",
+  "complexity": "",
+  "duration_seconds": 5839.18,
+  "total_tokens": 4593358,
+  "total_retries": 38,
+  "replan_count": 2,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "manifest1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 29875,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = GeminiMultimodal\nsummary = Assistente multimodal com Gemini\ndescription = Um assistente que descreve imagens, transcreve áudio e vídeo usando a API do Google Gemini, com interface de configuração e exibição de resultados.\nauthor = Seu Nome <seu@email.com>\nurl = https://git"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 7748,
+      "issues": [
+        "Exemplo de código usa API do pacote google-genai (from google import genai) em vez de google-generativeai (import google.generativeai as genai).",
+        "Não lista formatos suportados para upload (imagem, áudio, vídeo).",
+        "Não explica como o Gemini processa vídeo (extração de áudio automática)."
+      ],
+      "output_preview": "Pacote: google-generativeai\nVersão estavel: 0.7.2\nInstalacao: pip install google-generativeai\nAPI principal: \n- genai.configure(api_key=\"YOUR_API_KEY\") – define a chave de API para todas as chamadas.\n- genai.upload_file(path, mime_type=None) – faz upload de um arquivo (imagem, áudio ou vídeo) e reto"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 173218,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSupondo que a biblioteca google-generativeai seja compatível com a versão do Python usada pelo NVDA (3.13) pode ser arriscado, pois a documentação indica suporte a 3.8+. Se a API mudar ou a biblioteca não for atualizada"
+    },
+    {
+      "step_id": "s3",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 31398,
+      "issues": [],
+      "output_preview": "# Gemini Multimodal Agent\n\nAgente interno que orquestra chamadas ao Google Gemini para descrição de imagem, transcrição de áudio e transcrição de vídeo em tempo de execução.\n\n## Descricao\nO Gemini Multimodal Agent é responsável por receber arquivos de mídia (imagem, áudio ou vídeo), enviar esses arq"
+    },
+    {
+      "step_id": "cg_imagem",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 411761,
+      "issues": [
+        "A função _salvar_imagem_clipboard_temp cria um arquivo temporário vazio (apenas 'pass' no with open), não salvando a imagem real da área de transferência.",
+        "Tratamento de exceções específicas da biblioteca google.generativeai (genai.types.BlockedPromptException e StopCandidateException) pode não ser compatível com a versão atual da API.",
+        "Uso de winBindings.gdi32/user32 para salvar bitmap é frágil e não produz um arquivo PNG válido; seria mais robusto usar a API de clipboard do NVDA ou PIL/Pillow."
+      ],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/imagem/__init__.py\nimport addonHandler\naddonHandler.initTranslation()\n\nfrom .servico import ServicoDescricaoImagem\n\n__all__ = [\"ServicoDescricaoImagem\"]\n```\n\n```python:globalPlugins/GeminiMultimodal/imagem/servico.py\nimport threading\nimport tempfile\nimport os"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 406776,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t\"\"\"\n\tRegistra a especificação de configuração para o addon GeminiMultimodal.\n\tDeve ser chamado antes de qualquer acesso a config.conf[\"GeminiMultimodal\"].\n\t\"\"\"\n\t_spec = {\n\t\t# Translators: Especifi"
+    },
+    {
+      "step_id": "cg_video",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 273740,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/video/__init__.py\n# Subpacote para processamento de vídeo e extração de áudio\nfrom .transcricao_video import TranscricaoVideoService\n\n__all__ = [\"TranscricaoVideoService\"]\n```\n\n```python:globalPlugins/GeminiMultimodal/video/transcricao_video.py\nimport threadi"
+    },
+    {
+      "step_id": "cg_audio",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 408394,
+      "issues": [
+        "NVDA-016: Acesso a arquivo e rede sem verificar NVDAState.shouldWriteToDisk() antes de abrir o arquivo de áudio e chamar a API Gemini.",
+        "NVDA-062: Não verifica globalVars.appArgs.secure antes de executar I/O de arquivo e chamadas de rede; em secure mode (tela de login, UAC) o addon deve abortar a operação e informar o usuário."
+      ],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/audio/__init__.py\n# Subpacote audio para transcrição de arquivos de áudio via Google Gemini\n# Este módulo apenas expõe a classe principal do serviço\n\nfrom .transcription_service import AudioTranscriptionService\n\n__all__ = [\"AudioTranscriptionService\"]\n```\n\n``"
+    },
+    {
+      "step_id": "cg_video",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 546844,
+      "issues": [
+        "Erro de sintaxe: Erro de sintaxe na linha 47: invalid syntax",
+        "Erro de sintaxe: Erro de sintaxe na linha 81: invalid syntax",
+        "Erro de sintaxe: Erro de sintaxe na linha 40: invalid syntax"
+      ],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/video/__init__.py\nimport wx\nimport gui\nimport ui\nimport tones\nimport addonHandler\nimport globalVars\nimport NVDAState\nfrom logHandler import log\nfrom scriptHandler import script\nfrom gui.message import MessageDialog\nfrom .video_service import VideoTranscriptio"
+    },
+    {
+      "step_id": "sv_settings",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Agente pulou a validação sem justificativa válida, apesar de haver código Python no contexto fornecido.",
+        "Nenhuma análise de sintaxe, imports ou referências foi realizada."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "sv_video",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Agente retornou SKIP sem executar a validação de sintaxe solicitada.",
+        "Não há análise de ast.parse, imports, configSpec ou tratamento de exceções.",
+        "O output não contém nenhum resultado de validação, apenas a justificativa de que não encontrou blocos Python, o que é falso dado o contexto fornecido."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_audio",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 544534,
+      "issues": [
+        "audio_service.py usa _() para tradução mas não importa a função _ (nem addonHandler.initTranslation() foi chamado nesse módulo). Isso causará NameError em tempo de execução.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/audio/__init__.py\nimport wx\nimport gui\nimport globalVars\nimport NVDAState\nimport ui\nimport tones\nimport threading\nimport globalPluginHandler\nimport addonHandler\nfrom scriptHandler import script\nfrom gui.message import MessageDialog, DefaultButtonSet, ReturnCo"
+    },
+    {
+      "step_id": "cg_imagem",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 405433,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/imagem/__init__.py\nimport wx\nimport gui\nimport globalVars\nimport NVDAState\nimport ui\nimport tones\nimport addonHandler\nfrom scriptHandler import script\nfrom logHandler import log\nfrom .imagem_service import ImagemService\n\naddonHandler.initTranslation()\n\nclass "
+    },
+    {
+      "step_id": "cg_video_fix",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 538586,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/video/__init__.py\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimport ui\nimport globalVars\nfrom scriptHandler import script\nfrom logHandler import log\nfrom .video_service import VideoTranscriptionService\n\n# Inicializa traducoes para est"
+    },
+    {
+      "step_id": "cg_imagem_fix",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": true,
+      "score": 90,
+      "retries_used": 2,
+      "tokens_used": 408404,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/imagem/__init__.py\nimport wx\nimport gui\nimport os\nimport tempfile\nimport addonHandler\nimport ui\nimport tones\nfrom scriptHandler import script\nfrom gui.message import MessageDialog, DefaultButtonSet, ReturnCode\nfrom gui import guiHelper, mainFrame\nfrom logHand"
+    },
+    {
+      "step_id": "cg_audio_fix",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 406647,
+      "issues": [
+        "ARCH-001: O addon utiliza API externa (Google Gemini) que requer chave de API, mas não há SettingsPanel para o usuário configurar essa chave. O código lê de config.conf[\"GeminiMultimodal\"][\"api_key\"], mas não fornece interface para inserção.",
+        "WX-A11Y-004: Os diálogos (principal e de resultado) não possuem StdDialogButtonSizer nem handler de tecla Escape, dificultando o fechamento por teclado e violando a acessibilidade."
+      ],
+      "output_preview": "```python:globalPlugins/GeminiMultimodal/audio/__init__.py\nimport wx\nimport gui\nimport ui\nimport tones\nimport addonHandler\nimport globalVars\nimport NVDAState\nfrom scriptHandler import script\nfrom logHandler import log\nfrom .audio_service import AudioTranscriptionService\n\naddonHandler.initTranslation"
+    },
+    {
+      "step_id": "sv_imagem",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "O agente retornou SKIP sem executar a validação de sintaxe solicitada, mesmo após duas tentativas de correção obrigatória.",
+        "Não há evidência de uso de ast.parse ou qualquer verificação de imports, referências, threading, wx.CallAfter, tratamento de exceções ou addonHandler.initTranslation().",
+        "O output não contém nenhum resultado de validação, apenas uma justificativa genérica de que não havia blocos Python, o que é contraditório com o contexto que fornece trechos de código do subpacote imagem."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "sv_video",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "O agente retornou SKIP alegando que nenhum bloco Python foi encontrado, mas o contexto adicional contem trechos de codigo Python do step cg_video_fix.",
+        "Nao foi realizada validacao de sintaxe com ast.parse.",
+        "Nao houve verificacao dos imports, referencias a video_service, uso de threading, wx.CallAfter, tratamento de excecoes nem presenca de addonHandler.initTranslation()."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "PARALELO",
+      "5"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "APROVADO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "5"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\GeminiMultimodal_20260817_132924",
+  "files_saved": [
+    "configSpec.py",
+    "settings_panel.py",
+    "__init__.py",
+    "transcricao_video.py",
+    "__init__.py",
+    "imagem_service.py",
+    "video_service.py",
+    "image_service.py",
+    "manifest.ini"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\GeminiMultimodal.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "globalPlugins/GeminiMultimodal/configSpec.py",
+    "globalPlugins/GeminiMultimodal/settings_panel.py",
+    "globalPlugins/GeminiMultimodal/imagem/imagem_service.py",
+    "globalPlugins/GeminiMultimodal/imagem/image_service.py",
+    "globalPlugins/GeminiMultimodal/imagem/__init__.py",
+    "globalPlugins/GeminiMultimodal/video/transcricao_video.py",
+    "globalPlugins/GeminiMultimodal/video/video_service.py",
+    "globalPlugins/GeminiMultimodal/video/__init__.py"
+  ],
+  "struct_problems": [
+    "ESTRUTURA-008: Pasta globalPlugins/GeminiMultimodal/ tem arquivos .py mas nao tem __init__.py. O NVDA so carrega __init__.py como GlobalPlugin — module_1.py, servicos e outros modulos sao ignorados. Renomeie o arquivo principal para __init__.py ou crie __init__.py com from .module_1 import *.",
+    "ESTRUTURA-006: Pasta doc/ ausente — userGuide.html nao gerado.",
+    "NVDA-015: globalPlugins\\GeminiMultimodal\\settings_panel.py: usa config.conf sem config.conf.spec. Crie configSpec.py.",
+    "NVDA-015: globalPlugins\\GeminiMultimodal\\imagem\\imagem_service.py: usa config.conf sem config.conf.spec. Crie configSpec.py.",
+    "NVDA-015: globalPlugins\\GeminiMultimodal\\imagem\\image_service.py: usa config.conf sem config.conf.spec. Crie configSpec.py.",
+    "NVDA-015: globalPlugins\\GeminiMultimodal\\video\\video_service.py: usa config.conf sem config.conf.spec. Crie configSpec.py."
+  ],
+  "has_init_py": false,
+  "has_manifest": true,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/GeminiMultimodal/configSpec.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/GeminiMultimodal/settings_panel.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/GeminiMultimodal/video/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/GeminiMultimodal/video/transcricao_video.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/GeminiMultimodal/imagem/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/GeminiMultimodal/imagem/imagem_service.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/GeminiMultimodal/video/video_service.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/GeminiMultimodal/imagem/image_service.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    }
+  ],
+  "avg_score": 42.2,
+  "models_used": [
+    "gpt-oss:20b",
+    "qwen3.5:397b"
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "addon_name": "ModoCLI_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'ModoCLI' que suporta argumentos de linha de comando para ativar funcionalidades especiais ao iniciar o NVDA. O addon DEVE: 1) Definir uma funcao _handle_cli(cliArgum",
+  "timestamp": "2026-07-21T17:06:41.131464",
+  "plan_id": "8b518983",
+  "duration_seconds": 843.47,
+  "total_tokens": 0,
+  "total_retries": 11,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "avg_score": 49.2,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 44377,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 102355,
+      "issues": [
+        "Nenhum código Python foi gerado."
+      ]
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 1,
+      "tokens_used": 44005,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 105280,
+      "issues": [
+        "Erro crítico: addonHandler.isCLIParamKnown.register() não existe; deve ser .append(). O plugin falhará ao carregar.",
+        "NVDA-021: Indentação com espaços em vez de TABS (NVDA usa TABS como padrão de codificação)."
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 114809,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de TABS (NVDA usa TABS como padrão de codificação). Substitua todos os espaços por tabs.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ]
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 26687,
+      "issues": []
+    }
+  ],
+  "events": [],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

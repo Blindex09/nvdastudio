@@ -1,0 +1,26 @@
+{
+  "addon_name": "BuscaArquivos_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'BuscaArquivos' que busca texto em arquivos do computador ao pressionar NVDA+shift+F, processa em thread separada para nao travar o NVDA, e exibe os resultados em dia",
+  "timestamp": "2026-08-04T18:31:54.534323",
+  "plan_id": "?",
+  "duration_seconds": 0.0,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "Chave API para ollama nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio.",
+  "avg_score": 0.0,
+  "steps": [],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

@@ -1,0 +1,207 @@
+{
+  "addon_name": "Regra9Addon_e2e",
+  "query": "Crie GlobalPlugin NVDA com acesso ao sistema de arquivos para listar a pasta do usuario. Atalho NVDA+L.",
+  "timestamp": "2026-05-24T20:32:02.047461",
+  "plan_id": "e903be8a",
+  "complexity": "Plano criado com 5 etapas. Iniciando...",
+  "duration_seconds": 286.0,
+  "total_tokens": 97110,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 19163,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = UserFolderLister\nsummary = Lista a pasta do usuario\ndescription = Addon que lista o conteudo da pasta do usuario atual ao pressionar o atalho NVDA+L. Oferece acesso rapido a arquivos e pastas pessoais atraves de anuncio em voz alta.\nversion = 1.0.0\nauthor = NVDAStudio AI <"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 28158,
+      "issues": [],
+      "output_preview": "Abaixo estao os arquivos do addon UserFolderLister.\n\nO atalho originalmente solicitado NVDA+L e reservado pelo NVDA core para anunciar a linha atual. Para evitar conflito, o script usa NVDA+Shift+L.\n\n```ini:manifest.ini\nname = UserFolderLister\nsummary = Lista os itens da pasta do usuario\ndescription"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "s3",
+      "step_type": "documentation",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 26755,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>UserFolderLister - Guia do Usuario</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6p"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.6",
+      "approved": true,
+      "score": 93,
+      "retries_used": 0,
+      "tokens_used": 23034,
+      "issues": [],
+      "output_preview": "=== AVISO DE MONTAGEM ===\n[AVISO-ESTRUTURA-B7] manifest.ini referencia docFileName mas nenhum bloco html:doc/ foi encontrado no output. Inclua o bloco ```html:doc/pt_BR/userGuide.html com a documentacao do addon.\n=== FIM DO AVISO ===\n\n=== RESUMO ===\n\nAddon UserFolderLister para NVDA 2026.1+. Pressio"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "PLANO_CRIADO",
+      "Plano criado com 5 etapas. Iniciando..."
+    ],
+    [
+      "PARALELO",
+      "Trabalhando em paralelo: Criando o codigo do addon para listar a pasta do usuario, Criando o manifes"
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o codigo do addon para listar a pasta do usuario..."
+    ],
+    [
+      "EXECUTANDO",
+      "Criando o manifesto do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Conferindo as informacoes do manifesto..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se o codigo funciona corretamente com o NVDA..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Verificando sintaxe do codigo gerado..."
+    ],
+    [
+      "AVALIANDO",
+      "Analisando resultado da validacao de sintaxe..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Escrevendo a documentacao do addon..."
+    ],
+    [
+      "AVALIANDO",
+      "Checando se a documentacao esta completa e acessivel..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "Montando o addon final..."
+    ],
+    [
+      "AVALIANDO",
+      "Verificando se todos os arquivos estao no lugar..."
+    ],
+    [
+      "APROVADO",
+      ""
+    ],
+    [
+      "MONTANDO",
+      "Montando o addon para listar pastas..."
+    ],
+    [
+      "CONCLUIDO",
+      "Pronto! Criei o UserFolderLister. Com NVDA+L voce ouve a lista de arquivos da pasta de usuario."
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\Regra9Addon_e2e_20260524_203648",
+  "files_saved": [
+    "manifest.ini",
+    "__init__.py",
+    "userGuide.html",
+    "userGuide.html",
+    "userGuide.html com a documentacao do addon.",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\Regra9Addon_e2e.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "doc/pt_BR/userGuide.html com a documentacao do addon",
+    "globalPlugins/Regra9Addon_e2e/userGuide.html",
+    "globalPlugins/UserFolderLister/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: __init__.py: linha 19: chamada a _() sem '# Translators: ...' na linha anterior â€” o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/UserFolderLister/__init__.py"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html com a documentacao do addon."
+    },
+    {
+      "language": "html",
+      "filename": "userGuide.html"
+    }
+  ],
+  "avg_score": 98.6,
+  "models_used": [
+    "kimi-k2.6"
+  ]
+}

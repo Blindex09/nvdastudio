@@ -1,0 +1,36 @@
+{
+  "addon_name": "DocAddon_e2e",
+  "query": "Crie um addon NVDA que anuncia informacoes sobre a janela em foco ao pressionar NVDA+F. Inclua documentacao completa em doc/pt_BR/userGuide.html e doc/en/userGuide.html. manifest.ini com version=1.0.0",
+  "timestamp": "2026-06-11T18:44:58.304697",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 0.0,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "HermesLLMClient.chat() got an unexpected keyword argument 'reasoning_effort'",
+  "steps": [],
+  "events": [
+    [
+      "PLANEJANDO",
+      "Analisando seu pedido e criando o plano de desenvolvimento..."
+    ],
+    [
+      "ERRO",
+      "HermesLLMClient.chat() got an unexpected keyword argument 'reasoning_effort'"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": []
+}

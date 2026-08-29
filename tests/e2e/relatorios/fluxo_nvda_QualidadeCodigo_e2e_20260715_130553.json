@@ -1,0 +1,55 @@
+{
+  "addon_name": "QualidadeCodigo_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'MonitorRecursos' que monitora uso de CPU e memoria RAM, anunciando ao pressionar NVDA+shift+M. O plugin deve: 1) Usar logHandler.log para registrar eventos — nunca p",
+  "timestamp": "2026-07-15T13:01:25.116863",
+  "plan_id": "ee07b007",
+  "duration_seconds": 268.19,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 1,
+  "success": true,
+  "error": "Nenhum bloco de codigo extraido dos steps aprovados",
+  "avg_score": 0.0,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.6",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "ConversationManager.emit_tool_progress() takes from 1 to 2 positional arguments but 3 were given"
+      ]
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

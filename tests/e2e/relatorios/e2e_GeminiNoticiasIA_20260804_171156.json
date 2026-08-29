@@ -1,0 +1,61 @@
+{
+  "addon_name": "GeminiNoticiasIA",
+  "query": "Crie um addon NVDA que resume as principais noticias do dia usando IA e mostra o resultado numa pagina web acessivel (HTML) dentro do proprio addon, alem de anunciar um resumo por voz. O usuario deve ",
+  "timestamp": "2026-08-04T17:10:03.247450",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 113.67,
+  "total_tokens": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "Falha no provedor gemini: Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1/interactions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "gemini-3.6-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Falha no provedor gemini: Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1/interactions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "gemini-3.6-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 56424,
+      "issues": [
+        "A secao User Advocate falhou durante a execucao devido a um erro 429 (Too Many Requests) da API e nao contem conteudo substantivo ou riscos/restricoes identificados do ponto de vista do usuario cego."
+      ],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSUPOSICOES QUE PODEM ESTAR ERRADAS:\n\n1. Supoe-se que existe uma fonte de noticias gratuita, estavel e estruturada disponivel sem necessidade de cadastro de credenciais pelo usuario.\n2. Supoe-se que o componente de rende"
+    }
+  ],
+  "events": [
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": [
+    "gemini-3.6-flash"
+  ]
+}

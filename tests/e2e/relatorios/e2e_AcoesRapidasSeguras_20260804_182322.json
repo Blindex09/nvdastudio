@@ -1,0 +1,190 @@
+{
+  "addon_name": "AcoesRapidasSeguras",
+  "query": "Crie um addon NVDA de acoes rapidas no computador: abrir aplicativos comuns (calculadora, bloco de notas, navegador padrao), consultar informacoes simples do sistema (hora atual, nivel de bateria, esp",
+  "timestamp": "2026-08-04T17:45:13.241646",
+  "plan_id": "9e807c0a",
+  "complexity": "",
+  "duration_seconds": 2289.12,
+  "total_tokens": 621451,
+  "total_retries": 13,
+  "replan_count": 2,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22490,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = QuickActions\nsummary = Acoes rapidas no computador: abrir apps, consultar sistema e abrir URL\ndescription = Addon para NVDA que permite executar acoes rapidas e seguras no computador: abrir calculadora, bloco de notas e navegador padrao; consultar hora atual, nivel de bate"
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 160308,
+      "issues": [
+        "API key hardcoded detectada (linha 334): Base64. Use config.conf ou variavel de ambiente.",
+        "API key hardcoded detectada (linha 367): Base64. Use config.conf ou variavel de ambiente."
+      ],
+      "output_preview": "```python:globalPlugins/QuickActions/__init__.py\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimport ui\nimport tones\nimport globalVars\nfrom scriptHandler import script\nfrom logHandler import log\n\nfrom .apps.launcher import open_calculator, open_notepad, open_browser\nfrom .syst"
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22417,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = QuickActions\nsummary = Acoes rapidas seguras: abrir apps, consultar sistema, abrir URL\ndescription = Addon para NVDA que permite executar acoes rapidas e seguras no computador: abrir aplicativos comuns (calculadora, bloco de notas, navegador padrao), consultar informacoes "
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 159455,
+      "issues": [
+        "Critic retornou vazio ou sem JSON reconhecivel."
+      ],
+      "output_preview": "```python:globalPlugins/QuickActions/actions.py\nimport ctypes\nimport datetime\nimport shutil\nimport subprocess\nimport webbrowser\nimport wx\n\nimport addonHandler\nimport ui\nfrom logHandler import log\n\naddonHandler.initTranslation()\n\n\nclass SYSTEM_POWER_STATUS(ctypes.Structure):\n\t_fields_ = [\n\t\t(\"ACLineS"
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 22496,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = QuickActions\nsummary = Acoes rapidas no computador: abrir apps, consultar sistema e abrir URL\ndescription = Addon para NVDA que permite abrir aplicativos comuns (calculadora, bloco de notas, navegador padrao), consultar informacoes simples do sistema (hora atual, nivel de "
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 90,
+      "retries_used": 1,
+      "tokens_used": 86940,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/QuickActions/__init__.py\nimport os\nimport subprocess\nimport shutil\nimport datetime\nimport wx\nimport gui\nimport globalVars\nimport ui\nimport globalPluginHandler\nimport addonHandler\nfrom scriptHandler import script\nfrom logHandler import log\nfrom winAPI import kernel32\n\naddonHan"
+    },
+    {
+      "step_id": "sv1",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Agente não encontrou bloco Python no input, mas o contexto fornecido contém código Python em bloco com linguagem 'python:globalPlugins/__init__.py'. Falha ao realizar a tarefa de validação de sintaxe."
+      ],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 27922,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>QuickActions - Ações Rápidas</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px; bor"
+    },
+    {
+      "step_id": "aa1",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 34511,
+      "issues": [],
+      "output_preview": "RELATORIO DE AUDITORIA DE ACESSIBILIDADE — ADDON ACOES RAPIDAS (cg1)\n\nREGRA: NVDA-002  SEVERIDADE: Critico  LOCAL: Todos os scripts (abrir_calculadora, abrir_bloco_notas, abrir_navegador, consultar_bateria, consultar_espaco_disco, abrir_url)\nPROBLEMA: O codigo usa subprocess.call(), os.startfile() e"
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 84912,
+      "issues": [
+        "NVDA-UX-002: Scripts que abrem aplicativos e URL não fornecem feedback auditivo de sucesso. Após abrir calculadora, bloco de notas, navegador ou URL, o usuário não recebe confirmação por voz. Adicione ui.message() após a operação bem-sucedida.",
+        "O script_abrirNavegador usa o comando 'start' sem argumentos, o que pode abrir uma janela de comando em vez do navegador padrão. Considere usar webbrowser.open('about:blank') ou 'start http://' para abrir o navegador corretamente.",
+        "Uso de subprocess.Popen com shell=True para comandos hardcoded é aceitável, mas é uma prática recomendada evitar shell=True quando possível para reduzir riscos de segurança."
+      ],
+      "output_preview": "```python:globalPlugins/QuickActions/__init__.py\n# -*- coding: utf-8 -*-\n# QuickActions - Acoes rapidas no computador para NVDA\n# Copyright (C) 2025 NVDAStudio\n# Licenciado sob a GNU General Public License v2\n\nimport os\nimport subprocess\nimport shutil\nimport datetime\nimport wx\nimport gui\nimport glob"
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AcoesRapidasSeguras_20260804_182322",
+  "files_saved": [
+    "__init__.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AcoesRapidasSeguras.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/QuickActions/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-042: globalPlugins\\QuickActions\\__init__.py: _() para string com contagem. Use ngettext()."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/QuickActions/__init__.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 58.5,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

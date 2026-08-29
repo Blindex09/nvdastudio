@@ -1,0 +1,205 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-08T12:36:08.906057",
+  "plan_id": "ff081ed3",
+  "complexity": "",
+  "duration_seconds": 2855.32,
+  "total_tokens": 316827,
+  "total_retries": 10,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output e um bloco de codigo Python (```python:arquivo.py```), nao texto de pesquisa. web_research nunca escreve o addon -- isso e responsabilidade do step code_generation, separado."
+      ],
+      "output_preview": "```python:module_1.py\nimport google.generativeai as genai\ngenai.configure(api_key=\"SUA_CHAVE_AQUI\")\nmodel = genai.GenerativeModel(\"gemini-1.5-flash\")\nresponse = model.generate_content(\"Resuma este texto em português:\", tools=[\"google_search\"])\nprint(response.text)\n```"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "design_review",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 94099,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSUPOSICOES QUE PODEM ESTAR ERRADAS\n\n1. O output do step s1 assume o SDK google.generativeai com genai.configure e model.generate_content, modelo gemini-1.5-flash e resposta via response.text. Isso contradiz diretamente "
+    },
+    {
+      "step_id": "s3",
+      "step_type": "agent_template",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 54558,
+      "issues": [],
+      "output_preview": "# Agente de Leitura Gemini\n\nAgente de leitura com IA que resume, responde perguntas e complementa com busca web via Google Gemini, com respostas formatadas para anuncio pelo NVDA.\n\n## Descricao\nVoce e o Agente de Leitura Gemini, o nucleo de inteligencia do addon AssistenteLeituraGemini. Sua funcao e"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 168170,
+      "issues": [
+        "Missing import of 'wx' in gemini_service.py (used wx.CallAfter).",
+        "Missing import of 'api' in __init__.py (used api.getFocusObject()).",
+        "Potential missing dependency: 'requests' is not bundled; must be declared in manifest or included in lib/."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/__init__.py\nimport wx\nimport gui\nimport config\nimport globalVars\nimport globalPluginHandler\nimport addonHandler\nimport ui\nimport speech\nfrom logHandler import log\nfrom scriptHandler import script, SCRCAT_TOOLS\nfrom gui.settingsDialogs import NVDASettin"
+    },
+    {
+      "step_id": "s9",
+      "step_type": "agent_runner",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Output não contém código Python com AgentRunner, run() ou reset_session().",
+        "O output é apenas um erro de sub-agente e avisos de estrutura ausente, sem implementação do agente runner.",
+        "Não há artefato de código válido para avaliação."
+      ],
+      "output_preview": "# AVISO DE ESTRUTURA — itens obrigatorios ausentes detectados:\n# [AVISO-ESTRUTURA] Ausente: reset_session() publico\n# [AVISO-ESTRUTURA] Ausente: _fallback_chain definido\n# [AVISO-ESTRUTURA] Ausente: cliente LLM importado lazy em run()\n# [AVISO-ESTRUTURA] Ausente: try/except em chamada externa\n# [AVI"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "APROVADO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_runner"
+    ],
+    [
+      "AVALIANDO",
+      "agent_runner"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 38.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}

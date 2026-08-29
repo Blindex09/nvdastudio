@@ -1,0 +1,125 @@
+{
+  "addon_name": "PronunciaCorreta_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'PronunciaCorreta' que melhora a pronuncia de termos tecnicos. O addon DEVE: 1) Criar arquivo speechDicts/pronuncia.dic com pelo menos 3 regras de pronuncia.    Cada ",
+  "timestamp": "2026-08-08T05:53:09.578864",
+  "plan_id": "e17873b1",
+  "duration_seconds": 617.97,
+  "total_tokens": 333557,
+  "total_retries": 5,
+  "replan_count": 1,
+  "success": true,
+  "error": "",
+  "avg_score": 84.4,
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 71423,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 115961,
+      "issues": [
+        "Critic retornou vazio ou sem JSON reconhecivel."
+      ]
+    },
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 23747,
+      "issues": []
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "glm-5.2",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 33403,
+      "issues": []
+    },
+    {
+      "step_id": "s3",
+      "step_type": "syntax_validation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": []
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 27647,
+      "issues": []
+    },
+    {
+      "step_id": "s5",
+      "step_type": "accessibility_audit",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 35929,
+      "issues": []
+    },
+    {
+      "step_id": "s6",
+      "step_type": "assembly",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 25447,
+      "issues": []
+    }
+  ],
+  "events": [
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "files_saved": [
+    "__init__.py",
+    "pronuncia.dic",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/PronunciaCorreta/__init__.py",
+    "speechDicts/pronuncia.dic"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true
+}

@@ -1,0 +1,111 @@
+{
+  "addon_name": "QualidadeCodigo_e2e",
+  "query": "Crie um GlobalPlugin NVDA chamado 'MonitorRecursos' que monitora uso de CPU e memoria RAM, anunciando ao pressionar NVDA+shift+M. O plugin deve: 1) Usar logHandler.log para registrar eventos — nunca p",
+  "timestamp": "2026-08-25T22:34:21.142934",
+  "plan_id": "77ae5cf7",
+  "duration_seconds": 916.31,
+  "total_tokens": 0,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "avg_score": 0.0,
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ]
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Escalacao falhou: Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ]
+    },
+    {
+      "step_id": "cg1",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Escalacao falhou: Chave API para opencode_go nao configurada. Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
+      ]
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Aplicando analise mais aprofundada para resolver os problemas persistentes..."
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Aplicando análise mais aprofundada para gerar o código corretamente..."
+    ]
+  ],
+  "files_saved": [],
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false
+}

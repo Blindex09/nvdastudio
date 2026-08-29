@@ -1,0 +1,81 @@
+{
+  "addon_name": "TokensAddon_e2e",
+  "query": "Crie addon NVDA simples que anuncia o nome do processo em foco ao pressionar NVDA+P.",
+  "timestamp": "2026-07-21T14:46:18.254614",
+  "plan_id": "60c2850f",
+  "complexity": "",
+  "duration_seconds": 584.87,
+  "total_tokens": 0,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s2",
+      "step_type": "manifest_builder",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 21728,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ProcessoEmFoco\nsummary = Anuncia o nome do processo em foco\ndescription = Addon simples que anuncia o nome do processo do aplicativo em foco ao pressionar NVDA+P.\nversion = 1.0.0\nauthor = Desenvolvedor <dev@exemplo.com>\nurl = https://github.com/usuario/ProcessoEmFoco\ndocFi"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 100515,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de TABS. O código usa 4 espaços para indentação, mas o padrão do NVDA exige TABS. Substitua todos os espaços por tabs.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/ProcessoEmFoco/__init__.py\nimport globalPluginHandler\nimport addonHandler\nimport api\nimport ui\nfrom scriptHandler import script\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n\tscriptCategory = \"Processo em Foco\"\n\n\tdef __init__(self, *a"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 105532,
+      "issues": [
+        "NVDA-021: Indentação com espaços em vez de TABS. O NVDA exige tabs para indentação. Corrija todo o arquivo para usar tabs.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/ProcessoEmFoco/__init__.py\nimport ctypes\nfrom ctypes import wintypes\nimport ui\nimport globalPluginHandler\nimport addonHandler\nfrom logHandler import log\nfrom scriptHandler import script, SCRCAT_TOOLS\n\naddonHandler.initTranslation()\n\n\nclass GlobalPlugin(globalPluginHandler.Glo"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "documentation",
+      "model_used": "deepseek-v4-flash",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 26038,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ProcessoEmFoco - Guia do Usuário</title>\n<style>\nbody { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }\nkbd { background: #eee; border: 1px solid #ccc; padding: 2px 6px;"
+    }
+  ],
+  "events": [],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 50.0,
+  "models_used": [
+    "deepseek-v4-flash",
+    "kimi-k2.7-code"
+  ]
+}
