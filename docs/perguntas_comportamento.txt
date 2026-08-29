@@ -1,0 +1,765 @@
+NVDASTUDIO - PERGUNTAS DE COMPORTAMENTO ESPERADO
+Versao: 1.1.0 - 2026-04-03 (revisao apos analise completa do projeto)
+Objetivo: Mapear o comportamento desejado em cada fluxo do software,
+do ponto de vista do usuario, para validacao e ajuste fino.
+
+Responda cada pergunta com o comportamento que voce DESEJA.
+Nao ha resposta certa ou errada - e o que voce quer que aconteca.
+
+=============================================================
+PARTE 1 - ABERTURA E INICIALIZACAO DO ADDON
+=============================================================
+
+1.1 Quando o NVDA inicia com o NVDAStudio instalado, voce quer que o addon:
+a) Seja carregado em silencio, sem anunciar nada
+b) Anuncie algo como "NVDAStudio pronto" para o usuario saber que esta ativo
+c) Outro comportamento - qual?
+R: b
+
+1.2 Se a senha de acesso ao servico de IA nao estiver configurada ou
+parar de funcionar (por exemplo: voce ainda nao a inseriu nas configuracoes,
+ou ela expirou), quando voce quer ser avisado?
+a) Imediatamente ao iniciar o NVDA
+b) Apenas quando tentar criar o primeiro addon
+c) Nunca - deixar avisarr na hora que for usar
+D) Ao abrir o NVDAStudio
+R: d
+
+1.3 Se o NVDAStudio nao conseguir acessar o servico de IA quando o NVDA abre
+(por exemplo: o computador esta sem internet naquele momento), voce quer que:
+a) O addon carregue mesmo assim e avise so na hora de usar
+b) O addon avise imediatamente que nao ha conexao
+c) O addon tente reconectar silenciosamente em segundo plano
+R: a) avise com linguagem natural ao usuário, sem termos técnicos.
+
+1.4 Qual o atalho de teclado ideal para voce abrir o NVDAStudio?
+a) NVDA+Shift+N
+b) NVDA+Alt+N
+c) Outro - qual?
+d) Tanto faz, voce define
+R: a
+
+=============================================================
+PARTE 2 - TELA PRINCIPAL E CAMPO DE PEDIDO
+=============================================================
+
+2.1 Quando o usuario abre o NVDAStudio, o foco do teclado deve ir:
+a) Direto para o campo onde ele escreve o pedido
+b) Para um botao de boas-vindas ou instrucoes primeiro
+c) Para onde o NVDA decidir naturalmente (sem interferir)
+R: a
+
+2.2 Qual o texto de dica ideal que aparece no campo de pedido quando esta vazio
+(esse texto some assim que voce comeca a digitar)?
+a) "Descreva o addon que voce quer criar..."
+b) "O que voce precisa que o NVDA faca?"
+c) Nenhum texto de dica - campo vazio mesmo
+d) Outro - qual?
+R: d) Descreva o addon que você deseja criar.
+
+2.3 Ha algum limite de tamanho para o pedido do usuario?
+a) Nao - o usuario pode escrever o quanto quiser
+b) Sim - qual seria o limite razoavel?
+R: a
+
+2.4 Se o usuario clicar em "Criar" sem escrever nada no campo de pedido,
+voce quer que:
+a) Nada aconteca (botao desabilitado ou ignorado)
+b) Uma mensagem de erro seja anunciada pelo NVDA
+c) Uma dica apareca orientando o usuario a descrever o addon
+R: c
+
+2.5 O usuario pode enviar o pedido tanto clicando no botao "Criar" quanto
+pressionando Enter no campo de texto?
+a) Sim - Enter e o botao fazem a mesma coisa
+b) Nao - Enter deve apenas quebrar linha no campo
+c) Enter fecha o dialog sem criar
+R: a e também o enter sozinho não faz nada. somente quando escrever o que quer. e se a ia achar que ainda é ambíguo o pedido, ela pode vir com perguntas.
+
+2.6 Voce quer que o campo de pedido suporte multiplas linhas
+(usuario pode pressionar Shift+Enter para quebrar linha)?
+a) Sim
+b) Nao - campo de linha unica e suficiente
+R: a
+
+=============================================================
+PARTE 3 - FLUXO DE CLARIFICACAO (QUANDO A IA FIZER PERGUNTAS)
+=============================================================
+
+3.1 Quando a IA precisar de mais informacoes antes de criar o addon,
+ela deve perguntar:
+a) Uma pergunta de cada vez, esperando a resposta antes de continuar
+b) Todas as perguntas de uma vez para o usuario responder de uma so vez
+c) No maximo 3 perguntas por vez
+r: b) em linguagem simples para o usuário, com exemplos.  sem jargões técnicos.
+
+3.2 Como voce prefere que as perguntas da IA sejam apresentadas?
+a) Em uma caixa de dialogo separada, com campo para responder
+b) No proprio campo de pedido original, como uma continuacao da conversa
+c) Em uma lista com checkboxes e campos para cada pergunta
+r: a e c
+
+3.3 Se o usuario fechar a janela de perguntas sem responder nada,
+o que deve acontecer?
+a) O processo de criacao e cancelado completamente
+b) A IA tenta criar o addon com as informacoes que ja tem
+c) A janela reabre automaticamente na proxima vez
+R: b) mmas com ressalvas. a IA pode fazer perguntas ao longo do desenvolvimento, esperando a resposta do usuário. pode ser em uma janela, com caixas para marcar, caixa de seleção, e também campo editável.
+ 
+3.4 Quando a IA faz uma pergunta de sim ou nao
+(por exemplo: "Voce quer que o addon fale em voz alta quando for ativado?"),
+a resposta do usuario e:
+a) Digitada livremente em texto
+b) Escolhida em opcoes (Sim / Nao / Nao sei)
+c) Pode ser qualquer um dos dois
+R: c
+
+3.5 Se a IA fizer uma pergunta e voce demorar para responder
+(por exemplo: foi buscar uma informacao ou simplesmente ficou ocupado),
+ha um limite de tempo antes do processo ser cancelado automaticamente?
+a) Nao - o usuario pode demorar o quanto precisar
+b) Sim - qual seria o tempo razoavel antes de cancelar?
+R: a)
+
+3.6 Voce quer que tudo que foi perguntado e respondido fique visivel
+para o usuario enquanto o addon esta sendo criado?
+a) Sim - o usuario ve tudo que foi trocado
+b) Nao - mostra apenas a pergunta atual
+c) Opcional - o usuario escolhe
+R: d) pode ser em um documento gerado junto com a automação da ia em linguagem natural. a medida que vai fluindo o desenvolvimento, desde o começo, tudo é registrado em arquivo. um em linguagem simples, com tudo o que aconteceu, e outro com linguagem técnica, também de tudo o que aconteceu. ambos desde o começo até o fim.
+
+=============================================================
+PARTE 4 - MENSAGENS DE STATUS DURANTE A CRIACAO DO ADDON
+=============================================================
+
+4.1 Enquanto o addon esta sendo criado (processo pode levar 1 a 3 minutos),
+como voce quer receber atualizacoes?
+a) O NVDA anuncia cada etapa em voz alta automaticamente
+b) As mensagens aparecem visivelmente na tela, mas sem anunciar em voz
+c) O usuario tem que apertar alguma tecla para ouvir o status atual
+d) Combinacao de anuncio automatico das etapas principais e silencio nas secundarias
+R: a) b, mas com ressalvas, devem aparecer as mensagens também na interface para o usuário ir lendo, essas mensagens são dinâmicas pela ia, em linguagem natural, sem tecniques.
+
+
+4.2 Qual o estilo das mensagens de status que voce prefere?
+a) Tecnicos e diretos: "Gerando codigo Python..."
+b) Humanos e conversacionais: "Estou escrevendo o codigo do addon agora..."
+c) Minimos: "Trabalhando..." sem detalhar o que esta fazendo
+r: b)
+
+4.3 Se a criacao demorar mais que o esperado (mais de 2 minutos sem novidade),
+voce quer que:
+a) O sistema anuncie que esta demorando mais que o normal, mas continua
+b) Nada - o usuario espera sem aviso de demora
+c) Uma barra de progresso seja apresentada para dar noção de progresso
+R: c)
+
+4.4 Se o NVDA estiver lendo algo quando chegar uma mensagem do NVDAStudio
+(por exemplo: voce estava lendo um e-mail e chegou "Estou finalizando o addon..."),
+o que deve acontecer?
+a) Sim - a mensagem do NVDAStudio interrompe e fala por cima do que estava sendo lido
+b) Nao - espera o NVDA terminar de ler antes de anunciar a mensagem
+c) So mensagens importantes (erros e conclusao) interrompem
+R: b)
+
+4.5 Quando o NVDAStudio fica em silencio por alguns segundos entre uma
+etapa e outra (por exemplo: acabou de dizer "Analisando o pedido" mas
+ainda nao comecou a proxima etapa, a IA esta trabalhando por baixo dos panos),
+voce quer algum aviso de que ainda esta trabalhando?
+a) Sim - uma mensagem aparece a cada poucos segundos informando que ainda esta em andamento
+b) Nao - o silencio e normal, o usuario ja sabe que esta sendo feito
+c) Opcional - o usuario configura se quer ou nao
+R: a) com ressalvas, barras de progreço, e mensagens de pensando pela própria ia. sem som.
+
+4.6 Se o usuario fechar a janela do NVDAStudio enquanto o addon esta sendo criado,
+o que acontece?
+a) O processo continua em segundo plano e avisa quando terminar
+b) O processo e cancelado imediatamente
+c) Uma confirmacao pergunta se o usuario quer cancelar ou deixar continuar
+R: a). tem que ter uma tecla para voltar aonde estava.
+
+=============================================================
+PARTE 5 - RESULTADO E ENTREGA DO ADDON
+=============================================================
+
+5.1 Quando o addon e criado com sucesso, o que deve acontecer primeiro?
+a) O NVDA anuncia "Addon criado com sucesso!" e mostra onde foi salvo
+b) Uma janela abre com todas as instrucoes de instalacao
+c) O addon ja e instalado automaticamente no NVDA sem perguntar
+d) Uma pergunta: "Quer instalar agora ou salvar para depois?"
+R: a e d com botões para instalar, e abrir a pasta de onde foi salvo
+
+5.2 Onde voce quer que o arquivo do addon (arquivo .nvda-addon) seja salvo?
+a) Na Area de Trabalho sempre
+b) Em uma pasta padrao do NVDAStudio que o usuario define uma vez
+c) O usuario escolhe a pasta toda vez que cria um addon
+d) Na pasta de downloads do Windows
+R: C:\Users\olive\Documents\NVDAStudio\addons_gerados pasta padrão, a menos que o usuário escolha outra nas configurações.
+
+5.3 O nome do arquivo do addon gerado deve ser:
+a) Exatamente o nome que o usuario deu ao addon, sem alterar
+b) O nome do addon + data e hora (ex: MeuAddon_20260331.nvda-addon)
+c) Um nome automatico baseado na descricao
+d) O usuario escolhe o nome antes de salvar
+R: a)
+
+5.4 Apos salvar o addon, voce quer que o sistema:
+a) Abra automaticamente a pasta onde o arquivo foi salvo
+b) Apenas informe o caminho completo do arquivo salvo
+c) Pergunte se o usuario quer instalar agora no proprio NVDA
+d) Feche tudo e volte ao estado inicial para criar outro addon
+R: c)
+
+5.5 Se o usuario tentar criar um addon com o mesmo nome de um ja existente
+na pasta de destino:
+a) Substitui o arquivo antigo automaticamente
+b) Pergunta se quer substituir ou salvar com outro nome
+c) Salva com um sufixo automatico (ex: MeuAddon_2.nvda-addon)
+R: b)
+
+5.6 Junto com o arquivo do addon, voce quer que seja entregue tambem:
+a) Apenas o arquivo do addon - simples e direto
+b) Uma pasta com os arquivos internos do addon (para quem tiver curiosidade de ver como foi feito)
+c) Um arquivo de texto com instrucoes de instalacao e uso
+d) Tudo junto: o addon + os arquivos internos + instrucoes
+R: a e c
+
+
+=============================================================
+PARTE 6 - INSTALACAO DO ADDON NO NVDA
+=============================================================
+
+6.1 Voce quer que o NVDAStudio possa instalar o addon gerado
+diretamente no NVDA, sem o usuario ter que fazer isso manualmente?
+a) Sim - instala automaticamente com um clique
+b) Nao - o usuario faz a instalacao pelo processo normal do NVDA
+c) Opcional - o usuario escolhe se quer instalar agora ou nao
+R: c)
+
+6.2 Se o NVDAStudio oferecer instalacao automatica e o usuario aceitar,
+e necessario reiniciar o NVDA para o addon entrar em vigor?
+a) Sim - o sistema avisa que precisa reiniciar e espera o usuario fazer isso
+b) Sim - o sistema reinicia o NVDA automaticamente
+c) Nao sei - o que o NVDA exige
+R: a) mas sem fechar o nvda studio
+
+6.3 Se a instalacao nao funcionar
+(por exemplo: o Windows bloqueou a operacao ou o arquivo do addon ficou corrompido),
+voce quer que:
+a) Uma mensagem clara explique o que deu errado e como resolver
+b) O sistema tente instalar de outro jeito automaticamente
+c) O usuario seja redirecionado para instalar manualmente
+R: b)
+
+6.4 Apos instalar e reiniciar o NVDA, o usuario deve ser informado de que
+o novo addon esta ativo?
+a) Sim - o NVDA anuncia "Addon X instalado com sucesso" ao reiniciar
+b) Nao - o usuario vai perceber naturalmente
+c) Sim, mas so se o proprio addon tiver alguma funcionalidade inicial anunciavel
+R: b) o usuário vai ver na loja do nvda, ou nas configurações.
+
+
+=============================================================
+PARTE 7 - TRATAMENTO DE ERROS E FALHAS
+=============================================================
+
+7.1 Se a IA gerar um addon com um problema que impede a instalacao
+(o addon nao abre ou o NVDA recusa instalar), o que voce quer que aconteca?
+a) O sistema detecta, corrige automaticamente e entrega o addon certo
+b) O sistema detecta, avisa o usuario que houve um problema e tenta de novo
+c) O sistema entrega assim mesmo e avisa que pode ter problema
+d) O sistema cancela e pede para o usuario reformular o pedido
+R: a e b
+
+7.2 Se o servico de IA que o NVDAStudio usa parar de responder no meio de uma criacao,
+voce quer que:
+a) O sistema aguarde e tente novamente ate 3 vezes antes de desistir
+b) O sistema avise imediatamente e cancele
+c) O sistema salve o progresso e deixe o usuario continuar depois
+d) O sistema tente um modelo alternativo automaticamente
+R: b) mas o usuário tem que ser avisado. tem que ter uma tecla para levar para continuar depois.
+
+7.3 Se a criacao do addon falhar completamente apos todas as tentativas,
+o que o usuario deve receber?
+a) Uma mensagem clara explicando o que deu errado, em linguagem simples
+b) Uma mensagem mais detalhada com tudo o que aconteceu, para o usuario reportar o problema
+c) Uma sugestao de como reformular o pedido para tentar de novo
+d) Combinacao de a e c
+R: a e c
+
+7.4 Se algo parar durante a criacao (por exemplo: o servico de IA demorou
+demais para responder, ou a internet caiu no meio do processo), quantas
+vezes o sistema deve tentar de novo automaticamente antes de desistir
+e te avisar?
+a) 1 vez
+b) 2 vezes
+c) 3 vezes
+d) O usuario configura isso
+R: E) deixa a ia decidir. o importante é a entrega correta.
+
+7.5 Se o addon instala normalmente no NVDA mas nao faz o que voce pediu
+(por exemplo: voce pediu um addon que anuncia o nome da janela ativa,
+mas o addon que veio faz outra coisa porque a IA entendeu diferente),
+o que voce pode fazer?
+a) Enviar feedback diretamente na tela de resultado e a IA refaz
+b) Reescrever o pedido do zero e tentar novamente
+c) Editar manualmente o codigo (se souber programar)
+d) Todas as opcoes acima devem estar disponiveis
+R: a, pode ser enviado no chat, ai pedir pra ela refazer, ou caso o usuário quiser mudar alguma coisa.
+
+7.6 Quando ha um erro, as mensagens de erro devem ser anunciadas
+automaticamente pelo NVDA?
+a) Sim - erros sempre sao anunciados imediatamente
+b) Nao - aparecem na tela mas o usuario tem que navegar ate elas
+c) Depende da gravidade: erros criticos anunciam, avisos aparecem na tela
+R: a. sempre em linguagem natural de usuário.
+
+=============================================================
+PARTE 8 - CONFIGURACOES DO NVDASTUDIO
+=============================================================
+
+8.1 Onde as configuracoes do NVDAStudio ficam?
+a) Dentro do painel de Preferencias do proprio NVDA
+   (Menu NVDA > Preferencias > Configuracoes > NVDAStudio)
+b) Em um menu separado acessivel pelo atalho do addon
+c) Em um arquivo de configuracao que o usuario edita manualmente
+d) Em uma aba dentro da propria janela do NVDAStudio
+R: a)
+
+8.2 Quais configuracoes voce considera essenciais que o usuario possa ajustar?
+(marque todas que quiser)
+a) Senha de acesso ao servico de IA (necessaria para tudo funcionar)
+b) Pasta padrao para salvar os addons gerados
+c) Idioma das mensagens do NVDAStudio
+d) Nivel de detalhe das mensagens de status (detalhado / resumido / silencioso)
+e) Se instala automaticamente ou pede confirmacao
+f) Quantidade de tentativas em caso de falha
+g) Outra - qual?
+R: a b e c
+
+8.3 Se o usuario ainda nao inseriu a senha de acesso ao servico de IA
+e tenta usar o NVDAStudio, o sistema deve:
+a) Abrir a tela de configuracoes automaticamente para o usuario inserir a senha
+b) Mostrar uma mensagem de erro pedindo para ir configurar
+c) Ter um assistente de configuracao inicial (wizard) na primeira vez
+r: b) com ressalva, um dialogo com a mensagem,quando clicar em ok, já cai na configuração para colocar a chave de api.
+
+8.4 Voce quer que as configuracoes sejam sincronizadas entre computadores
+(por exemplo: configurou em casa e funciona automaticamente no trabalho tambem)?
+a) Nao - as configuracoes ficam so no computador local
+b) Sim - sincroniza automaticamente pela internet entre os seus computadores
+c) Nao e necessario
+R: a
+
+8.5 O NVDAStudio deve ter um botao de "Redefinir para o padrao"
+nas configuracoes?
+a) Sim
+b) Nao
+R: b)
+
+
+=============================================================
+PARTE 9 - HISTORICO DE ADDONS CRIADOS
+=============================================================
+
+9.1 O NVDAStudio deve manter um historico dos addons criados anteriormente?
+a) Sim - o usuario pode ver, baixar de novo e reusar pedidos antigos
+b) Nao - cada sessao e independente, sem historico
+c) Opcional - o usuario escolhe se quer salvar o historico
+R: a)
+
+9.2 Se houver historico, quais informacoes devem aparecer por addon?
+a) Apenas o nome e a data de criacao
+b) Nome, data, o pedido original do usuario e se foi instalado
+c) Tudo: nome, data, pedido original, quanto tempo levou para criar e o resultado final
+R: c) tudo em linguagem natural de usuário.
+
+9.3 Pelo historico, o usuario deve poder:
+a) Apenas ver o que ja foi criado
+b) Recriar um addon antigo (usa o mesmo pedido novamente)
+c) Editar o pedido antigo e criar uma nova versao do addon
+d) Apagar entradas do historico
+R: b c e d
+
+9.4 Qual o limite razoavel de entradas no historico?
+a) Sem limite
+b) Ultimos 10 addons
+c) Ultimos 30 dias
+d) O usuario define o limite
+R: d) isso é legal também colocar nas configuração do nvdastudio
+
+9.5 Se o usuario desinstalar o NVDAStudio, o historico deve ser:
+a) Apagado junto com o addon
+b) Mantido para eventual reinstalacao
+c) Exportado automaticamente antes de apagar
+R: c)
+
+=============================================================
+PARTE 10 - COMPORTAMENTO DA IA E QUALIDADE DO RESULTADO
+=============================================================
+
+10.1 Quando a IA gera o addon, voce prefere que ela:
+a) Entregue exatamente o que foi pedido, sem adicionar nada extra
+b) Adicione melhorias que ela julgar uteis, mesmo que o usuario nao pediu
+   (ex: usuario pediu um addon simples, a IA adiciona tratamento de erros extra)
+c) Pergunte antes de adicionar qualquer coisa que nao foi pedida
+R: c)
+
+10.2 Se o usuario pedir algo que o NVDA simplesmente nao consegue fazer
+(por exemplo: controlar o mouse por voz, que nao e algo que um addon do NVDA suporta),
+a IA deve:
+a) Explicar claramente que nao e possivel e sugerir uma alternativa viavel
+b) Tentar fazer mesmo assim, mesmo que o resultado seja incompleto
+c) Cancelar e pedir para o usuario reformular
+R: a)
+
+10.3 Quando a IA nao tem certeza sobre o que o usuario quer, mas tem uma
+interpretacao provavel, ela deve:
+a) Perguntar antes de criar ("Entendi que voce quer X. E isso mesmo?")
+b) Criar com a interpretacao mais provavel e avisar no resultado o que assumiu
+c) Criar duas versoes: uma com cada interpretacao
+R: a)
+
+10.4 Ao explicar o que criou, a IA deve usar termos simples ou termos tecnicos?
+(por exemplo: dizer "adiciona um atalho de teclado" e simples;
+dizer "registra um gesto de entrada via NVDA inputCore" e tecnico)
+a) Linguagem simples sempre - o usuario nao precisa saber os detalhes tecnicos
+b) Linguagem tecnica para usuarios avancados, simples para iniciantes
+c) Linguagem simples, mas com opcao de ver detalhes tecnicos se quiser
+R: a)
+
+10.5 Se o addon gerado precisar de uma senha de acesso a algum outro servico
+(por exemplo: um addon que resume textos automaticamente pode precisar de uma
+chave separada desse outro servico), o guia do addon deve explicar como obter essa senha de graca?
+a) Sim sempre
+b) So se o usuario nao souber (como a IA saberia disso?)
+c) Nao - isso e responsabilidade do usuario
+R: a)
+
+10.6 A qualidade do addon gerado deve priorizar:
+a) Funcionar perfeitamente na primeira instalacao, mesmo que seja mais basico
+b) Ter o maximo de funcionalidades possiveis, mesmo que precise de ajuste
+c) Equilíbrio entre funcionalidade e estabilidade
+R: d) Sempre estável e funcional.
+
+=============================================================
+PARTE 11 - O QUE ACONTECE POR BAIXO DOS PANOS (COMO O USUARIO VE)
+=============================================================
+
+Estas perguntas sao sobre o que acontece nos bastidores enquanto o
+addon e criado, do ponto de vista de quem esta usando o software.
+
+11.1 O usuario precisa saber que ha varios "especialistas" (agentes) trabalhando
+juntos por baixo dos panos para criar o addon
+(por exemplo: um cuida do codigo, outro confere a qualidade, outro escreve o manual)?
+a) Nao - e detalhe interno, o usuario ve apenas o progresso geral
+b) Sim - e interessante saber que ha um time trabalhando
+   (ex: "Nosso especialista esta conferindo a qualidade do addon...")
+c) Opcional - o usuario escolhe se quer ver esse nivel de detalhe
+R: a)
+
+11.2 Antes de entregar o addon, o sistema faz uma revisao interna para
+garantir que tudo esta correto. Voce quer que o usuario saiba que isso
+esta acontecendo?
+a) Sim - aparece uma mensagem como "Conferindo o addon antes de entregar..."
+b) Nao - e algo interno, nao precisa aparecer para o usuario
+c) So mencionar se encontrar algo a corrigir
+R: c)
+
+11.3 Se o sistema encontrou e corrigiu um problema sozinho durante a criacao,
+voce quer que o usuario seja informado?
+(por exemplo: o addon tinha um erro que o sistema detectou e arrumou sem precisar parar)
+a) Sim - aparece uma mensagem avisando que houve um problema e foi corrigido automaticamente
+b) Nao - entrega o resultado final sem mencionar o que aconteceu nos bastidores
+c) Sim, mas so se for algo que o usuario precisaria saber
+R: c)
+
+11.4 Quantas etapas o usuario deve ver no processo de criacao?
+a) Apenas 3 (por exemplo: Analisando seu pedido / Criando o addon / Pronto)
+b) Entre 5 e 8: uma por etapa principal (escrever o addon, configurar informacoes, criar o manual, etc.)
+c) Todas as etapas, mesmo as mais internas
+d) Voce define o numero ideal
+R: E) a IA decide internamente, mas sempre em linguagem de usuário.
+
+11.5 Existe uma verificacao automatica que checa se o codigo do addon
+esta correto antes de ser entregue. Voce quer que isso apareca na tela?
+a) Sim - "Verificando o addon..."
+b) Nao - e algo interno, o usuario nao precisa saber
+c) So aparecer se encontrar algum problema
+R: c) em linguagem natural de usuário
+
+11.6 Quando o NVDAStudio precisar buscar informacoes na internet para
+conseguir criar o addon corretamente (por exemplo: verificar como
+funciona um recurso especifico), o usuario deve saber que isso esta acontecendo?
+a) Sim - aparece uma mensagem como "Buscando informacoes atualizadas na internet..."
+b) Nao - e algo interno, o usuario nao precisa saber
+c) Sim, e mostrar brevemente o que foi encontrado
+R: a)
+
+
+=============================================================
+PARTE 12 - ACESSIBILIDADE DO PROPRIO NVDASTUDIO
+=============================================================
+
+12.1 A navegacao pelo teclado dentro da janela do NVDAStudio deve seguir:
+a) A ordem visual dos elementos na tela (de cima para baixo, esquerda para direita)
+b) Uma ordem logica de fluxo de uso (campo de pedido > botao criar > resultado)
+c) O usuario pode personalizar a ordem de navegacao
+d) R: ordem padrão de acessibilidade.
+
+12.2 Todos os botoes e campos do NVDAStudio devem ter nome acessivel
+que o NVDA leia corretamente?
+a) Sim, obrigatoriamente
+b) Ja e esperado, mas pergunto: ha algum botao especifico que voce acha critico?
+r: a)
+
+12.3 Mensagens longas de resultado (o addon foi criado, instrucoes de uso, etc.)
+devem ser:
+a) Lidas automaticamente pelo NVDA de uma vez
+b) Apresentadas em uma caixa de texto que o usuario pode navegar e reler
+c) Divididas em partes curtas com pausas entre elas
+R: b)
+
+12.4 O NVDAStudio deve funcionar bem independente de como o NVDA esta configurado
+(por exemplo: mesmo que voce use uma voz muito rapida, tenha trocado o
+sintetizador de voz ou alterado outras configuracoes do NVDA)?
+a) Sim - deve funcionar com qualquer configuracao de voz do NVDA
+b) Tem uma configuracao de voz recomendada?
+R: a)
+
+12.5 O tamanho da fonte e elementos visuais da janela devem:
+a) Seguir as configuracoes de acessibilidade do Windows automaticamente
+b) Ter um tamanho fixo proprio do NVDAStudio
+c) Ter opcao de ajuste dentro do proprio NVDAStudio
+R: c) nas configurações.
+
+
+12.6 Para usuarios que usam display braille junto com o NVDA,
+as mensagens do NVDAStudio devem aparecer no display braille tambem?
+a) Sim - tudo que e falado pelo NVDA tambem aparece no braille
+b) So as mensagens mais importantes
+c) Nao sei - o que o NVDA faz por padrao esta bom
+R: a)
+
+
+=============================================================
+PARTE 13 - DOCUMENTACAO GERADA PARA O ADDON
+=============================================================
+
+13.1 Todo addon criado pelo NVDAStudio vem com uma documentacao (guia do usuario).
+Voce quer que essa documentacao:
+a) Seja gerada automaticamente sempre, sem o usuario precisar pedir
+b) Seja opcional - o usuario escolhe se quer documentacao ou nao
+c) Seja gerada por padrao, mas o usuario pode desativar nas configuracoes
+R: a)
+
+13.2 O nivel de detalhe da documentacao deve ser:
+a) Minimo: so o essencial (o que o addon faz e o atalho de teclado)
+b) Medio: instrucoes de uso, atalhos, como configurar, solucao de problemas basica
+c) Completo: tudo que um usuario final precisaria para usar sem ajuda
+R: c) em linguagem natural para o usuário.
+
+13.3 Em que idioma a documentacao deve ser gerada?
+a) Sempre em Portugues do Brasil
+b) No idioma do NVDA do usuario
+c) Em PT-BR e Ingles (para maior compatibilidade)
+d) O usuario escolhe o idioma antes de criar
+R: b)
+
+13.4 A documentacao deve ser acessivel pelo menu de ajuda do NVDA
+(o mesmo lugar onde ficam os guias dos outros addons)?
+a) Sim - integrado ao sistema de ajuda do NVDA
+b) Nao - fica como arquivo separado que o usuario abre quando quiser
+c) Ambos: integrado ao NVDA e disponivel como arquivo
+R: c)
+
+13.5 A documentacao deve mencionar explicitamente que o addon foi
+criado pelo NVDAStudio?
+a) Sim - uma nota de rodape ou credito e interessante
+b) Nao - o addon deve parecer criado diretamente, sem mencionar a ferramenta
+c) Opcional - o usuario decide
+R: a)
+
+
+=============================================================
+PARTE 14 - CENARIOS ESPECIAIS E LIMITES DO SISTEMA
+=============================================================
+
+14.1 O NVDAStudio deve ter algum limite no tipo de addon que pode criar?
+a) Nao - tenta criar qualquer addon que o usuario pedir
+b) Sim - ha categorias de addons que devem ser recusadas (quais?)
+c) Avisa se o pedido for muito complexo, mas tenta assim mesmo
+R: a)
+
+14.2 Se o usuario pedir um addon que exija permissoes elevadas no Windows
+(acesso ao sistema, modificar arquivos de sistema, etc.), o que acontece?
+a) O sistema avisa que o addon pode exigir permissoes e continua
+b) O sistema recusa e explica por que e arriscado
+c) O sistema cria, mas inclui um aviso na documentacao
+R: a e c
+
+14.3 O NVDAStudio deve criar addons pensados apenas para versoes mais recentes
+do NVDA (por exemplo: NVDA 2025 em diante), sem se preocupar em funcionar
+tambem nas versoes mais antigas?
+a) Sim - foco nas versoes mais recentes, sem suporte a versoes antigas
+b) Nao - deve funcionar tambem em versoes mais antigas do NVDA
+c) O usuario especifica para qual versao do NVDA quer o addon
+R: a)
+
+14.4 Se o usuario pedir um addon muito simples (ex: "cria um addon que fala oi"),
+o sistema deve:
+a) Criar normalmente, mesmo sendo trivial
+b) Perguntar se o usuario nao quer algo mais completo
+c) Sugerir que o usuario aprenda a fazer ele mesmo (e nao aplicavel aqui)
+R: a e b
+
+14.5 Existe algum tipo de pedido que o NVDAStudio nunca deveria atender,
+independente do que o usuario pedir?
+a) Sim - addons que coletem dados do usuario sem que ele saiba ou autorize
+b) Sim - addons que alterem o funcionamento basico e seguro do NVDA de forma perigosa
+c) Sim - addons que dependam de software pirata ou ilegal
+d) Outro - qual?
+e) Nao - o usuario e responsavel pelo que pede
+R: a e b
+
+14.6 Voce quer que o NVDAStudio tenha um modo "offline" que funciona
+sem conexao com a internet?
+a) Sim - mesmo offline deve conseguir criar addons mais simples
+b) Nao - conexao e obrigatoria, sem isso nao funciona
+c) Nao sei se e possivel tecnicamente
+R: b)
+
+=============================================================
+PARTE 15 - FLUXO COMPLETO DE PONTA A PONTA (REVISAO GERAL)
+=============================================================
+
+Estas sao perguntas sobre o fluxo como um todo, do inicio ao fim.
+
+15.1 Escreva em suas proprias palavras como voce imagina que o usuario
+ideal do NVDAStudio vai usar o software do inicio ao fim.
+(Resposta aberta - conte a historia do usuario)
+Isso você pode ver de acordo com o projeto dp nvdastudio.
+
+15.2 Qual e o tempo maximo aceitavel do inicio do pedido ate a entrega
+do arquivo .nvda-addon pronto?
+a) 1 minuto
+b) 2 minutos
+c) 3 minutos
+d) Ate 5 minutos - qualidade importa mais que velocidade
+e) Sem limite de tempo definido
+R: e)
+
+15.3 No geral, o NVDAStudio deve parecer:
+a) Uma ferramenta tecnica poderosa voltada para desenvolvedores
+b) Um assistente simples e amigavel para qualquer usuario do NVDA
+c) Um meio-termo: avancado o suficiente para desenvolvedores,
+   acessivel o suficiente para usuarios comuns
+R: b e c, mas o b prevalece.
+
+15.4 Qual seria o caso de uso mais comum que voce imagina para o NVDAStudio?
+(Resposta aberta)
+Não entendi
+
+15.5 Tem algum comportamento que voce JA TESTOU no NVDAStudio e que
+nao gostou? Descreva o que aconteceu e o que deveria ter acontecido.
+(Resposta aberta)
+Addons criados pela metade. mas o projeto está em constante desenvolvimento.
+
+15.6 Tem algum comportamento que voce ADOROU e que deve ser mantido
+exatamente como esta?
+(Resposta aberta)
+Sim, o projeto atual, somente correções conforme esse questionário.
+
+
+=============================================================
+PARTE 16 - MODO ITERATIVO (MODIFICAR ADDON EXISTENTE)
+=============================================================
+
+O NVDAStudio tem um modo onde o usuario pode carregar um addon
+ja criado e pedir melhorias, correcoes ou novas funcionalidades
+atravez de conversa em linguagem natural.
+
+16.1 Como voce prefere abrir um addon que ja existe para editar ou melhorar?
+a) Escolhendo do historico de addons criados pelo NVDAStudio
+b) Buscando o arquivo do addon no computador
+c) Abrindo a pasta onde o addon esta salvo
+d) Qualquer uma das opcoes acima deve funcionar
+r:d)
+16.2 Quando voce pede uma modificacao em um addon existente
+(ex: "adicione um atalho para copiar para a area de transferencia"),
+a IA deve:
+a) Reconstruir o addon do zero incorporando todas as mudancas
+b) Modificar apenas o que foi pedido, preservando tudo o mais intacto
+c) Mostrar um resumo do que vai mudar antes de aplicar, pedindo confirmacao
+R: b) e c)
+16.3 Enquanto voce vai pedindo melhorias no mesmo addon
+(por exemplo: primeiro pediu para adicionar um atalho, depois pediu
+para mudar uma mensagem de aviso), toda essa conversa deve ficar
+visivel na tela enquanto voce trabalha?
+a) Sim - o usuario ve toda a troca de mensagens rolando na tela
+b) Nao - apenas o resultado mais recente importa
+c) Sim, mas resumidamente - so os pedidos do usuario, sem as respostas longas
+R: a)
+
+16.4 Se voce fechar o NVDAStudio no meio de uma conversa de melhorias
+sem ter salvo as mudancas feitas no addon, o que deve acontecer?
+a) Uma confirmacao pergunta se quer salvar antes de fechar
+b) As mudancas sao descartadas silenciosamente
+c) As mudancas sao salvas automaticamente como rascunho
+R: a) e c)
+16.5 Se o usuario pedir uma mudanca que nao combina com algo que
+ja existe no addon (por exemplo: um atalho de teclado que ja esta
+sengo87 usado por outra funcao do addon), a IA deve:
+a) Avisar o usuario antes de fazer qualquer coisa e sugerir como resolver
+b) Fazer a mudanca e avisar sobre o problema so depois
+c) Nao fazer a mudanca e explicar o problema de forma simples
+
+
+=============================================================
+PARTE 17 - PUBLICAR O ADDON NA LOJA OFICIAL DO NVDA
+=============================================================
+
+O NVDAStudio pode deixar tudo pronto para voce publicar o seu
+addon na loja oficial do NVDA, onde qualquer usuario do NVDA
+no mundo pode encontrar e instalar.
+
+(Obs: depois que o NVDAStudio preparar os arquivos, o proprio
+usuario precisa fazer o envio final pela internet — e um passo
+simples que o sistema vai explicar.)
+
+17.1 Voce quer que a opcao "publicar na loja" apareca automaticamente
+entre as opcoes ao terminar de criar um addon?
+a) Sim - que apareca sempre como uma das opcoes ao terminar
+b) Sim - mas so quando o usuario pedir
+c) Nao - nao e prioridade por agora
+R: a)
+17.2 Se o usuario escolher preparar o addon para a loja,
+o NVDAStudio deve:
+a) Deixar tudo pronto e mostrar o que o usuario precisa fazer em seguida
+b) Deixar tudo pronto e explicar o processo completo passo a passo
+c) Deixar tudo pronto sem dar instrucoes adicionais
+R: a)
+17.3 O envio final para a loja exige alguns passos manuais do usuario
+(precisa de uma conta gratuita em um site chamado GitHub).
+O NVDAStudio deve:
+a) Explicar isso com antecedencia para o usuario nao se surpreender
+b) Tentar fazer o envio automaticamente (o usuario precisaria conectar sua conta)
+c) Entregar os arquivos e nao mencionar esse processo
+R: a)
+15.7 Se voce pudesse mudar UMA COISA no NVDAStudio agora, o que seria?
+(Resposta aberta)
+Isso tenho que pensar. mas, eu preso por maior acessibilidade, linguagemnatural para usuário via ia, e cada vez mais autônomo e preciso, com os agentes e subagentes na criação de add-ons, de todos os tipos. seja internos do nvda, ou precisar de componentes esternos.
+
+=============================================================
+FIM DO DOCUMENTO DE PERGUNTAS - VERSAO 1.0.0
+=============================================================
+Instrucoes para responder:
+- Para perguntas com opcoes (a, b, c...), escreva a letra escolhida
+  e qualquer observacao que quiser adicionar.
+- Para perguntas abertas, escreva livremente.
+- Nao ha respostas erradas - e o comportamento que VOCE quer.
+- Pode pular perguntas que nao fazem sentido para o seu uso.
+- Quando terminar, mande o arquivo de volta para que eu possa
+  implementar as mudancas necessarias no sistema.
+=============================================================
+
