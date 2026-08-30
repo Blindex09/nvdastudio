@@ -35,7 +35,7 @@ class TestGenerateStoreSubmissionImport:
 
     def test_versao_e_1_8_0(self):
         from nvdastudio.builder.addon_builder import MODULE_VERSION
-        assert MODULE_VERSION == "4.13.0"
+        assert MODULE_VERSION == "4.14.0"
 
 
 class TestGenerateStoreSubmissionBasico:

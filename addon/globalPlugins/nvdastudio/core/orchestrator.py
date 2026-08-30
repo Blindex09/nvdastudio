@@ -10,6 +10,7 @@ from .orch_types import StepResult, OrchestrationResult, compute_progress
 from .planner import (
 	Planner, ExecutionPlan, ExecutionStep, STEP_USER_CLARIFICATION,
 	STEP_SYNTAX_VALIDATION, STEP_TEST_GENERATION,
+	format_expected_files_for_prompt,
 	# tests/unit/test_syntax_validator.py::test_step_syntax_validation_importado
 	# depende dele como re-export deste modulo (ver changelog v5.12.0 acima:
 	# ja foi removido por engano num auto-fix de ruff antes, NAO REMOVER de novo).
@@ -41,7 +42,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.57.0"
+MODULE_VERSION = "5.59.0"
 _logger = get_logger("orchestrator")
 
 MAX_RETRIES_DEFAULT = 3
@@ -453,6 +454,9 @@ class Orchestrator:
 		self._previous_issues: list[str] = []  # v2.1.0 fix: inicializado para agentic_loop
 		self._last_result: OrchestrationResult | None = None  # v2.1.0 fix: inicializado
 		self._current_plan: ExecutionPlan | None = None  # v2.1.0 fix: inicializado
+		# 5.59.0: True assim que o orcamento passa a ser alimentado em voo --
+		# faz o registro terminal parar de contar os mesmos tokens de novo.
+		self._budget_recorded_in_flight: bool = False
 		self._current_plan_addon_name: str = ""  # 5.22.0: inicializado pra _learn_from_session() nunca dar AttributeError
 		self._suppress_complete_callback = False
 		# Hermes-inspired v2.1.0 (2026-06-09)
@@ -465,10 +469,41 @@ class Orchestrator:
 		self._critic = Critic()
 		_logger.info("[OK] Orchestrator v%s inicializado.", MODULE_VERSION)
 
-	def _track_model_tokens(self, model_id: str, tokens: int):
-		"""Acumula tokens por modelo para estimativa de custo."""
+	def _track_model_tokens(self, model_id: str, tokens: int, step_type: str = "") -> None:
+		"""
+		Acumula tokens por modelo E alimenta o orcamento EM VOO.
+
+		5.59.0 -- causa raiz da nao-convergencia. O circuit breaker existia
+		(`iteration_budget.can_continue()` e consultado a cada tentativa desde
+		a 5.28.0), mas o MEDIDOR so era alimentado nos pontos TERMINAIS do
+		pipeline, via `_record_iteration_budget(step_results)`. Durante a
+		execucao `tokens_used` ficava em zero, entao `can_continue()` sempre
+		respondia True e nada parava: nos relatorios reais ha execucao com 41
+		retries e 4,6 MILHOES de tokens contra um teto configurado de 500 mil.
+
+		Perguntar sem medir e o mesmo padrao de "detecta e ignora" que ja
+		apareceu no ESTRUTURA-008: a peca certa existia, desligada de quem
+		decide. Este metodo ja e chamado em TODO ponto de consumo de token do
+		pipeline, entao alimentar o orcamento aqui fecha o circuito sem risco
+		de esquecer um caminho novo.
+
+		Nunca levanta: falha no orcamento nao pode derrubar uma geracao que
+		esta indo bem.
+		"""
 		prev = self._tokens_by_model.get(model_id, (0, 0))
 		self._tokens_by_model[model_id] = (prev[0] + tokens // 2, prev[1] + tokens // 2)
+		if tokens <= 0:
+			return
+		try:
+			iteration_budget.record_iteration(
+				step_type=step_type or "pipeline",
+				model_id=model_id,
+				tokens_used=tokens,
+				success=True,
+			)
+			self._budget_recorded_in_flight = True
+		except Exception as exc:  # pragma: no cover - defesa
+			_logger.warning("[BUDGET] record_iteration em voo falhou: %s", exc)
 
 	def set_callbacks(self, on_progress: ProgressCallback,
 					  on_complete: Callable[[OrchestrationResult], None],
@@ -493,6 +528,7 @@ class Orchestrator:
 		self._running = True
 		# Ver comentario equivalente em run_conversational_async() -- mesmo motivo.
 		iteration_budget.reset()
+		self._budget_recorded_in_flight = False
 		thread = threading.Thread(
 			target=self._run_async_worker, args=(user_query,), daemon=True
 		)
@@ -618,6 +654,7 @@ class Orchestrator:
 		# sessoes anteriores ficava acumulado pra sempre e uma query nova, sem
 		# relacao nenhuma, podia nascer com o orcamento ja estourado.
 		iteration_budget.reset()
+		self._budget_recorded_in_flight = False
 		thread = threading.Thread(
 			target=self._run_conversational_pipeline, args=(user_query,), daemon=True
 		)
@@ -639,6 +676,14 @@ class Orchestrator:
 		circuit breaker inutil -- e justamente a sequencia de falhas caras
 		que ele precisa conseguir enxergar.
 		"""
+		# 5.59.0: com o medidor alimentado EM VOO por _track_model_tokens(),
+		# repetir o registro aqui contaria os mesmos tokens duas vezes e
+		# derrubaria o orcamento pela metade do gasto real. O registro
+		# terminal so age quando nada foi contabilizado em voo -- caminhos que
+		# terminam sem passar por _track_model_tokens (falha antes da primeira
+		# chamada de LLM, por exemplo).
+		if getattr(self, "_budget_recorded_in_flight", False):
+			return
 		try:
 			for r in step_results:
 				iteration_budget.record_iteration(
@@ -2713,6 +2758,19 @@ class Orchestrator:
 		prompt += f"Tarefa original do usuario: {query}\n\n"
 		prompt += f"Seu objetivo neste step: {step.description}\n"
 		prompt += f"Output esperado: {step.expected_output}\n"
+
+		# 5.58.0: layout de arquivos declarado no plano. Sem ele os nomes de
+		# arquivo nasciam da improvisacao do modelo, bloco a bloco -- e um bloco
+		# sem anotacao de caminho caia no fallback module_N.py de
+		# addon_builder._infer_python_filename(), justamente o unico nome que o
+		# NVDA nunca carrega dentro de um pacote. Injetado so nos steps que
+		# escrevem arquivo; nos demais seria ruido no contexto.
+		if step.step_type in ("code_generation", "agent_runner", "assembly"):
+			_plano_atual = getattr(self, "_current_plan", None)
+			if _plano_atual is not None:
+				prompt += format_expected_files_for_prompt(
+					getattr(_plano_atual, "expected_files", []) or []
+				)
 		if context:
 			prompt += f"\nContexto de steps anteriores:\n{context}\n"
 		# Em retomadas, o contexto em memória pode não existir mais. Recupera
@@ -2916,7 +2974,63 @@ class Orchestrator:
 			)
 			if gesture_error:
 				return gesture_error
+
+		# 5.58.0 -- COERENCIA ENTRE OS ARQUIVOS DO PROPRIO ADDON.
+		#
+		# Ate aqui cada arquivo era validado ISOLADAMENTE: sintaxe, regras NVDA,
+		# lint, tipos, e ate execucao real. Ninguem perguntava se o CONJUNTO
+		# fecha. Foi assim que os addons Gemini dos relatorios sairam com
+		# `qa/service.py` e `summarizer/service.py` impecaveis e um __init__.py
+		# importando de modulos que nenhum step chegou a gerar -- cada peca boa,
+		# o addon morto.
+		coherence_error = Orchestrator._broken_internal_imports(
+			step_results, outputs, approved_ids,
+		)
+		if coherence_error:
+			return coherence_error
 		return ""
+
+	@staticmethod
+	def _broken_internal_imports(
+		step_results: list[StepResult],
+		outputs: dict[str, str],
+		approved_ids: set[str],
+	) -> str:
+		"""
+		Confere que os imports relativos entre arquivos do addon resolvem.
+
+		Monta o conjunto {caminho: codigo} de tudo que foi aprovado e delega
+		para validate_internal_imports(), que so julga import RELATIVO --
+		import absoluto pode vir do stdlib, de lib/ bundlado ou dos modulos do
+		NVDA, e ja e tratado por validate_python_imports() no addon_builder.
+
+		Degrada em silencio se o validador nao estiver disponivel: falha de
+		import aqui nunca deve derrubar uma criacao que deu certo.
+		"""
+		try:
+			from ..sub_agents.ast_validator import validate_internal_imports
+		except Exception:  # pragma: no cover - defesa de import
+			return ""
+
+		arquivos: dict[str, str] = {}
+		for result in step_results:
+			if result.step_id not in approved_ids or result.step_id not in outputs:
+				continue
+			for block in extract_code_blocks(outputs[result.step_id]):
+				nome = (block.get("filename") or "").replace("\\", "/")
+				if nome.endswith(".py"):
+					arquivos[nome] = block.get("code") or ""
+		if len(arquivos) < 2:
+			# Com um arquivo so nao existe "entre arquivos" a verificar.
+			return ""
+
+		resultado = validate_internal_imports(arquivos)
+		if resultado.ok:
+			return ""
+		return (
+			"A criação não foi concluída porque os arquivos do addon não se encaixam: "
+			+ " ".join(resultado.violacoes[:4])
+		)
 
 	@staticmethod
 	def _missing_requested_gestures(

@@ -31,7 +31,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.13.0"
+MODULE_VERSION = "4.14.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -2014,9 +2014,31 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 		problems.append(f"NVDA-013: manifest.ini: minimumNVDAVersion={min_nvda} abaixo do minimo.")
 
 	# NVDA-015: config.conf.spec ausente
-	for rel, code in all_py:
-		if "config.conf[" in code and "config.conf.spec" not in code and "configSpec" not in code:
-			problems.append(f"NVDA-015: {rel}: usa config.conf sem config.conf.spec. Crie configSpec.py.")
+	#
+	# 4.14.0 -- FALSO POSITIVO REAL, medido nos relatorios de
+	# tests/e2e/relatorios/: 11 dos 14 disparos (79%) foram em addons que JA
+	# TINHAM configSpec.py. A checagem era por ARQUIVO, entao um addon bem
+	# arquitetado -- spec num modulo proprio, consumo espalhado em
+	# settings_panel.py, client.py, qa/service.py -- levava um aviso por
+	# arquivo mandando 'Crie configSpec.py', arquivo que ja existia ao lado.
+	#
+	# Custo real: o modelo era mandado corrigir o que estava certo, gastava
+	# retry, e a regra disparava igual na tentativa seguinte. So acontecia em
+	# addon MULTI-ARQUIVO (14 disparos em multi-arquivo, 0 em arquivo unico)
+	# -- ou seja, punia exatamente a classe de addon que o projeto ja tem
+	# mais dificuldade de fazer convergir.
+	#
+	# A spec e do ADDON, nao do arquivo: basta existir em UM lugar. A
+	# verificacao passa a olhar o conjunto antes de reportar qualquer arquivo.
+	_tem_config_spec = any(
+		"config.conf.spec" in code or "configSpec" in code
+		or os.path.basename(rel).lower() == "configspec.py"
+		for rel, code in all_py
+	)
+	if not _tem_config_spec:
+		for rel, code in all_py:
+			if "config.conf[" in code:
+				problems.append(f"NVDA-015: {rel}: usa config.conf sem config.conf.spec. Crie configSpec.py.")
 
 	# NVDA-016: shouldWriteToDisk ausente
 	for rel, code in all_py:

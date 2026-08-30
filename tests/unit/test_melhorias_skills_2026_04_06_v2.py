@@ -7,7 +7,7 @@ class TestContextCompression:
 
     def test_orchestrator_versao_3_3_0(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.57.0"
+        assert MODULE_VERSION == "5.59.0"
 
     def test_build_context_output_curto_nao_usa_resumo(self):
         """Outputs curtos passam integralmente sem marcador RESUMO."""
@@ -227,7 +227,7 @@ class TestPlannerSchemaDescriptions:
 
     def test_planner_versao_2_1_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.31.0"
+        assert MODULE_VERSION == "2.32.0"
 
     def test_campos_principais_tem_description(self):
         """Campos do schema de nivel raiz devem ter description."""
@@ -261,11 +261,20 @@ class TestPlannerSchemaDescriptions:
         src = inspect.getsource(planner_mod)
         schema_start = src.find("_PLAN_SCHEMA =")
         assert schema_start != -1
-        schema_src = src[schema_start:schema_start + 9000]
-        # Buscamos a secao de steps no schema
+        # 2026-08-29: a versao anterior fatiava 9000 chars do schema e depois
+        # 3000 a partir de "steps". Janela fixa quebra sozinha: qualquer campo
+        # novo com descricao longa empurra os campos de step para fora e o
+        # teste falha sem que nada esteja errado no schema (aconteceu ao
+        # adicionar expected_files). Agora delimita o bloco de steps pelo que
+        # ele realmente e -- do campo "steps" ate o "required" do proprio
+        # sub-schema, que fecha as properties do step.
+        schema_src = src[schema_start:]
         steps_start = schema_src.find('"steps"')
         assert steps_start != -1, "Campo 'steps' nao encontrado no _PLAN_SCHEMA"
-        steps_src = schema_src[steps_start:steps_start + 3000]
+        steps_src = schema_src[steps_start:]
+        fim_step = steps_src.find('"required": ["step_id"')
+        assert fim_step != -1, "fim do sub-schema de steps nao encontrado"
+        steps_src = steps_src[:fim_step]
         campos_step = [
             '"step_id"', '"step_type"', '"expected_output"',
             '"user_message"', '"msg_evaluating"', '"depends_on"',

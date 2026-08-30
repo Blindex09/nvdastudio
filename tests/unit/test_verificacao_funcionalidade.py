@@ -27,7 +27,7 @@ from nvdastudio.sub_agents.ast_validator import (
 	validate_wx_a11y_013_key_events,
 )
 
-assert MODULE_VERSION == "1.3.0"
+assert MODULE_VERSION == "1.4.0"
 
 
 class TestNormalizacaoDeGesture:

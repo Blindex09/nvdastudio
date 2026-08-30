@@ -12,7 +12,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.31.0"
+MODULE_VERSION = "2.32.0"
 _logger = get_logger("planner")
 
 PLANNER_MODEL = "alto"
@@ -39,6 +39,108 @@ _DEFAULT_MODEL = "alto"
 _MAX_CODE_STEP_DESCRIPTION_CHARS = 1800
 _MAX_CODE_STEP_USER_MESSAGE_CHARS = 7000
 
+
+
+
+# Diretorios que o NVDA carrega por convencao. Fonte unica compartilhada com
+# core/orchestrator.py::_missing_loadable_entry_point() -- se as duas listas
+# divergirem, o planner declara um layout que o portao final recusa.
+NVDA_ENTRY_POINT_DIRS: tuple[str, ...] = (
+	"globalPlugins",
+	"appModules",
+	"synthDrivers",
+	"brailleDisplayDrivers",
+	"visionEnhancementProviders",
+)
+
+
+def _declara_ponto_de_entrada(arquivos: list[str]) -> bool:
+	"""True se a lista ja contem um arquivo que o NVDA carregaria."""
+	for caminho in arquivos:
+		partes = caminho.split("/")
+		if len(partes) < 2 or partes[0] not in NVDA_ENTRY_POINT_DIRS:
+			continue
+		if len(partes) == 2 or (len(partes) == 3 and partes[-1] == "__init__.py"):
+			return True
+	return False
+
+
+def _normalize_expected_files(
+	raw: object, addon_name: str, project_type: str = "addon",
+) -> list[str]:
+	"""
+	Normaliza o layout declarado pela IA e GARANTE ponto de entrada.
+
+	Normalizacao de FORMA apenas (mesmo tratamento que `dependencies` recebe):
+	separador do Windows vira "/", barra inicial some, entradas vazias ou
+	nao-string caem fora, duplicatas somem preservando a ordem declarada.
+
+	REPARO DETERMINISTICO (README Regra 7): se o plano de um addon nao declara
+	nenhum ponto de entrada, o codigo ACRESCENTA
+	globalPlugins/<AddonName>/__init__.py. Isso nao e decisao semantica -- e
+	invariante tecnica da plataforma: sem esse arquivo o NVDA nao carrega nada,
+	entao nao existe layout valido sem ele. Deixar a IA "decidir" isso foi
+	exatamente o que produziu os 9 addons quebrados dos relatorios.
+
+	controller_client e um programa EXTERNO (sem globalPlugins/, sem
+	addonHandler): nao recebe reparo nenhum.
+	"""
+	vistos: set[str] = set()
+	saida: list[str] = []
+	if isinstance(raw, list):
+		for item in raw:
+			if not isinstance(item, str):
+				continue
+			caminho = item.strip().replace("\\", "/").lstrip("/")
+			if not caminho or caminho in vistos:
+				continue
+			vistos.add(caminho)
+			saida.append(caminho)
+
+	if project_type == "controller_client":
+		return saida
+	if _declara_ponto_de_entrada(saida):
+		return saida
+
+	# Usa o pacote que a IA JA declarou, quando houver. Adicionar um pacote novo
+	# a partir de addon_name criaria DOIS pacotes em globalPlugins/ -- pior que o
+	# problema original, porque o addon passaria a ter um ponto de entrada vazio
+	# ao lado dos arquivos reais. So cai em addon_name quando nao ha pacote
+	# nenhum declarado.
+	pacote = ""
+	for caminho in saida:
+		partes = caminho.split("/")
+		if len(partes) >= 3 and partes[0] == "globalPlugins":
+			pacote = partes[1]
+			break
+	if not pacote:
+		pacote = (addon_name or "").strip() or "MeuAddon"
+	entrada = f"globalPlugins/{pacote}/__init__.py"
+	if entrada not in vistos:
+		_logger.warning(
+			"[PLAN] Layout declarado sem ponto de entrada -- %s acrescentado "
+			"deterministicamente (o NVDA nao carregaria o addon sem ele).",
+			entrada,
+		)
+		saida.insert(0, entrada)
+	return saida
+
+
+def format_expected_files_for_prompt(arquivos: list[str]) -> str:
+	"""
+	Bloco de layout injetado nos prompts de geracao de codigo.
+
+	Vazio quando nao ha layout declarado -- nunca inventa um esqueleto aqui;
+	sem declaracao o gerador segue como antes.
+	"""
+	if not arquivos:
+		return ""
+	linhas = "\n".join(f"  {caminho}" for caminho in arquivos)
+	return (
+		"\nLAYOUT DE ARQUIVOS DECLARADO NO PLANO -- use EXATAMENTE estes caminhos "
+		"na anotacao de cada bloco (```python:caminho/arquivo.py). Nao invente "
+		"nomes novos e nao renomeie:\n" + linhas + "\n"
+	)
 
 
 def _normalize_gestures(raw: object) -> list[str]:
@@ -370,6 +472,19 @@ class ExecutionPlan:
 	# passa no lint e empacota -- mas nada garantia que a FUNCIONALIDADE pedida
 	# estava la. Formato NVDA: "kb:NVDA+h", "kb:control+shift+m".
 	expected_gestures: list[str] = field(default_factory=list)
+	# Layout de arquivos do addon, declarado pela IA ANTES da geracao.
+	#
+	# Motivo (achado 2026-08-29): sem layout declarado, os nomes de arquivo
+	# nasciam da improvisacao do modelo bloco a bloco. Quando um bloco vinha
+	# sem anotacao de caminho, addon_builder._infer_python_filename() caia no
+	# fallback module_N.py -- justamente o unico nome que o NVDA NUNCA carrega
+	# dentro de um pacote. E ninguem era dono do __init__.py que amarra as
+	# features: nos 9 addons quebrados dos relatorios, cada arquivo estava
+	# bom isoladamente e o conjunto nao formava um addon carregavel.
+	#
+	# Declarar o esqueleto antes muda a geracao de 'inventar arquivo' para
+	# 'preencher arquivo declarado'.
+	expected_files: list[str] = field(default_factory=list)
 	# Pacotes pip que o addon gerado precisa — bundlados em lib/ automaticamente.
 	# Ex: ["openai-whisper", "Pillow", "requests"]
 	# Usuario nao precisa instalar nada — igual ao NVDAStudio em si.
@@ -817,6 +932,11 @@ class Planner:
 			assembling_message=plan_data.get("assembling_message", "Montando o addon..."),
 			completed_message=plan_data.get("completed_message", "Addon criado com sucesso!"),
 			replan_message=plan_data.get("replan_message", "Encontramos problemas. Revisando a abordagem..."),
+			expected_files=_normalize_expected_files(
+				plan_data.get("expected_files", []),
+				plan_data.get("addon_name", ""),
+				plan_data.get("project_type", "addon"),
+			),
 			expected_gestures=_normalize_gestures(plan_data.get("expected_gestures", [])),
 			dependencies=plan_data.get("dependencies", []),
 		)
@@ -1554,6 +1674,7 @@ class Planner:
 						"assembling_message":     {"type": "string", "description": "Mensagem em português, max 90 chars, para o usuário enquanto os arquivos são reunidos. Ex: 'Reunindo os arquivos do addon...'"},
 						"completed_message":      {"type": "string", "description": "Mensagem em português descrevendo o que foi criado. Ex: 'Pronto! Criei o TranscriadorIA com suporte a Whisper.'"},
 						"replan_message":         {"type": "string", "description": "Mensagem em portugues para quando o plano precisa ser revisado. Ex: 'Encontramos problemas. Revisando a abordagem...'"},
+						"expected_files":         {"type": "array", "items": {"type": "string"}, "description": "Lista COMPLETA dos arquivos que o addon vai ter, com caminho relativo a raiz do addon. Declare o esqueleto ANTES da geracao -- os steps de code_generation vao preencher exatamente estes arquivos, em vez de inventar nomes. OBRIGATORIO para project_type='addon': incluir o ponto de entrada que o NVDA carrega, que e SEMPRE um destes: globalPlugins/<AddonName>/__init__.py (o caso comum), appModules/<executavel>.py, synthDrivers/<nome>.py ou brailleDisplayDrivers/<nome>.py. O NVDA carrega addon por convencao de caminho: num pacote em globalPlugins/, SO o __init__.py e carregado e qualquer outro .py ao lado dele e ignorado -- um addon sem esse arquivo instala sem erro e simplesmente nao faz nada. Inclua tambem manifest.ini e os modulos auxiliares (servicos, dialogos, configSpec.py, settings_panel.py) que o addon precisar. Nunca use nomes genericos como module_1.py."},
 						"expected_gestures":      {"type": "array", "items": {"type": "string"}, "description": "Lista dos atalhos de teclado que o addon DEVE expor, no formato de gesture do NVDA (ex: \"kb:NVDA+h\", \"kb:control+shift+m\"). Preencha SOMENTE com atalhos que o usuario realmente pediu ou que sao inequivocamente necessarios para a funcionalidade solicitada -- este campo vira uma VERIFICACAO OBRIGATORIA: o codigo gerado sera reprovado se um atalho declarado aqui nao existir como @script(gesture=...) no addon. Nunca liste um atalho que o usuario pediu para NAO usar, nem invente atalhos 'extras' que ninguem pediu. Lista vazia quando o addon nao tem atalho de teclado (ex: so um item de menu, so um AppModule que reage a eventos, ou project_type='controller_client')."},
 						"dependencies":           {"type": "array", "items": {"type": "string", "description": "Nome EXATO do pacote no PyPI — NAO o nome do modulo Python. Ex: 'google-api-python-client' (NAO 'googleapiclient'), 'google-auth-oauthlib' (NAO 'google.auth'), 'Pillow' (NAO 'PIL'). Nunca inclua stdlib (os, sys, webbrowser, json, threading), modulos NVDA (nvda, nvdaHelper, ui, api, wx, addonHandler) nem submódulos (google.auth.transport.requests — isso nao e pacote pip)."}, "description": "Pacotes pip externos para bundle em runtime. Lista vazia se nenhum pacote externo for necessario."},
 						"steps": {
@@ -1587,7 +1708,7 @@ class Planner:
 								 "intro_message", "plan_presentation", "approval_message",
 								 "cancellation_message", "modification_message", "assembling_message",
 								 "completed_message", "replan_message",
-								 "expected_gestures", "dependencies", "steps"],                    "additionalProperties": False,
+								 "expected_files", "expected_gestures", "dependencies", "steps"],                    "additionalProperties": False,
 				}
 			}
 		}
@@ -1795,6 +1916,11 @@ class Planner:
 				assembling_message=plan_data.get("assembling_message", "Montando o addon..."),
 				completed_message=plan_data.get("completed_message", "Addon criado com sucesso!"),
 				replan_message=plan_data.get("replan_message", "Encontramos problemas. Revisando a abordagem..."),
+				expected_files=_normalize_expected_files(
+					plan_data.get("expected_files", []),
+					plan_data.get("addon_name", ""),
+					plan_data.get("project_type", "addon"),
+				),
 				expected_gestures=_normalize_gestures(plan_data.get("expected_gestures", [])),
 				dependencies=plan_data.get("dependencies", []),
 			)

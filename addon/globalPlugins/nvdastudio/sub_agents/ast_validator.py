@@ -2,7 +2,7 @@ import ast
 from dataclasses import dataclass
 from dataclasses import field
 
-MODULE_VERSION = "1.3.0"
+MODULE_VERSION = "1.4.0"
 
 # Widgets wx que exigem SetName() logo apos instanciacao
 _WX_INTERACTIVE_WIDGETS: frozenset[str] = frozenset(
@@ -730,5 +730,139 @@ def validate_nvda056_messagedialog_thread(codigo: str) -> ASTValidationResult:
                 f"processo do NVDA inteiro, deixando o usuario sem fala nem braille. "
                 f"Envolva a exibicao em wx.CallAfter(...)."
             )
+
+    return ASTValidationResult(ok=len(violacoes) == 0, violacoes=violacoes)
+
+
+# ---------------------------------------------------------------------------
+# COERENCIA ENTRE OS ARQUIVOS DO PROPRIO ADDON
+#
+# Lacuna fechada em 2026-08-29: cada arquivo era validado ISOLADAMENTE --
+# sintaxe, regras NVDA, lint, tipos. Ninguem perguntava se o CONJUNTO fecha.
+# Foi exatamente assim que os addons Gemini dos relatorios sairam com
+# `qa/service.py` e `summarizer/service.py` impecaveis e um __init__.py que
+# importava de modulos que ninguem gerou.
+#
+# Verifica so IMPORT RELATIVO (`from .x import Y`, `from ..pkg import Z`) --
+# import absoluto pode vir do stdlib, de lib/ bundlado ou dos modulos do NVDA,
+# e julgar isso aqui geraria falso positivo. validate_python_imports() em
+# addon_builder ja cuida do lado absoluto.
+# ---------------------------------------------------------------------------
+
+
+def _modulos_disponiveis(arquivos: dict[str, str]) -> dict[str, set[str] | None]:
+    """
+    Mapa "caminho de modulo pontilhado" -> nomes de topo que ele define.
+
+    globalPlugins/Meu/qa/service.py  ->  "globalPlugins.Meu.qa.service"
+    Um pacote (dir com __init__.py) tambem entra pelo proprio nome, para que
+    `from .qa import service` resolva contra o pacote `qa`.
+    """
+    # None = modulo existe mas tem SyntaxError; nao da para saber o que define.
+    definidos: dict[str, set[str] | None] = {}
+    for caminho, codigo in arquivos.items():
+        norm = caminho.replace("\\", "/").lstrip("/")
+        if not norm.endswith(".py"):
+            continue
+        dotted = norm[: -len(".py")].replace("/", ".")
+        nomes: set[str] = set()
+        try:
+            tree = ast.parse(codigo or "")
+        except SyntaxError:
+            # Sintaxe quebrada e reportada por outro degrau, mais barato e mais
+            # preciso. Aqui o arquivo ainda EXISTE, entao conta como modulo --
+            # mas NAO sabemos o que ele define, e o marcador None faz a checagem
+            # de nome ser pulada. Sem isso, um modulo com SyntaxError fazia todo
+            # import dele virar "nome ausente": diagnostico errado, e falso
+            # positivo garantido no retry.
+            definidos[dotted] = None
+            if dotted.endswith(".__init__"):
+                definidos[dotted[: -len(".__init__")]] = None
+            continue
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                nomes.add(node.name)
+            elif isinstance(node, ast.Assign):
+                for alvo in node.targets:
+                    if isinstance(alvo, ast.Name):
+                        nomes.add(alvo.id)
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                nomes.add(node.target.id)
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                for alias in node.names:
+                    nomes.add(alias.asname or alias.name.split(".")[0])
+        definidos[dotted] = nomes
+        if dotted.endswith(".__init__"):
+            # O pacote em si tambem e importavel pelo nome do diretorio.
+            definidos[dotted[: -len(".__init__")]] = nomes
+    return definidos
+
+
+def validate_internal_imports(arquivos: dict[str, str]) -> ASTValidationResult:
+    """
+    Confere que todo import RELATIVO entre arquivos do addon resolve.
+
+    Pega a classe de defeito que a geracao por partes produz: o arquivo que
+    amarra as features importa de um modulo que nenhum step chegou a gerar, ou
+    importa um nome que o modulo alvo nao define.
+
+    Deliberadamente TOLERANTE em dois pontos, para nao gerar falso positivo:
+      - `from .x import *` nunca e reportado (o conteudo e dinamico).
+      - modulo com SyntaxError conta como existente, so nao se sabe o que
+        define -- reportar "nome ausente" ali seria diagnosticar o erro errado.
+
+    Fail-open geral: sem arquivos, ou sem nenhum import relativo, devolve ok.
+    """
+    if not arquivos:
+        return ASTValidationResult(ok=True, violacoes=[])
+
+    definidos = _modulos_disponiveis(arquivos)
+    violacoes: list[str] = []
+
+    for caminho, codigo in sorted(arquivos.items()):
+        norm = caminho.replace("\\", "/").lstrip("/")
+        if not norm.endswith(".py"):
+            continue
+        try:
+            tree = ast.parse(codigo or "")
+        except SyntaxError:
+            continue
+
+        partes = norm[: -len(".py")].split("/")
+        # Pacote do arquivo: para __init__.py e o proprio diretorio.
+        base = partes[:-1] if partes[-1] != "__init__" else partes[:-1]
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or not node.level:
+                continue
+            # level=1 -> mesmo pacote; level=2 -> pacote pai; etc.
+            recuo = node.level - 1
+            raiz = base[: len(base) - recuo] if recuo else base
+            if recuo and len(base) - recuo < 0:
+                continue  # import relativo alem da raiz: outro degrau reporta
+            alvo_pkg = list(raiz) + (node.module.split(".") if node.module else [])
+            alvo = ".".join(alvo_pkg)
+
+            if alvo not in definidos:
+                violacoes.append(
+                    f"{norm}: `from {'.' * node.level}{node.module or ''} import ...` "
+                    f"aponta para `{alvo or '(pacote atual)'}`, que nenhum arquivo do "
+                    f"addon define -- o addon nao carrega com import quebrado"
+                )
+                continue
+
+            nomes_do_alvo = definidos[alvo]
+            if nomes_do_alvo is None:
+                continue  # alvo com SyntaxError: nao da para julgar os nomes
+            for alias in node.names:
+                if alias.name == "*":
+                    continue
+                # O nome pode ser um SUBMODULO do pacote alvo, nao so um simbolo.
+                if alias.name in nomes_do_alvo or f"{alvo}.{alias.name}" in definidos:
+                    continue
+                violacoes.append(
+                    f"{norm}: importa `{alias.name}` de `{alvo}`, que nao define "
+                    f"esse nome nem tem um submodulo com ele"
+                )
 
     return ASTValidationResult(ok=len(violacoes) == 0, violacoes=violacoes)

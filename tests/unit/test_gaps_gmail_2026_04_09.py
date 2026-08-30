@@ -62,7 +62,7 @@ class TestFixAddonStructureDiferentNames:
 
     def test_addon_builder_versao_2_6_0(self):
         from nvdastudio.builder.addon_builder import MODULE_VERSION
-        assert MODULE_VERSION == "4.13.0"
+        assert MODULE_VERSION == "4.14.0"
 
     def _make_addon(self, tmp_dir: str, dirs: dict[str, list[str]],
                     manifest_name: str | None = None) -> str:
@@ -187,7 +187,7 @@ class TestPlannerAddonNameCanonical:
 
     def test_planner_versao_2_2_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.31.0"
+        assert MODULE_VERSION == "2.32.0"
 
     def test_addon_name_no_dataclass(self):
         """ExecutionPlan deve ter campo addon_name."""
