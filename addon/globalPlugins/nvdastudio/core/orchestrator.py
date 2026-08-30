@@ -42,7 +42,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.61.0"
+MODULE_VERSION = "5.62.0"
 _logger = get_logger("orchestrator")
 
 MAX_RETRIES_DEFAULT = 3
@@ -2921,6 +2921,22 @@ class Orchestrator:
 				prompt += format_expected_files_for_prompt(
 					getattr(_plano_atual, "expected_files", []) or []
 				)
+
+		# 5.62.0: alem do layout do addon INTEIRO, o step diz quais arquivos ELE
+		# produz. Medido no E2E de 2026-08-29: os code_generation que falham
+		# consomem ~419 mil tokens em 3 tentativas e sao reprovados por entrega
+		# parcial; o unico aprovado gastou 127 mil. A diferenca era quantos
+		# arquivos o step tentava produzir de uma vez. Dizer o escopo exato evita
+		# que o modelo tente entregar a feature toda numa tacada.
+		_alvos = getattr(step, "target_files", []) or []
+		if _alvos and step.step_type in ("code_generation", "agent_runner"):
+			prompt += (
+				"\nARQUIVOS DESTE STEP -- produza EXATAMENTE estes, nenhum a mais:\n"
+				+ "".join(f"  {caminho}\n" for caminho in _alvos)
+				+ "Os demais arquivos do addon sao responsabilidade de outros steps. "
+				"Gerar arquivo fora desta lista nao adianta o trabalho: o step e "
+				"avaliado apenas pelo que foi pedido aqui.\n"
+			)
 		if context:
 			prompt += f"\nContexto de steps anteriores:\n{context}\n"
 		# Em retomadas, o contexto em memória pode não existir mais. Recupera

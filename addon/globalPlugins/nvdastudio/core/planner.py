@@ -12,7 +12,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.32.0"
+MODULE_VERSION = "2.33.0"
 _logger = get_logger("planner")
 
 PLANNER_MODEL = "alto"
@@ -38,6 +38,13 @@ _DEFAULT_MODEL = "alto"
 # code_generation tente implementar um mini-projeto inteiro de uma vez.
 _MAX_CODE_STEP_DESCRIPTION_CHARS = 1800
 _MAX_CODE_STEP_USER_MESSAGE_CHARS = 7000
+# Quantos arquivos um unico code_generation pode produzir.
+#
+# 2 e deliberado, nao 1: um servico e o seu __init__.py de subpacote saem
+# naturalmente juntos, e forcar 1 arquivo por step criaria steps triviais
+# demais (um __init__.py vazio nao merece uma rodada de LLM). Acima de 2 o
+# custo medido explode -- ver comentario em ExecutionStep.target_files.
+_MAX_FILES_POR_CODE_STEP = 2
 
 
 
@@ -188,6 +195,10 @@ def oversized_code_generation_steps(steps: list["ExecutionStep"]) -> list[str]:
 		if (
 			len(step.description) > _MAX_CODE_STEP_DESCRIPTION_CHARS
 			or len(step.user_message) > _MAX_CODE_STEP_USER_MESSAGE_CHARS
+			# Criterio principal desde 2026-08-29: numero de ARQUIVOS. O
+			# comprimento da descricao continua valendo como rede, mas era um
+			# proxy fraco -- uma descricao curta pode pedir 6 arquivos.
+			or len(step.target_files) > _MAX_FILES_POR_CODE_STEP
 		):
 			oversized.append(step.step_id)
 	return oversized
@@ -428,6 +439,17 @@ class ExecutionStep:
 	msg_evaluating: str = ""  # o que dizer ao checar o resultado deste step
 	msg_retrying: str = ""    # o que dizer ao tentar novamente apos problema
 	msg_escalating: str = ""  # o que dizer ao usar modelo mais potente
+	# Arquivos que ESTE step deve produzir, do layout declarado em
+	# ExecutionPlan.expected_files. Vazio para steps que nao escrevem arquivo.
+	#
+	# Motivo (E2E real, 2026-08-29): a decomposicao era por FEATURE, e o guarda
+	# de tamanho media o comprimento da descricao -- um proxy fraco. Medido nas
+	# 3 rodadas: os code_generation que FALHAM consomem sempre ~419 mil tokens
+	# em 3 tentativas; o unico que PASSOU consumiu 127 mil nas mesmas 3
+	# tentativas. A diferenca nao era o loop nem o modelo -- era quantos
+	# arquivos o step tentava produzir de uma vez. Os caros eram reprovados por
+	# entrega parcial ("nao foi gerado o arquivo solicitado gemini_service.py").
+	target_files: list[str] = field(default_factory=list)
 
 	def __post_init__(self):
 		# Sincroniza depends_on e dependencies — aceita ambos os nomes
@@ -435,6 +457,19 @@ class ExecutionStep:
 			self.depends_on = self.dependencies
 		elif self.depends_on and not self.dependencies:
 			self.dependencies = self.depends_on
+		# Caminho canonico para target_files, aqui e nao no _build_steps: steps
+		# tambem nascem dos injetores (_inject_*) e de codigo de teste, e a
+		# invariante 'target_files esta normalizado' precisa valer para todos --
+		# senao o guarda de tamanho e o prompt do step veem formatos diferentes
+		# conforme a origem do step.
+		#
+		# Sem reparo de ponto de entrada (ao contrario de ExecutionPlan.
+		# expected_files): um step individual nao precisa declarar o __init__.py
+		# do addon -- isso e propriedade do plano, nao do step.
+		if self.target_files:
+			self.target_files = _normalize_expected_files(
+				self.target_files, "", "controller_client",
+			)
 
 @dataclass
 class ExecutionPlan:
@@ -834,10 +869,13 @@ class Planner:
 			decomposition_prompt = (
 				f"{user_query}\n\n"
 				"REPLANEJAMENTO OBRIGATORIO: a tarefa deve ser quebrada em subtarefas "
-				"menores. Nenhum step code_generation pode acumular funcionalidades "
-				"independentes ou contexto excessivo. Crie um step por feature/subpacote, "
-				"com arquivos relacionados, dependências explícitas e um step final de "
-				"integração. Retorne o mesmo JSON estruturado do planner."
+				"menores. Divida por ARQUIVO, nao por funcionalidade: cada step de "
+				"code_generation deve produzir no maximo 2 arquivos, declarados em "
+				"target_files. Medido em execucao real: um step que tenta uma feature "
+				"inteira de uma vez (servico + dialogo + painel + testes) e reprovado "
+				"por entrega parcial e custa 3x mais que um step focado. Use depends_on "
+				"para encadear os arquivos que dependem uns dos outros, e termine com um "
+				"step de integracao. Retorne o mesmo JSON estruturado do planner."
 			)
 			try:
 				decomposed_raw = self._call_planner_llm(
@@ -1693,6 +1731,7 @@ class Planner:
 									"msg_evaluating":    {"type": "string", "description": "Mensagem enquanto o resultado e verificado. Ex: 'Conferindo se o codigo segue as diretrizes do NVDA...'"},
 									"msg_retrying":      {"type": "string", "description": "Mensagem ao tentar novamente. Ex: 'Ajustando o codigo com base nos problemas encontrados...'"},
 									"msg_escalating":    {"type": "string", "description": "Mensagem ao usar analise mais aprofundada. Ex: 'Aplicando revisao mais cuidadosa para resolver os problemas...'"},
+									"target_files":      {"type": "array", "items": {"type": "string"}, "description": "Arquivos que ESTE step deve produzir, escolhidos de expected_files. OBRIGATORIO para step_type='code_generation': liste no MAXIMO 2 arquivos por step. Um step que tenta produzir uma feature inteira de uma vez (servico + dialogo + painel de configuracao + testes) e reprovado por entrega parcial e custa 3x mais que um step focado -- medido em execucao real. Divida por ARQUIVO, nao por funcionalidade: cada arquivo do layout vira um step, e os steps dependem uns dos outros via depends_on. Deixe vazio para steps que nao escrevem arquivo (web_research, design_review, accessibility_audit)."},
 									"depends_on":        {"type": "array", "items": {"type": "string"}, "description": "IDs dos steps que devem estar prontos antes deste. Ex: ['s1', 's2']"},
 									"context_from_steps":{"type": "array", "items": {"type": "string"}, "description": "IDs cujos outputs sao passados como contexto para este step. Geralmente igual a depends_on."},
 								},
@@ -1801,6 +1840,7 @@ class Planner:
 				depends_on=raw.get("depends_on", []),
 				context_from_steps=raw.get("context_from_steps", []),
 				expected_output=raw.get("expected_output", ""),
+				target_files=raw.get("target_files", []),
 				user_message=raw.get("user_message", ""),
 				msg_evaluating=raw.get("msg_evaluating", ""),
 				msg_retrying=raw.get("msg_retrying", ""),

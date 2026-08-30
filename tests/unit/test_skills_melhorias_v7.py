@@ -54,7 +54,7 @@ class TestPlannerArquiteturaRules:
 
     def test_versao_Planner(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.32.0"
+        assert MODULE_VERSION == "2.33.0"
 
     def test_arch001_no_Planner(self):
         """ARCH-001 deve estar no prompt do Planner como regra de inferencia."""
