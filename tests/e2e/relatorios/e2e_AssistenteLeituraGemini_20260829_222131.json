@@ -1,0 +1,399 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-29T22:07:13.995669",
+  "plan_id": "6b9ebc9a",
+  "complexity": "",
+  "duration_seconds": 857.43,
+  "total_tokens": 2150832,
+  "total_retries": 22,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação parou por limite de recursos (Budget excedido — pipeline parado) antes de concluir o código do addon. 11 etapa(s) não chegaram a ser executadas. O que foi aprovado até aqui está preservado no relatório desta execução.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Confirmar o ponto de entrada preferido para resumo, perguntas e histórico: item no menu Ferramentas, atalhos de teclado ou ambos. Perguntar também, caso o usuário escolha atalhos, quais combinações deseja usar.\n  Resposta: Use um atalho NVDA"
+    },
+    {
+      "step_id": "manifest",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 89527,
+      "issues": [
+        "O manifest.ini não declara a dependência runtime obrigatória `google-genai`, conforme solicitado no objetivo do step e na correção obrigatória.",
+        "Confianca reduzida: score 80 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando Google Gemini\ndescription = Assistente de leitura que resume o texto selecionado, responde perguntas livres, pesquisa na web via Gemini e salva histórico local de perguntas e respostas\nauthor = Seu Nome "
+    },
+    {
+      "step_id": "s2",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:120b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 6395,
+      "issues": [
+        "A pesquisa não usa corretamente a API atual do pacote google-genai: mistura a API legada google-generativeai, como genai.configure e GenerativeModel, com o pacote novo.",
+        "Não distingue claramente google-genai de google-generativeai, apesar de isso ser explicitamente solicitado.",
+        "A versão 0.6.0 não é apresentada como verificada em fonte oficial e pode estar desatualizada."
+      ],
+      "output_preview": "**Pacote:** google-genai\n**Versão estável:** 0.6.0\n**Instalação:** `pip install google-genai`\n**API principal:**\n- Configuração da chave: `genai.configure(api_key=\"SUA_API_KEY\")`\n- Criação de cliente opcional (novo fluxo): `client = genai.Client()`\n- Modelo: `model = genai.GenerativeModel(model_name"
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 92,
+      "retries_used": 0,
+      "tokens_used": 176084,
+      "issues": [],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSuposições que podem estar erradas:\n- A API do Google Gemini oferece endpoints claros para sumarização, resposta a perguntas e busca web integrada, e esses endpoints permanecem estáveis.\n- O usuário sempre fornecerá uma"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 411881,
+      "issues": [
+        "NVDA-003: settings_panel.py usa gettext (_()) sem chamar addonHandler.initTranslation() no módulo.",
+        "NVDA-049: usa wx.MessageBox em onSave(), ainda que via wx.CallAfter(); deve usar gui.message.MessageDialog ou ui.message para integração correta com o NVDA.",
+        "NVDA-UX-001/NVDA-UX-002: a validação e a confirmação do salvamento dependem de wx.MessageBox e não fornecem feedback sonoro explícito e confiável via ui.message() ou ui.browseableMessage()."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t\"\"\"\n\tAplica a especificacao de configuracao para o addon AssistenteLeituraGemini.\n\tDeve ser chamado antes de qualquer acesso a config.conf[\"AssistenteLeituraGemini\"].\n\t\"\"\"\n\t_spec = {\n\t\t# Ch"
+    },
+    {
+      "step_id": "cg_gemini",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 418332,
+      "issues": [
+        "Não foi gerado o arquivo solicitado gemini_service.py; o output contém apenas uma pergunta de esclarecimento, notas e exemplos mínimos de uso da biblioteca.",
+        "Falta uma classe de serviço independente do NVDA para encapsular autenticação, resumo, perguntas, busca web e normalização de respostas.",
+        "Não há implementação de configuração recebida pelo chamador sem hardcode de chave."
+      ],
+      "output_preview": "Entendo que o arquivo foi recusado. Pode me dizer qual foi o problema com o código gerado? Foi algum erro de sintaxe, alguma regra NVDA que violou, ou você prefere uma abordagem diferente para o serviço Gemini?\n\nAssim que você me der o feedback, posso corrigir e gerar novamente o arquivo `gemini_ser"
+    },
+    {
+      "step_id": "cg_agent_template",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 92050,
+      "issues": [
+        "O output contém conteúdo extra não solicitado sobre a biblioteca google-genai, incluindo versão, instalação, exemplos de API e compatibilidade.",
+        "O output inclui avisos, contexto adicional e blocos FIXME, em vez de entregar exclusivamente o conteúdo de globalPlugins/AssistenteLeituraGemini/agent_template.py.",
+        "Embora contenha as seções obrigatórias de Community Access e os templates esperados, o conteúdo não está isolado como um arquivo Python final."
+      ],
+      "output_preview": "<!-- AVISO DE ESTRUTURA: secoes Community Access ausentes: Descricao, Responsabilidades, Regras de Comportamento, Entradas, Saidas, Invariantes, Referencias, Versao, Metadados — o Critic ira solicitar correcao -->\n\n# Descrição\n# O AssistenteLeituraGemini é um agente interno que interage com a API do"
+    },
+    {
+      "step_id": "cg_history",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 419190,
+      "issues": [
+        "Lint do addon gerado (ruff) apontou defeitos reais -- corrija todos antes de seguir:\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:2:32: F401 [*] `wx.lib.scrolledpanel` imported but unused\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:3:20: F401 [*] `typing.Callable` imported but unused\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:8:24: F401 [*] `logHandler.log` imported but unused\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:9:8: F401 [*] `core` imported but unused\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:122:5: F841 Local variable `index` is assigned to but never used\nglobalPlugins\\AssistenteLeituraGemini\\historico\\storage.py:5:35: F401 [*] `typing.Iterable` imported but unused\nglobalPlugins\\AssistenteLeituraGemini\\historico\\storage.py:8:8: F401 [*] `config` imported but unused\nFound 7 errors.\n[*] 6 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).",
+        "Lint do addon gerado (ruff) apontou defeitos reais -- corrija todos antes de seguir:\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:6:8: F401 [*] `gui` imported but unused\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:9:24: F401 [*] `logHandler.log` imported but unused\nglobalPlugins\\AssistenteLeituraGemini\\historico\\storage.py:6:22: F401 [*] `datetime.datetime` imported but unused\nFound 3 errors.\n[*] 3 fixable with the `--fix` option.",
+        "Lint do addon gerado (ruff) apontou defeitos reais -- corrija todos antes de seguir:\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:4:33: F401 [*] `gui.settingsDialogs.SettingsPanel` imported but unused\nglobalPlugins\\AssistenteLeituraGemini\\historico\\dialog.py:5:28: F401 [*] `gui.mainFrame` imported but unused\nFound 2 errors.\n[*] 2 fixable with the `--fix` option."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/historico/__init__.py\n\"\"\"Subpacote para armazenamento e consulta do histórico de interações com o Gemini.\"\"\"\n\nfrom .storage import HistoricoStorage, EntradaHistorico\nfrom .dialog import DialogoHistorico\n\n__all__ = [\"HistoricoStorage\", \"EntradaHistorico"
+    },
+    {
+      "step_id": "cg_gemini",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 137251,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/gemini_service.py\n\"\"\"Servico de integracao com a API Google Gemini.\n\nEste modulo e independente do NVDA. Ele recebe a chave de API e opcoes\npor parametro, importa o pacote `google-genai` de forma lazy dentro dos\nmetodos que o usam, e expoe excecoes dis"
+    },
+    {
+      "step_id": "cg_history",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "agent_template",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg_questions",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 132664,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/perguntas/__init__.py\n# -*- coding: UTF-8 -*-\n# A part of AssistenteLeituraGemini NVDA add-on\n# Copyright (C) 2026 AssistenteLeituraGemini contributors\n# This file is covered by the GNU General Public License.\n# See the file COPYING for more details.\n\n"
+    },
+    {
+      "step_id": "cg_summary",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 2,
+      "tokens_used": 267458,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "[ERRO] O modelo nao produziu o codigo final apos esgotar as tentativas de uso de ferramentas."
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 1 pergunta(s) adicionais."
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "APROVADO",
+      "design_review"
+    ],
+    [
+      "PARALELO",
+      "4"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "6"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 13.7,
+  "models_used": [
+    "gpt-oss:120b",
+    "gpt-oss:20b",
+    "kimi-k2.7-code",
+    "qwen3.5:397b"
+  ]
+}

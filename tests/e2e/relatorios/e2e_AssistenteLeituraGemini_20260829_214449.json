@@ -1,0 +1,295 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-08-29T21:37:46.309135",
+  "plan_id": "754cd99c",
+  "complexity": "",
+  "duration_seconds": 423.25,
+  "total_tokens": 870444,
+  "total_retries": 9,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:120b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 8491,
+      "issues": [
+        "A pesquisa prioriza o pacote legado google-generativeai e não documenta o pacote atual recomendado google-genai.",
+        "Não distingue claramente a API atual da API legada.",
+        "Não explica adequadamente erros de chave inválida, permissões, quota e falhas de rede."
+      ],
+      "output_preview": "**Pacote:** google-generativeai\n**Versao estavel:** 0.5.4\n**Instalacao:** `pip install google-generativeai`\n**API principal:**\n- `import google.generativeai as genai`\n- `genai.configure(api_key=os.getenv(\"GOOGLE_API_KEY\"))` ou `genai.configure(api_key=\"sua-chave\")`\n- `model = genai.GenerativeModel(m"
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 164889,
+      "issues": [
+        "A revisão identifica muitos riscos, mas permanece predominantemente descritiva e não define decisões ou critérios de implementação verificáveis para resolvê-los.",
+        "Há imprecisão em NVDA-025: a seção de configuração deve usar o addonId único real do manifest.ini, não necessariamente o campo name.",
+        "A exigência de registrar item no menu Ferramentas é apresentada como obrigatória em alguns trechos, embora ARCH-001/ARCH-008 permitam SettingsPanel como ponto de acesso conforme o contexto."
+      ],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSupondo que o usuário tenha uma chave válida e acesso à internet, a API do Gemini será sempre disponível e responderá exatamente como esperado. Essa suposição falha se a chave for inválida, expirou, ou se o serviço esti"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Confirmar o ponto de entrada principal do assistente: item no menu Ferramentas, atalho de teclado, ou ambos. A tela de configurações e os diálogos dedicados continuarão disponíveis independentemente dessa escolha.\n  Resposta: Use um atalho N"
+    },
+    {
+      "step_id": "cg_historico",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 139397,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/historico/__init__.py\n# Subpacote de gerenciamento de histórico de interações\n\nfrom .storage import HistoricoStorage, RegistroHistorico\nfrom .history_dialog import DialogoHistorico\n\n__all__ = [\"HistoricoStorage\", \"RegistroHistorico\", \"DialogoHistorico\""
+    },
+    {
+      "step_id": "s_agent_template",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s_manifest",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 137638,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t\"\"\"\n\tAplica o schema de configuracao do addon AssistenteLeituraGemini.\n\tDeve ser chamado antes de qualquer acesso a config.conf[\"AssistenteLeituraGemini\"].\n\t\"\"\"\n\t_spec = {\n\t\t# Translators: "
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 420029,
+      "issues": [
+        "Nenhum código Python foi produzido.",
+        "O arquivo solicitado globalPlugins/AssistenteLeituraGemini/gemini_service.py não foi entregue.",
+        "Não há classe de serviço, imports funcionais nem exceções específicas implementadas."
+      ],
+      "output_preview": "[ERRO] O modelo nao produziu o codigo final apos esgotar as tentativas de uso de ferramentas."
+    },
+    {
+      "step_id": "cg_resumo",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg_perguntas",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg_pesquisa",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s_agent_runner",
+      "step_type": "agent_runner",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "s_docs",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 1 pergunta(s) adicionais."
+    ],
+    [
+      "PARALELO",
+      "5"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 7.1,
+  "models_used": [
+    "gpt-oss:120b",
+    "gpt-oss:20b",
+    "qwen3.5:397b"
+  ]
+}

@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .logger import get_logger
 
-MODULE_VERSION = "1.1.0"
+MODULE_VERSION = "1.3.0"
 _logger = get_logger("iteration_budget")
 
 # Custos por 1M tokens (USD) — atualizar conforme provider
@@ -19,6 +19,31 @@ _MODEL_COSTS = {
 # Limites padrão
 _DEFAULT_MAX_ITERATIONS = 50
 _DEFAULT_TOKEN_BUDGET = 500000
+
+# Teto de tokens por complexidade do plano (low/medium/high, decidida pela IA
+# no Planner). 1.2.0 -- ate aqui existia UM teto fixo de 500 mil para tudo.
+#
+# Enquanto o medidor nao era alimentado em voo (corrigido em orchestrator
+# 5.59.0) o numero era decorativo e ninguem notou que estava errado. Ao ligar
+# o freio de verdade, o teto virou o fator limitante -- e a medicao dos 379
+# relatorios mostrou que ele estava calibrado so para o caso simples:
+#
+#   addon simples que deu certo ..... mediana   204 mil / maximo   621 mil
+#   addon COMPLEXO que deu certo .... mediana   821 mil / maximo 4,6 milhoes
+#
+# Ou seja: NENHUM addon complexo jamais teve sucesso dentro de 500 mil. Com o
+# freio funcionando, o teto antigo transformava 'caro e as vezes funciona' em
+# 'para cedo e nunca funciona' -- confirmado ao vivo em 2026-08-29, dois
+# pedidos complexos mortos aos ~800 mil com 1 de 11 e 1 de 14 steps aprovados.
+#
+# Os valores abaixo dao folga sobre a MEDIANA real de cada classe, nao sobre o
+# maximo: o objetivo e nao matar execucao que ia dar certo, sem virar cheque em
+# branco para a que entrou em loop.
+_TOKEN_BUDGET_BY_COMPLEXITY: dict[str, int] = {
+	"low": 300_000,
+	"medium": 700_000,
+	"high": 1_000_000,
+}
 _DEFAULT_COST_BUDGET_USD = 5.00
 _RATE_LIMIT_CALLS_PER_MINUTE = 60
 
@@ -113,6 +138,29 @@ class IterationBudget:
         self._paused = False
         self._stopped = False
 
+    def apply_complexity(self, complexity: str) -> int:
+        """
+        Ajusta o teto de tokens a complexidade do plano e devolve o valor.
+
+        Chamado pelo orchestrator assim que o plano existe -- reset() roda
+        ANTES disso (no inicio da execucao, quando ainda nao ha plano), entao
+        nao teria como saber a complexidade.
+
+        Complexidade desconhecida cai em 'medium', nunca no teto alto: na
+        duvida o comportamento seguro e o mais restritivo.
+        """
+        with self._lock:
+            teto = _TOKEN_BUDGET_BY_COMPLEXITY.get(
+                (complexity or "").strip().lower(),
+                _TOKEN_BUDGET_BY_COMPLEXITY["medium"],
+            )
+            self._limits.max_tokens = teto
+            _logger.info(
+                "[BUDGET] Teto ajustado para complexity=%s: %d tokens",
+                complexity or "?", teto,
+            )
+            return teto
+
     def reset(self):
         """Reseta budget para nova sessão."""
         with self._lock:
@@ -120,6 +168,10 @@ class IterationBudget:
             self._iterations.clear()
             self._paused = False
             self._stopped = False
+            # 1.2.0: o teto tambem volta ao padrao. Sem isso, uma sessao
+            # anterior com complexity=high deixaria o teto alto valendo para
+            # a proxima -- o singleton e de processo inteiro.
+            self._limits.max_tokens = _DEFAULT_TOKEN_BUDGET
             _logger.info("[BUDGET] Resetado para nova sessão")
 
     def record_iteration(

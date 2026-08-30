@@ -42,7 +42,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.59.0"
+MODULE_VERSION = "5.61.0"
 _logger = get_logger("orchestrator")
 
 MAX_RETRIES_DEFAULT = 3
@@ -430,6 +430,38 @@ ProgressCallback = Callable[[str, str], None]
 ClarifyCallback = Callable[[list[str]], list[str]]
 
 
+
+# Teto de problemas carregados entre tentativas. Alto o bastante para o modelo
+# ver tudo que ja foi apontado num step de addon multi-arquivo, baixo o
+# bastante para o prompt do retry nao virar um despejo que dilui a atencao --
+# o proprio motivo pelo qual conhecimento em prompt tem retorno decrescente.
+_MAX_ISSUES_ACUMULADOS = 25
+
+
+def _acumular_issues(acumulados: list[str], novos: list[str]) -> None:
+	"""
+	Acrescenta problemas novos a lista acumulada, sem duplicar.
+
+	Deduplica pelo texto EXATO: o Critic reporta o mesmo defeito com a mesma
+	frase entre tentativas, e repetir a linha tres vezes no prompt nao aumenta
+	a chance de correcao -- so gasta contexto.
+
+	Preserva a ORDEM de descoberta: o problema apontado primeiro costuma ser o
+	mais estrutural, e e o que deve chegar primeiro na leitura do modelo.
+	"""
+	vistos = set(acumulados)
+	for item in novos or []:
+		texto = str(item).strip()
+		if not texto or texto in vistos:
+			continue
+		vistos.add(texto)
+		acumulados.append(texto)
+	if len(acumulados) > _MAX_ISSUES_ACUMULADOS:
+		# Descarta os mais ANTIGOS, nao os recentes: um problema apontado ha 3
+		# tentativas e que nunca mais voltou provavelmente ja foi resolvido.
+		del acumulados[: len(acumulados) - _MAX_ISSUES_ACUMULADOS]
+
+
 class Orchestrator:
 	"""
 	Orquestrador autonomo do NVDAStudio.
@@ -457,6 +489,10 @@ class Orchestrator:
 		# 5.59.0: True assim que o orcamento passa a ser alimentado em voo --
 		# faz o registro terminal parar de contar os mesmos tokens de novo.
 		self._budget_recorded_in_flight: bool = False
+		# 5.60.0: (motivo, steps_nao_executados) quando o pipeline para por
+		# orcamento -- deixa a mensagem final dizer a causa REAL em vez de
+		# "nenhum arquivo Python foi gerado", que manda investigar o lugar errado.
+		self._parou_por_orcamento: tuple[str, int] | None = None
 		self._current_plan_addon_name: str = ""  # 5.22.0: inicializado pra _learn_from_session() nunca dar AttributeError
 		self._suppress_complete_callback = False
 		# Hermes-inspired v2.1.0 (2026-06-09)
@@ -468,6 +504,52 @@ class Orchestrator:
 		self._planner = Planner()
 		self._critic = Critic()
 		_logger.info("[OK] Orchestrator v%s inicializado.", MODULE_VERSION)
+
+	def _mensagem_de_falha(self, artifact_error: str) -> str:
+		"""
+		Ajusta a mensagem final quando o pipeline parou por ORCAMENTO.
+
+		`_validate_minimum_addon_artifacts()` e estatica e so enxerga os
+		artefatos: sem codigo Python, ela conclui "a IA nao gerou codigo". Mas
+		quando o teto de tokens estourou no meio da geracao, essa frase manda o
+		usuario -- e o proximo retry -- investigar o lugar errado. Confirmado ao
+		vivo em 2026-08-29: dois pedidos complexos foram reportados como "nenhum
+		arquivo Python valido" quando o que houve foi o orcamento acabar.
+
+		A causa real tem precedencia sobre o sintoma.
+		"""
+		parou = getattr(self, "_parou_por_orcamento", None)
+		if not parou:
+			return artifact_error
+		motivo, nao_rodados = parou
+		return (
+			f"A criação parou por limite de recursos ({motivo}) antes de concluir o "
+			f"código do addon. {nao_rodados} etapa(s) não chegaram a ser executadas. "
+			"O que foi aprovado até aqui está preservado no relatório desta execução."
+		)
+
+	def _aplicar_orcamento_por_complexidade(self, plan: ExecutionPlan) -> None:
+		"""
+		Ajusta o teto de tokens a complexidade do plano.
+
+		reset() roda no INICIO da execucao, antes de existir plano -- entao o
+		teto so pode ser dimensionado aqui. Ate 2026-08-29 havia um unico teto
+		fixo de 500 mil, calibrado (sem que ninguem notasse) para addon simples:
+		enquanto o medidor nao era alimentado em voo, o numero nao tinha efeito.
+		Ligado o freio, ele virou o fator limitante e matou dois pedidos
+		complexos aos ~800 mil, com 1 de 11 e 1 de 14 steps aprovados.
+
+		Nunca levanta: falha aqui nao pode derrubar um plano valido.
+		"""
+		try:
+			complexidade = getattr(plan, "estimated_complexity", "") or "medium"
+			teto = iteration_budget.apply_complexity(complexidade)
+			_logger.info(
+				"[BUDGET] Plano %s (complexity=%s): teto de %d tokens.",
+				plan.plan_id, complexidade, teto,
+			)
+		except Exception as exc:  # pragma: no cover - defesa
+			_logger.warning("[BUDGET] Nao foi possivel ajustar o teto: %s", exc)
 
 	def _track_model_tokens(self, model_id: str, tokens: int, step_type: str = "") -> None:
 		"""
@@ -529,6 +611,7 @@ class Orchestrator:
 		# Ver comentario equivalente em run_conversational_async() -- mesmo motivo.
 		iteration_budget.reset()
 		self._budget_recorded_in_flight = False
+		self._parou_por_orcamento = None
 		thread = threading.Thread(
 			target=self._run_async_worker, args=(user_query,), daemon=True
 		)
@@ -655,6 +738,7 @@ class Orchestrator:
 		# relacao nenhuma, podia nascer com o orcamento ja estourado.
 		iteration_budget.reset()
 		self._budget_recorded_in_flight = False
+		self._parou_por_orcamento = None
 		thread = threading.Thread(
 			target=self._run_conversational_pipeline, args=(user_query,), daemon=True
 		)
@@ -806,6 +890,7 @@ class Orchestrator:
 				_plan_narrator.flush()
 			self._current_plan_addon_name = plan.addon_name
 			self._plan_dependencies = plan.dependencies
+			self._aplicar_orcamento_por_complexidade(plan)
 
 			# ------------------------------------------------------------------
 			# FASE 4: PLAN_APPROVAL — Mostrar e aguardar aprovacao
@@ -872,6 +957,28 @@ class Orchestrator:
 
 			while remaining:
 				self._check_cancel()
+				# 5.60.0 -- DEGRADACAO GRACIOSA quando o orcamento estoura.
+				#
+				# Ate aqui, com o teto atingido, o laco seguia chamando CADA step
+				# restante so para ele devolver score=0 com 'Orcamento excedido'.
+				# Efeito observado ao vivo (2026-08-29): a nota media do relatorio
+				# desabou para 7.1 e 8.9 -- numeros que parecem colapso de
+				# qualidade, quando na verdade um step foi aprovado com 98 e o
+				# resto nunca chegou a rodar. Relatorio que mente sobre a causa e
+				# pior que relatorio de falha: manda investigar o lugar errado.
+				#
+				# Parar aqui e o que o documento de metodologia do projeto chama de
+				# graceful degradation: entregar o que funcionou e dizer por que
+				# parou, em vez de descartar tudo.
+				_orcamento_ok, _orcamento_motivo = iteration_budget.can_continue()
+				if not _orcamento_ok:
+					_nao_rodados = [s.step_id for s in remaining]
+					_logger.warning(
+						"[BUDGET] Parando o pipeline: %s. %d step(s) nao executados: %s",
+						_orcamento_motivo, len(_nao_rodados), _nao_rodados[:8],
+					)
+					self._parou_por_orcamento = (_orcamento_motivo, len(_nao_rodados))
+					break
 				ready = [s for s in remaining if self._deps_ready(s, outputs)]
 				if not ready:
 					partial_ready = [
@@ -1024,6 +1131,7 @@ class Orchestrator:
 			# FASE 6: REVIEW — Montar e mostrar resultado
 			# ------------------------------------------------------------------
 			artifact_error = self._validate_minimum_addon_artifacts(plan, step_results, outputs)
+			artifact_error = self._mensagem_de_falha(artifact_error)
 			if artifact_error:
 				_logger.error("[ERRO] Pipeline sem artefatos essenciais: %s", artifact_error)
 				failure = OrchestrationResult(
@@ -1319,11 +1427,34 @@ class Orchestrator:
 			self._current_plan = plan
 			self._current_plan_addon_name = plan.addon_name
 			self._plan_dependencies = plan.dependencies
+			self._aplicar_orcamento_por_complexidade(plan)
 
 			remaining = [s for s in plan.steps if s.step_id not in (resume_completed or {})]
 			failed_step_ids: set[str] = set()
 			while remaining:
 				self._check_cancel()
+				# 5.60.0 -- DEGRADACAO GRACIOSA quando o orcamento estoura.
+				#
+				# Ate aqui, com o teto atingido, o laco seguia chamando CADA step
+				# restante so para ele devolver score=0 com 'Orcamento excedido'.
+				# Efeito observado ao vivo (2026-08-29): a nota media do relatorio
+				# desabou para 7.1 e 8.9 -- numeros que parecem colapso de
+				# qualidade, quando na verdade um step foi aprovado com 98 e o
+				# resto nunca chegou a rodar. Relatorio que mente sobre a causa e
+				# pior que relatorio de falha: manda investigar o lugar errado.
+				#
+				# Parar aqui e o que o documento de metodologia do projeto chama de
+				# graceful degradation: entregar o que funcionou e dizer por que
+				# parou, em vez de descartar tudo.
+				_orcamento_ok, _orcamento_motivo = iteration_budget.can_continue()
+				if not _orcamento_ok:
+					_nao_rodados = [s.step_id for s in remaining]
+					_logger.warning(
+						"[BUDGET] Parando o pipeline: %s. %d step(s) nao executados: %s",
+						_orcamento_motivo, len(_nao_rodados), _nao_rodados[:8],
+					)
+					self._parou_por_orcamento = (_orcamento_motivo, len(_nao_rodados))
+					break
 				ready = [s for s in remaining if self._deps_ready(s, outputs)]
 				if not ready:
 					partial_ready = [
@@ -1479,6 +1610,7 @@ class Orchestrator:
 							f"replan={replan_count} novos_steps={len(remaining)}")
 
 			artifact_error = self._validate_minimum_addon_artifacts(plan, step_results, outputs)
+			artifact_error = self._mensagem_de_falha(artifact_error)
 			if artifact_error:
 				_logger.error("[ERRO] Pipeline sem artefatos essenciais: %s", artifact_error)
 				failure = OrchestrationResult(
@@ -2126,6 +2258,23 @@ class Orchestrator:
 		retries = 0
 		last_output = ""
 		last_issues: list[str] = []
+		# 5.61.0 -- PROBLEMAS ACUMULADOS ENTRE TENTATIVAS.
+		#
+		# Achado no E2E real de 2026-08-29: cada code_generation gastava ~420 mil
+		# tokens em 3 tentativas e falhava nas tres, com motivo DIFERENTE a cada
+		# vez. A causa nao era o modelo -- era `last_issues = crit.issues`, que
+		# SUBSTITUI a lista a cada avaliacao. Na tentativa 2 o modelo recebia
+		# apenas os problemas da avaliacao 2; os da tentativa 1 tinham sumido do
+		# prompt. Ele corrigia o que acabara de ouvir e reintroduzia o que ja
+		# tinha corrigido. Tres tentativas, tres conjuntos de problemas, nenhuma
+		# convergencia.
+		#
+		# Esta lista existe SEPARADA de last_issues de proposito: a deteccao de
+		# loop semantico (5.42.0) compara a assinatura de last_issues entre
+		# tentativas consecutivas. Se ela passasse a acumular, a assinatura
+		# cresceria sempre, nunca se repetiria, e a deteccao de loop morreria em
+		# silencio -- trocando um defeito por outro.
+		issues_acumulados: list[str] = []
 		total_step_tokens = 0
 		_step_start = time.perf_counter()
 		_previous_issue_signature: str | None = None  # 5.42.0: deteccao de loop semantico
@@ -2198,7 +2347,7 @@ class Orchestrator:
 				step.reasoning_params = _FALLBACK_REASONING
 			prompt = self._build_step_prompt(
 				step, original_query, context,
-				previous_issues=last_issues if attempt > 0 else []
+				previous_issues=issues_acumulados if attempt > 0 else []
 			)
 			self._emit("EXECUTANDO", step.step_type)
 			last_output, step_tokens = self._dispatch_with_heartbeat(
@@ -2458,6 +2607,7 @@ class Orchestrator:
 					"antes de considerar esta etapa concluída."
 				)
 			last_issues = crit.issues
+			_acumular_issues(issues_acumulados, crit.issues)
 
 			# 5.42.0: deteccao de loop semantico -- achado real desta sessao
 			# (rodadas de test_e36 com 1h+ de duracao): _MAX_REPLANS/
