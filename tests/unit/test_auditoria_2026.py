@@ -78,7 +78,7 @@ class TestDocGeneratorFallbackEn:
 
 class TestDesignReviewUserAdvocate:
     def test_versao_e_2_3_0(self):
-        assert DESIGN_VER == "2.13.0"
+        assert DESIGN_VER == "2.14.0"
 
     def test_advocate_respeita_modelo_do_step(self):
         import inspect

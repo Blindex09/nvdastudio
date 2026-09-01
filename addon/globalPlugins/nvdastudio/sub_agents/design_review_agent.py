@@ -6,7 +6,7 @@ from ..builder.nvda_context import get_docs_design_review
 from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
 
 _logger = get_logger("design_review_agent")
-MODULE_VERSION = "2.13.0"
+MODULE_VERSION = "2.14.0"
 
 # 2.12.0: catalogo completo de prefixos de rule ID usados no projeto
 # (nvda_context.py/rule_registry.py) -- usado pelos 2 reforcos mecanicos
@@ -173,7 +173,13 @@ def run(prompt: str, model_id: str, reasoning_params: dict, cache_key: str | Non
 	economizando 3 chamadas LLM (~50% latencia) sem perda mensuravel de qualidade.
 	"""
 	_logger.info("[DESIGN-REVIEW] Iniciando revisao de design em tres estagios.")
-	_design_docs = get_docs_design_review()
+	# Documentacao POR PERSONA (nvda_context 3.33.0). Os tres estagios recebiam
+	# o mesmo bloco de 30 mil tokens, 90 mil por revisao -- o mesmo contexto tres
+	# vezes, nao contexto demais. Ver _DESIGN_REVIEW_PERSONA_DOCS para o criterio
+	# de corte de cada estagio.
+	_docs_challenger = get_docs_design_review(persona="challenger")
+	_docs_guardian = get_docs_design_review(persona="guardian")
+	_docs_advocate = get_docs_design_review(persona="advocate")
 
 	# Contexto enriquecido: escopo e a propria query — suficiente para revisao.
 	_prompt_with_lock = f"Pedido original:\n{prompt}"
@@ -187,7 +193,7 @@ def run(prompt: str, model_id: str, reasoning_params: dict, cache_key: str | Non
 		f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
 		model_id,
 		_REASONING_CHALLENGER,
-		extra_docs=_design_docs, cache_key=cache_key,
+		extra_docs=_docs_challenger, cache_key=cache_key,
 		step_type="design_review",
 		final_tool={
 			"name": "entregar_critica_challenger",
@@ -210,7 +216,7 @@ def run(prompt: str, model_id: str, reasoning_params: dict, cache_key: str | Non
 		f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
 		model_id,
 		_REASONING_GUARDIAN,
-		extra_docs=_design_docs, cache_key=cache_key,
+		extra_docs=_docs_guardian, cache_key=cache_key,
 		step_type="design_review",
 		final_tool={
 			"name": "entregar_critica_guardian",
@@ -234,7 +240,7 @@ def run(prompt: str, model_id: str, reasoning_params: dict, cache_key: str | Non
 		f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
 		model_id,
 		_REASONING_ADVOCATE,
-		extra_docs=_design_docs, cache_key=cache_key,
+		extra_docs=_docs_advocate, cache_key=cache_key,
 		step_type="design_review",
 		final_tool={
 			"name": "entregar_critica_advocate",

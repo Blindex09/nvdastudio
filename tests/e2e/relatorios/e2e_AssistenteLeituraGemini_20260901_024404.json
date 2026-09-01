@@ -1,0 +1,249 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-09-01T02:34:09.110923",
+  "plan_id": "70d51928",
+  "complexity": "",
+  "duration_seconds": 594.98,
+  "total_tokens": 742195,
+  "total_retries": 12,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação parou por limite de recursos (Budget excedido — pipeline parado) antes de concluir o código do addon. 18 etapa(s) não chegaram a ser executadas. O que foi aprovado até aqui está preservado no relatório desta execução.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "step_type": "user_clarification",
+      "model_used": "",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "Informacoes adicionais coletadas mid-pipeline:\n- Pergunta: Confirmar se as funções principais devem ser abertas por item no menu Ferramentas, por atalhos de teclado ou por ambos. Como o usuário não solicitou atalhos específicos, não criar atalhos antes dessa confirmação.\n  Resposta: Use um atalho NV"
+    },
+    {
+      "step_id": "manifest",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 29940,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando Gemini\ndescription = Ajuda o usuário a resumir textos selecionados, responder perguntas sobre eles, pesquisar na web via Gemini e manter histórico local de interações, com tela de configurações para chav"
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 167234,
+      "issues": [
+        "A revisão identifica riscos relevantes, mas deixa praticamente todas as decisões de design críticas em aberto, sem recomendações ou critérios de decisão para iniciar a implementação.",
+        "Vários requisitos aparecem sem seus IDs no bloco do User Advocate, e há placeholders incompletos como \"nome do addon ()\", reduzindo a rastreabilidade entre risco, regra e ação corretiva.",
+        "Faltam decisões concretas sobre estratégia de dependência do Gemini, formato e limites do histórico, política segura para armazenamento da chave, cancelamento, concorrência, truncamento/divisão de texto e fallback de busca web."
+      ],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSuposições que podem estar erradas:\n1. A API do Google Gemini estará disponível e acessível a partir do addon sem necessidade de bibliotecas externas adicionais. Na verdade, pode exigir dependências específicas (ex.: go"
+    },
+    {
+      "step_id": "s2",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:120b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 10279,
+      "issues": [
+        "A pesquisa usa uma API desatualizada ou incorreta: a documentação atual do pacote google-genai utiliza client.models.generate_content, não client.get_model(...).generate_content(...).",
+        "A ferramenta de busca foi descrita com genai.tools.SearchTool(), mas a API atual deve ser verificada e documentada conforme o mecanismo suportado, incluindo limitações e modelos compatíveis.",
+        "As classes de exceção listadas, como genai.AuthenticationError, genai.APIError, genai.RateLimitError e genai.NetworkError, não foram confirmadas como exceções reais expostas dessa forma pelo SDK atual."
+      ],
+      "output_preview": "**Pacote:** google-genai\n**Versão estável:** 0.5.0\n**Instalação:** `pip install google-genai`\n**API principal:**\n- Importação: `from google import genai`\n- Autenticação: a chave da API pode ser passada ao criar o cliente ou definida na variável de ambiente `GOOGLE_API_KEY`.\n  ```python\n  client = ge"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 2,
+      "tokens_used": 270451,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/configSpec.py\nimport config\n\n# Translators: Nome da secao de configuracao do addon no config.conf\n_ADDON_SECTION = \"AssistenteLeituraGemini\"\n\n# Translators: Especificacao das configuracoes do addon com validacao\n_SPEC = {\n\t# Translators: Chave de API d"
+    },
+    {
+      "step_id": "cg_historico_core",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 72,
+      "retries_used": 3,
+      "tokens_used": 137137,
+      "issues": [
+        "NVDA-016: _garantir_diretorio() e _escrever_arquivo() realizam escrita em disco sem verificar NVDAState.shouldWriteToDisk(), expondo o addon a falhas em secure mode.",
+        "NVDA-062: As entradas de persistencia adicionar() e limpar() nao verificam globalVars.appArgs.secure em cada ponto de entrada perigoso. A verificacao apenas em outro modulo, se existir, nao protege este modulo diretamente.",
+        "NVDA-028: O codigo usa typing.Optional em vez da sintaxe moderna str | None, Callable[...] | None e tipos genericos nativos esperados no NVDA 2026.1+."
+      ],
+      "output_preview": "Vou implementar o módulo de histórico com armazenamento seguro em JSON, sem usar pickle ou variáveis globais. O storage.py vai cuidar da persistência no diretório de configuração do addon, e o __init__.py vai expor a interface pública.\n\n```python:globalPlugins/AssistenteLeituraGemini/historico/stora"
+    },
+    {
+      "step_id": "cg_leitura_core",
+      "step_type": "code_generation",
+      "model_used": "opencode_go/gpt-5.6-luna",
+      "approved": true,
+      "score": 94,
+      "retries_used": 3,
+      "tokens_used": 127154,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/leitura/__init__.py\n\"\"\"Funções públicas para leitura de texto selecionado no NVDA.\"\"\"\n\nfrom .selection import (\n\tEmptySelectionError,\n\tNoFocusObjectError,\n\tNoSelectionError,\n\tSelectionReadError,\n\tget_document_text_sync,\n\tget_selected_text_async,\n\tget_s"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "AGUARDANDO_USUARIO",
+      "Preciso de mais informacoes para continuar. 1 pergunta(s) adicionais."
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "PARALELO",
+      "4"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Revisando cuidadosamente a persistência e seus casos de erro..."
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Revisando cuidadosamente o acesso aos objetos e textos do NVDA..."
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 52.0,
+  "models_used": [
+    "gpt-oss:120b",
+    "gpt-oss:20b",
+    "opencode_go/gpt-5.6-luna",
+    "qwen3.5:397b"
+  ]
+}

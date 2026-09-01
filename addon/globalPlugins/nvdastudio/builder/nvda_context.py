@@ -8,7 +8,7 @@ from ..utils.project_policy import (
 	PROJECT_SUPPORTED_RANGE,
 )
 
-PROMPT_VERSION = "3.32.0"
+PROMPT_VERSION = "3.34.0"
 
 # ------------------------------------------------------------------
 # Tabela de versoes do projeto.
@@ -411,7 +411,12 @@ NVDA-019 Serio: # Translators: comment ausente imediatamente antes de chamada _(
 NVDA-020 Moderado: Import de re-export transitivo (API instavel entre versoes).
   Correto: from NVDAObjects.IAccessible import IAccessible
   Errado:  from NVDAObjects import IAccessible
-NVDA-021 Moderado: Indentacao com espacos em vez de TABS.
+NVDA-021 Moderado: Indentacao com espacos em vez de TABS. NAO penalize
+  isto ao avaliar codigo: o pipeline converte a indentacao para TAB
+  deterministicamente na extracao dos blocos (addon_builder.
+  normalizar_indentacao), preservando o conteudo de docstrings e strings
+  multilinha. Reprovar um step por formatacao que o codigo ja corrige gasta
+  uma tentativa inteira sem mudar nada no addon entregue.
   NVDA usa TABS como padrao de codificacao. Gere sempre com TABS.
 NVDA-022 Critico: Import 3rd party em nivel de modulo em arquivo de servico.
   Se a dependencia nao estiver em lib/, toda a cadeia de imports falha e o NVDA
@@ -2394,13 +2399,53 @@ def get_docs_accessibility_audit(docs_dir: str = _NVDA_DOCS_DIR) -> str:
 	return "\n\n".join(sections)
 
 
-def get_docs_design_review(docs_dir: str = _NVDA_DOCS_DIR) -> str:
+# Documentacao por PERSONA do design review. Medido em 2026-09-01: os tres
+# estagios recebiam o MESMO bloco de 30 mil tokens, somando 90 mil por revisao
+# -- de 9% a 17% do orcamento de um addon complexo, gasto antes de existir uma
+# linha de codigo. Nao e contexto demais; e o mesmo contexto tres vezes.
+#
+# O corte segue o que cada persona de fato produz, nao um teto arbitrario:
+#
+# - guardian: e quem cita restricoes tecnicas e IDs de regra do NVDA/WX.
+#   Recebe TUDO -- e o unico estagio cuja saida depende de ler a fonte.
+# - challenger: questiona suposicoes e preve modos de falha. Precisa do ciclo
+#   de vida do addon (carga, config, estado, fila), nao da API de gestos.
+# - advocate: representa o usuario cego -- fluxo, atalhos, linguagem. Nao cita
+#   API nenhuma; o proprio `_strip_rule_ids` existe para REMOVER da saida dele
+#   os IDs de regra que ele nao deveria estar citando. Dar fonte do NVDA a esse
+#   estagio empurra ele exatamente para o comportamento que o codigo apaga
+#   depois.
+#
+# HIPOTESE, nao medicao: a economia (60 mil tokens por revisao) e certa, o
+# efeito na QUALIDADE da revisao nao foi medido -- a comparar pela nota que o
+# Critic da ao design_review nas proximas rodadas. Se cair, reverter: cortar
+# contexto ja piorou resultado nesta sessao (rodada 6, notas 52.0 -> 15.7).
+#
+# Persona desconhecida ou vazia recebe tudo: na duvida, contexto sobrando custa
+# tokens, contexto faltando custa a revisao.
+_DESIGN_REVIEW_PERSONA_DOCS: dict[str, tuple[str, ...]] = {
+	"challenger": (
+		"config/__init__.py", "NVDAState.py", "queueHandler.py",
+		"addonHandler/__init__.py", "addonAPIVersion.py",
+		"globalPluginHandler.py",
+	),
+	"advocate": (),
+}
+
+
+def get_docs_design_review(
+	docs_dir: str = _NVDA_DOCS_DIR, persona: str = "",
+) -> str:
 	"""
 	Contexto para DesignReview: analise de riscos de design antes de gerar codigo.
 	Cobre: eventHandler, extensionPoints, config, NVDAState, inputCore,
 	appModuleHandler, globalPluginHandler, scriptHandler, addonAPIVersion,
 	queueHandler, addonHandler.
+
+	`persona` recorta o conjunto por estagio (_DESIGN_REVIEW_PERSONA_DOCS).
+	Vazia ou desconhecida devolve TUDO -- o comportamento anterior.
 	"""
+	permitidos = _DESIGN_REVIEW_PERSONA_DOCS.get((persona or "").strip().lower())
 	src = os.path.join(docs_dir, "nvda", "source")
 	pairs = [
 		("eventHandler.py",               os.path.join(src, "eventHandler.py"),               0),
@@ -2417,6 +2462,8 @@ def get_docs_design_review(docs_dir: str = _NVDA_DOCS_DIR) -> str:
 	]
 	sections = []
 	for label, path, max_c in pairs:
+		if permitidos is not None and label not in permitidos:
+			continue
 		content = _read_docs_file(path, max_chars=max_c) if max_c else _read_docs_file(path)
 		if content:
 			sections.append(f"=== NVDA SOURCE: {label} ===\n{content}")

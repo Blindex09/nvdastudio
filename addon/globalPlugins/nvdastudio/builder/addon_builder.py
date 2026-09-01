@@ -1,9 +1,12 @@
 import ast
+import io
 import configparser
 import hashlib
 import json
 import os
 import re
+import token as _token
+import tokenize
 import shutil
 import struct
 import sys
@@ -31,7 +34,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.15.0"
+MODULE_VERSION = "4.16.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -123,6 +126,74 @@ def _is_safe_package_name(pkg: str) -> bool:
 	# Remove especificadores de versao simples: pkg==1.0, pkg>=2.0, pkg~=1.2
 	base = re.split(r'[=<>!~@]', pkg)[0].strip()
 	return bool(_SAFE_PKG_NAME.match(base))
+
+
+def _linhas_de_codigo(code: str) -> set[int] | None:
+	"""
+	Linhas (1-based) cuja indentacao pertence ao CODIGO, nao a uma string.
+
+	Numa docstring ou literal multilinha os espacos a esquerda sao CONTEUDO --
+	troca-los por tab mudaria o texto que o usuario cego vai ouvir. `tokenize`
+	sabe a diferenca; contar espacos no comeco da linha, nao.
+
+	None quando o arquivo nao tokeniza: quem reporta isso e a validacao de
+	sintaxe, e mexer na indentacao de codigo quebrado so piora o diagnostico.
+	"""
+	linhas: set[int] = set()
+	quebras = (
+		_token.NEWLINE, _token.NL, _token.INDENT, _token.DEDENT,
+		tokenize.ENCODING,
+	)
+	anterior: int = _token.NEWLINE
+	try:
+		for t in tokenize.generate_tokens(io.StringIO(code).readline):
+			if t.type in quebras or t.type == _token.ENDMARKER:
+				anterior = t.type
+				continue
+			if anterior in quebras:
+				linhas.add(t.start[0])
+			anterior = t.type
+	except (tokenize.TokenError, IndentationError, SyntaxError):
+		return None
+	return linhas
+
+
+def normalizar_indentacao(code: str) -> str:
+	"""
+	Converte indentacao de CODIGO de 4 espacos para TAB (NVDA-021).
+
+	O NVDA e seu core usam TAB. Medido nos relatorios E2E: 17 code_generation
+	reprovados so por isso, 838 mil tokens -- uma transformacao mecanica,
+	sem nenhuma decisao semantica, custando tentativas inteiras de um modelo.
+	Regra 7: o que e deterministico o codigo resolve.
+
+	Nao mexe em arquivo que ja usa TAB (nem para "consertar" mistura: mistura
+	nao compila, e o erro de sintaxe e o sinal util). Rede de seguranca final:
+	se a AST antes e depois nao forem identicas, devolve o original -- nenhuma
+	economia justifica alterar o comportamento do addon.
+	"""
+	linhas = code.split(chr(10))
+	if any(ln[:1] == "	" for ln in linhas):
+		return code
+	if not any(ln.startswith("    ") for ln in linhas):
+		return code
+	alvos = _linhas_de_codigo(code)
+	if alvos is None:
+		return code
+	saida = []
+	for numero, ln in enumerate(linhas, 1):
+		espacos = len(ln) - len(ln.lstrip(" "))
+		if numero in alvos and espacos >= 4:
+			saida.append("	" * (espacos // 4) + " " * (espacos % 4) + ln[espacos:])
+		else:
+			saida.append(ln)
+	novo = chr(10).join(saida)
+	try:
+		if ast.dump(ast.parse(code)) != ast.dump(ast.parse(novo)):
+			return code
+	except SyntaxError:
+		return code
+	return novo
 
 
 _FUNCOES_GETTEXT = frozenset({"_", "ngettext", "pgettext", "npgettext"})
@@ -519,6 +590,16 @@ def extract_code_blocks(text: str) -> list[dict]:
 
 	if not blocks:
 		_logger.warning("[AVISO] Nenhum bloco de codigo encontrado na resposta da IA.")
+
+	# NVDA-021 resolvido aqui, no unico ponto por onde TODO bloco passa: sandbox,
+	# lint, coerencia entre arquivos e gravacao em disco consomem daqui. Medido
+	# nos relatorios E2E: 17 code_generation reprovados so por indentacao com
+	# espacos, 838 mil tokens -- uma transformacao mecanica, sem nenhuma decisao
+	# semantica, consumindo tentativas inteiras de um modelo. Regra 7: o que e
+	# deterministico o codigo resolve.
+	for bloco in blocks:
+		if (bloco.get("language") or "").lower() == "python" and bloco.get("code"):
+			bloco["code"] = normalizar_indentacao(bloco["code"])
 
 	return blocks
 

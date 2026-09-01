@@ -135,9 +135,14 @@ def test_topico_invalido_cai_para_contexto_completo():
 
 
 def test_design_review_nao_retenta():
-	"""58 execucoes reais: as 30 aprovacoes vieram TODAS na primeira tentativa;
-	das 18 que retentaram, zero foram aprovadas -- 3,7M tokens sem uma unica
-	conversao, num step cujo output e usado mesmo reprovado."""
+	"""Uma passada de design_review custa 90-165 mil tokens (tres sub-agentes,
+	cada um carregando a documentacao de design inteira). O step injetado ja
+	nasce com teto 1; esta entrada estende a regra ao design_review que o
+	proprio modelo planeja, que nasceria com o teto padrao de 3.
+
+	Em 58 execucoes reais nenhuma segunda passada jamais aconteceu -- entao nao
+	ha evidencia de que retentar ajude, e ha o custo medido de repetir o passo
+	mais caro fora code_generation."""
 	steps = Planner()._build_steps([
 		{"step_id": "dr0", "step_type": "design_review", "model_id": "x"},
 		{"step_id": "cg1", "step_type": "code_generation", "model_id": "x"},

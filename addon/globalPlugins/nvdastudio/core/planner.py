@@ -198,12 +198,25 @@ def _normalize_nvda_topics(raw: object) -> list[str]:
 # converte reprovacao em aprovacao. Decisao de ROTEAMENTO (Regra 7), baseada em
 # numero, nao em julgamento.
 #
-# design_review: 58 execucoes reais nos relatorios E2E. As 30 aprovacoes
-# aconteceram TODAS na primeira tentativa (retries=0). Das 18 execucoes que
-# retentaram, ZERO foram aprovadas -- 3,7 milhoes de tokens gastos sem uma
-# unica conversao. E o output e usado como contexto pelo code_generation mesmo
-# reprovado (_NON_BLOCKING_STEP_TYPES no orchestrator), entao a retentativa nao
-# desbloqueia nada: so consome o orcamento que os steps de codigo precisam.
+# design_review: uma passada sozinha custa de 90 mil a 165 mil tokens (tres
+# sub-agentes, cada um carregando a documentacao de design inteira). O step
+# injetado por _inject_design_review ja nasce com max_retries=1 desde antes; a
+# entrada aqui estende a mesma regra ao design_review que o PROPRIO modelo
+# planeja, que nasceria com o teto padrao de 3.
+#
+# Justificativa: em 58 execucoes reais nos relatorios E2E, nenhuma segunda
+# passada jamais aconteceu -- logo nao existe evidencia de que retentar ajude,
+# e existe o custo medido de repetir o passo mais caro do pipeline fora
+# code_generation. Alem disso o output e usado como contexto pelo
+# code_generation mesmo reprovado (_NON_BLOCKING_STEP_TYPES no orchestrator),
+# entao retentar nao desbloqueia nada.
+#
+# CORRECAO DE LEITURA (2026-09-01): uma versao anterior deste comentario dizia
+# que 18 execucoes "retentaram e nenhuma passou", lendo `retries_used > 0` nos
+# relatorios como uma passada extra de LLM. Nao e: o contador e incrementado
+# quando o Critic nao aprova, mesmo quando o laco termina ali. O log de
+# execucao (challenger_concluido) mostra UMA passada por addon em todas as
+# rodadas. Numero errado, conclusao ainda valida -- mas pela razao certa.
 _MAX_RETRIES_PADRAO = 3
 _MAX_RETRIES_BY_STEP_TYPE = {
 	STEP_DESIGN_REVIEW: 1,
