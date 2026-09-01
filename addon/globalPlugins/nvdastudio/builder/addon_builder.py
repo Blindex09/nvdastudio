@@ -31,7 +31,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.14.0"
+MODULE_VERSION = "4.15.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -123,6 +123,36 @@ def _is_safe_package_name(pkg: str) -> bool:
 	# Remove especificadores de versao simples: pkg==1.0, pkg>=2.0, pkg~=1.2
 	base = re.split(r'[=<>!~@]', pkg)[0].strip()
 	return bool(_SAFE_PKG_NAME.match(base))
+
+
+_FUNCOES_GETTEXT = frozenset({"_", "ngettext", "pgettext", "npgettext"})
+
+
+def chama_gettext(code: str) -> bool:
+	"""
+	O modulo CHAMA uma funcao de traducao? Via AST, nao por texto.
+
+	Uma varredura textual acusa `_()` escrito dentro de docstring, comentario
+	"# Translators:" ou string de prompt -- e o codigo gerado para o NVDA e
+	cheio dos tres. Varrido no proprio NVDAStudio, o regex deu 3 falsos
+	positivos em 3 acusacoes: todas mencoes em texto, nenhuma chamada.
+
+	Erro de sintaxe devolve False: quem reporta isso e a validacao de sintaxe,
+	e um NVDA-003 em cima de um arquivo que nem compila so confunde o
+	diagnostico.
+	"""
+	try:
+		arvore = ast.parse(code)
+	except SyntaxError:
+		return False
+	for no in ast.walk(arvore):
+		if (
+			isinstance(no, ast.Call)
+			and isinstance(no.func, ast.Name)
+			and no.func.id in _FUNCOES_GETTEXT
+		):
+			return True
+	return False
 
 
 class AddonBuilderError(Exception):
@@ -2409,6 +2439,33 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 				_py_dir == _gp_dir_norm
 				or os.path.dirname(_py_dir) == _gp_dir_norm
 			)
+			# NVDA-003 em MODULO AUXILIAR: gettext sem inicializacao.
+			#
+			# A regra sempre disse "modulo que usa gettext sem chamar
+			# addonHandler.initTranslation()", mas a implementacao so olhava o
+			# __init__.py principal. Um settings_panel.py que chama _("Chave de
+			# API") sem initTranslation() levanta NameError na hora em que o
+			# usuario abre o painel -- e o addon parece simplesmente nao ter
+			# configuracao.
+			#
+			# Nao da para deixar isso pro ruff: code_sandbox declara `_` e os
+			# irmaos como builtins justamente para nao acusar F821 no addon
+			# inteiro (senao todo addon correto seria reprovado). Silenciado
+			# ali, o defeito tem que ser visto aqui.
+			#
+			_usa_gettext = chama_gettext(code)
+			if (
+				not _e_init_principal
+				and _usa_gettext
+				and "initTranslation" not in code
+				and "import gettext" not in code
+			):
+				problems.append(
+					f"NVDA-003: {fname}: usa gettext (_(), ngettext...) sem "
+					f"chamar addonHandler.initTranslation(). NameError em tempo "
+					f"de execucao na primeira string traduzida deste modulo."
+				)
+
 			if _e_init_principal:
 				if "class GlobalPlugin" not in code and "class AppModule" not in code:
 					problems.append(

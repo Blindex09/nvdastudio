@@ -8,11 +8,12 @@ from typing import Any, cast
 from ..ai.llm_client import LLMClientError
 from ..ai.llm_factory import create_llm_client
 from ..ai.model_registry import ALTO_MODEL, get_provider_step_models, is_alto_model, resolve_provider_tier_model
+from ..builder.nvda_context import NVDA_DOC_TOPICS
 from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTION
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.35.0"
+MODULE_VERSION = "2.38.0"
 _logger = get_logger("planner")
 
 PLANNER_MODEL = "alto"
@@ -148,6 +149,88 @@ def format_expected_files_for_prompt(arquivos: list[str]) -> str:
 		"na anotacao de cada bloco (```python:caminho/arquivo.py). Nao invente "
 		"nomes novos e nao renomeie:\n" + linhas + "\n"
 	)
+
+
+def declara_ponto_de_entrada(alvos: list[str]) -> bool:
+	"""
+	Algum destes caminhos e um arquivo que o NVDA realmente carrega?
+
+	Convencao de caminho da plataforma, nao heuristica: `<dir>/<nome>.py` solto
+	(um appModule, um driver) ou `<dir>/<pacote>/__init__.py`. Um `.py` ao lado
+	do `__init__.py` dentro de um pacote e ignorado pelo NVDA.
+	"""
+	for caminho in alvos:
+		partes = caminho.split("/")
+		if len(partes) < 2 or partes[0] not in NVDA_ENTRY_POINT_DIRS:
+			continue
+		if len(partes) == 2 or (len(partes) == 3 and partes[-1] == "__init__.py"):
+			return True
+	return False
+
+
+def _normalize_nvda_topics(raw: object) -> list[str]:
+	"""
+	Filtra os topicos de contexto NVDA declarados pela IA contra o catalogo real.
+
+	Um topico inventado e ignorado la na frente (get_docs_code_generation nao
+	levanta), mas o efeito colateral e pior que o erro: se TODOS os topicos
+	declarados forem invalidos, o step recebe so o grupo core -- contexto
+	minimo, silenciosamente, justamente no step que mais precisa dele. Aqui a
+	lista invalida vira lista VAZIA, que significa "documentacao completa": mais
+	cara, e a direcao segura de errar.
+	"""
+	if not isinstance(raw, list):
+		return []
+	validos = [
+		t.strip() for t in raw
+		if isinstance(t, str) and t.strip() in NVDA_DOC_TOPICS
+	]
+	vistos: set[str] = set()
+	saida: list[str] = []
+	for t in validos:
+		if t not in vistos:
+			vistos.add(t)
+			saida.append(t)
+	return saida
+
+
+# Teto de tentativas por tipo de step, quando MEDICAO mostra que retentar nao
+# converte reprovacao em aprovacao. Decisao de ROTEAMENTO (Regra 7), baseada em
+# numero, nao em julgamento.
+#
+# design_review: 58 execucoes reais nos relatorios E2E. As 30 aprovacoes
+# aconteceram TODAS na primeira tentativa (retries=0). Das 18 execucoes que
+# retentaram, ZERO foram aprovadas -- 3,7 milhoes de tokens gastos sem uma
+# unica conversao. E o output e usado como contexto pelo code_generation mesmo
+# reprovado (_NON_BLOCKING_STEP_TYPES no orchestrator), entao a retentativa nao
+# desbloqueia nada: so consome o orcamento que os steps de codigo precisam.
+_MAX_RETRIES_PADRAO = 3
+_MAX_RETRIES_BY_STEP_TYPE = {
+	STEP_DESIGN_REVIEW: 1,
+}
+
+
+def _topicos_com_piso(
+	topicos: list[str], step_type: str, alvos: list[str],
+) -> list[str]:
+	"""
+	Piso de contexto para o step que gera o ponto de entrada do addon.
+
+	Medido em E2E: cortar o contexto NVDA de ~90 mil para ~23 mil tokens (so o
+	grupo core) derrubou as notas de 52.0 para 15.7 e de 32.7 para 9.1. Contexto
+	de menos nao economiza -- so faz falhar mais barato. O escopo por topico e
+	diferente em natureza (recorta por relevancia ao arquivo, nao por
+	sonegacao), mas a direcao do risco e a mesma, entao o arquivo que o NVDA
+	carrega tem piso: ele registra gestos e/ou item de menu por definicao.
+
+	Steps que declaram lista vazia continuam recebendo a documentacao COMPLETA
+	-- este piso nao transforma "nao declarou" em "recebe pouco".
+	"""
+	if not topicos or step_type != STEP_CODE_GENERATION:
+		return topicos
+	if not declara_ponto_de_entrada(alvos):
+		return topicos
+	return sorted(set(topicos) | {"scripts", "gui"})
 
 
 def _normalize_gestures(raw: object) -> list[str]:
@@ -476,7 +559,7 @@ class ExecutionStep:
 	dependencies: list[str] = field(default_factory=list)  # alias de depends_on (compatibilidade)
 	context_from_steps: list[str] = field(default_factory=list)
 	expected_output: str = ""
-	max_retries: int = 3
+	max_retries: int = _MAX_RETRIES_PADRAO
 	user_message: str = ""   # mensagem em linguagem natural gerada pela LLM para o usuario
 	msg_evaluating: str = ""  # o que dizer ao checar o resultado deste step
 	msg_retrying: str = ""    # o que dizer ao tentar novamente apos problema
@@ -1337,20 +1420,85 @@ class Planner:
 			return steps
 
 		cg_ids = {s.step_id for s in cg_steps}
-		has_integrating_step = any(
+
+		# 2.36.0 -- A CHECAGEM ESTRUTURAL SOZINHA ERA FALSO POSITIVO.
+		#
+		# Ate aqui bastava um step depender de todos os irmaos para o injetor
+		# concluir "core ja presente". Medido nos logs de 22 planejamentos
+		# reais: ele NUNCA injetou -- em TODOS os casos achou um integrador e
+		# saiu. E os addons sairam sem __init__.py assim mesmo.
+		#
+		# Motivo: um step que o modelo chamou de `cg_leitura_core` e que
+		# depende dos irmaos satisfaz a condicao ESTRUTURAL sem gerar o ponto
+		# de entrada. Integrar features e produzir o arquivo que o NVDA carrega
+		# sao coisas diferentes, e a checagem so via a primeira.
+		#
+		# Agora que os steps declaram `target_files` (2.33.0), da para verificar
+		# o que importa de verdade: ALGUEM produz o __init__.py na raiz do
+		# pacote? Estrutura + alvo declarado, nao um ou outro.
+		algum_declara_entrada = any(
+			declara_ponto_de_entrada(getattr(s, "target_files", []) or [])
+			for s in cg_steps
+		)
+		algum_integra = any(
 			(cg_ids - {s.step_id}) <= set(s.depends_on)
 			for s in cg_steps
 		)
-		if has_integrating_step:
+
+		# Sem target_files declarado em NENHUM step, a checagem estrutural e
+		# tudo que temos -- e o comportamento anterior, preservado para nao
+		# injetar um step duplicado em planos que ja funcionavam.
+		algum_declara_algo = any(getattr(s, "target_files", []) for s in cg_steps)
+		ja_tem_core = (
+			algum_declara_entrada if algum_declara_algo else algum_integra
+		)
+
+		if ja_tem_core:
 			_logger.info(
-				"[PLAN] Step core (integra todos os %d code_generation) ja "
-				"presente no plano. Sem injecao.", len(cg_steps),
+				"[PLAN] Step core presente (%d code_generation, entrada declarada=%s). "
+				"Sem injecao.", len(cg_steps), algum_declara_entrada,
 			)
 			return steps
+
+		_logger.warning(
+			"[PLAN] Nenhum dos %d code_generation gera o ponto de entrada do "
+			"addon. Injetando cg_core_inj -- sem ele o NVDA nao carrega nada.",
+			len(cg_steps),
+		)
 
 		subpacotes = "; ".join(
 			f"{s.step_id}: {s.description}" for s in cg_steps
 		)
+
+		# Caminho REAL do ponto de entrada, tirado do pacote que os irmaos ja
+		# declararam. Deixar o placeholder `<addon>` aqui seria pedir ao modelo
+		# que adivinhasse, com o bloco de layout do plano dizendo ao lado o
+		# caminho verdadeiro -- duas instrucoes conflitantes no mesmo prompt.
+		# Mesma logica de _normalize_expected_files: usa o pacote declarado, e
+		# nunca inventa um segundo pacote a partir do nome do addon.
+		pacote = ""
+		for s in cg_steps:
+			for caminho in getattr(s, "target_files", []) or []:
+				partes = caminho.split("/")
+				if len(partes) >= 3 and partes[0] in NVDA_ENTRY_POINT_DIRS:
+					pacote = f"{partes[0]}/{partes[1]}"
+					break
+			if pacote:
+				break
+		entrada = f"{pacote}/__init__.py" if pacote else "globalPlugins/<addon>/__init__.py"
+
+		# Contexto NVDA do step injetado. Sem isto ele cai no fallback "sem
+		# topicos declarados -> documentacao COMPLETA" (~90k tokens medidos),
+		# e este e justamente o step que nao pode falhar por estouro de
+		# orcamento. O core importa e orquestra os modulos dos irmaos, entao o
+		# contexto de que ele precisa e a UNIAO do que eles declararam, mais o
+		# que todo ponto de entrada usa por definicao: scripts (os gestos) e
+		# gui (o menu). Uniao, nao intersecao: faltar contexto custa uma
+		# tentativa perdida, sobrar custa alguns milhares de tokens.
+		topicos_core = {"scripts", "gui"}
+		for s in cg_steps:
+			topicos_core.update(getattr(s, "nvda_topics", []) or [])
+
 		reasoning_params: dict = {}
 		re_effort = _effort_for_complexity(STEP_CODE_GENERATION, complexity)
 		if re_effort:
@@ -1360,8 +1508,8 @@ class Planner:
 			step_id="cg_core_inj",
 			step_type=STEP_CODE_GENERATION,
 			description=(
-				"Gerar SOMENTE globalPlugins/<addon>/__init__.py (raiz) com a "
-				"classe GlobalPlugin -- importa e orquestra os modulos/"
+				f"Gerar SOMENTE {entrada} com a classe GlobalPlugin -- "
+				"importa e orquestra os modulos/"
 				"subpacotes ja gerados pelos steps a seguir, NAO reimplementa "
 				f"a logica deles: {subpacotes}. Pedido original: {user_query}"
 			),
@@ -1369,7 +1517,9 @@ class Planner:
 			reasoning_params=reasoning_params,
 			depends_on=list(cg_ids),
 			context_from_steps=list(cg_ids),
-			expected_output="globalPlugins/<addon>/__init__.py",
+			expected_output=entrada,
+			target_files=[entrada] if pacote else [],
+			nvda_topics=sorted(topicos_core),
 			user_message="Integrando os módulos gerados no ponto de entrada do addon...",
 			msg_evaluating="Conferindo se o __init__.py orquestra tudo corretamente...",
 			msg_retrying="Ajustando a integração com base nas correções necessárias...",
@@ -1915,6 +2065,16 @@ class Planner:
 				context_from_steps=raw.get("context_from_steps", []),
 				expected_output=raw.get("expected_output", ""),
 				target_files=raw.get("target_files", []),
+				# 2.37.0 -- `nvda_topics` era declarado no dataclass, exigido no
+				# schema e consumido pelo orchestrator, mas NUNCA lido aqui: o
+				# escopo de contexto por topico ficava inerte em todo step vindo
+				# do plano do modelo. Mesmo padrao que ja mordeu duas vezes nesta
+				# sessao -- a peca certa existe e esta desligada de quem decide.
+				nvda_topics=_topicos_com_piso(
+					_normalize_nvda_topics(raw.get("nvda_topics", [])),
+					stype, raw.get("target_files", []) or [],
+				),
+				max_retries=_MAX_RETRIES_BY_STEP_TYPE.get(stype, _MAX_RETRIES_PADRAO),
 				user_message=raw.get("user_message", ""),
 				msg_evaluating=raw.get("msg_evaluating", ""),
 				msg_retrying=raw.get("msg_retrying", ""),

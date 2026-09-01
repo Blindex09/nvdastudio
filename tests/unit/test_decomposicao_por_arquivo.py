@@ -29,11 +29,22 @@ from nvdastudio.core.planner import (
 	oversized_code_generation_steps,
 )
 
-assert MODULE_VERSION == "2.35.0"
+assert MODULE_VERSION == "2.38.0"
 
 
 def _step(step_id: str, alvos: list[str], descricao: str = "gerar", tipo: str = "code_generation"):
 	return ExecutionStep(step_id, tipo, descricao, "alto", target_files=list(alvos))
+
+
+def _step_completo(sid: str, alvos: list[str], dep: list[str]):
+	"""Step de code_generation com alvos e dependencias, para os casos do
+	injetor de core."""
+	from nvdastudio.core.planner import STEP_CODE_GENERATION, ExecutionStep
+
+	return ExecutionStep(
+		sid, STEP_CODE_GENERATION, "x", "alto",
+		depends_on=list(dep), target_files=list(alvos),
+	)
 
 
 class TestGuardaPorNumeroDeArquivos:
@@ -265,3 +276,160 @@ class TestCamposNovosSaoObrigatoriosNoSchema:
 			"Com additionalProperties=False o modelo omite -- foi assim que "
 			"target_files e nvda_topics ficaram inertes em producao."
 		)
+
+
+class TestInjetorDoCoreVerificaOAlvo:
+	"""
+	O SETIMO caso do padrao "mecanismo existe e verifica a coisa errada"
+	(2026-09-01).
+
+	`_inject_core_step()` existe desde 2026-08-17, com docstring detalhada, para
+	garantir que algum step gere `globalPlugins/<addon>/__init__.py` -- o unico
+	arquivo que o NVDA carrega num pacote de addon.
+
+	Medido nos logs de 22 planejamentos reais: ele NUNCA injetou. Em TODOS os
+	casos registrou "Step core ja presente no plano. Sem injecao." E os addons
+	sairam sem `__init__.py` assim mesmo, sendo recusados pelo portao de
+	carregabilidade.
+
+	Causa: a deteccao era puramente ESTRUTURAL -- bastava um step depender de
+	todos os irmaos. Um step que o modelo chamou de `cg_leitura_core`, que
+	integra as features mas gera `leitura/servico.py`, satisfazia a condicao sem
+	produzir o ponto de entrada. Integrar features e produzir o arquivo que o
+	NVDA carrega sao coisas diferentes; a checagem so via a primeira.
+
+	Com `target_files` declarado (2.33.0), da para verificar o que importa.
+	"""
+
+	def _cg(self, sid, alvos=None, dep=None):
+		return _step_completo(sid, alvos or [], dep or [])
+
+	def test_caso_real_da_rodada_5_injeta_o_core(self):
+		"""Reproducao literal: 3 steps, um integra os outros, nenhum gera o
+		__init__.py. Antes: nao injetava. O addon saia sem ponto de entrada."""
+		steps = [
+			self._cg("cg_settings", ["globalPlugins/A/settings_panel.py"]),
+			self._cg("cg_historico", ["globalPlugins/A/historico/storage.py"]),
+			self._cg("cg_leitura_core", ["globalPlugins/A/leitura/servico.py"],
+					 ["cg_settings", "cg_historico"]),
+		]
+		resultado = Planner()._inject_core_step(steps, "crie um addon")
+		assert any(s.step_id == "cg_core_inj" for s in resultado), (
+			"sem este step o addon nao tem __init__.py e o NVDA nao carrega nada"
+		)
+
+	def test_nao_injeta_quando_alguem_ja_declara_o_ponto_de_entrada(self):
+		"""Falso positivo aqui criaria DOIS steps gerando o mesmo arquivo."""
+		steps = [
+			self._cg("cg_core", ["globalPlugins/A/__init__.py"], ["cg_x"]),
+			self._cg("cg_x", ["globalPlugins/A/servico.py"]),
+		]
+		resultado = Planner()._inject_core_step(steps, "q")
+		assert not any(s.step_id == "cg_core_inj" for s in resultado)
+
+	def test_appmodule_solto_conta_como_ponto_de_entrada(self):
+		"""appModules/<exe>.py e carregavel por si so -- exigir __init__.py ali
+		injetaria um step para um arquivo que o addon nao usa."""
+		steps = [
+			self._cg("cg_app", ["appModules/notepad.py"], ["cg_y"]),
+			self._cg("cg_y", ["appModules/util.py"]),
+		]
+		resultado = Planner()._inject_core_step(steps, "q")
+		assert not any(s.step_id == "cg_core_inj" for s in resultado)
+
+	def test_sem_target_files_mantem_a_checagem_estrutural(self):
+		"""Planos antigos, e testes existentes, nao podem mudar de
+		comportamento: sem alvo declarado, a estrutura e tudo que existe."""
+		steps = [self._cg("a", dep=["b"]), self._cg("b")]
+		resultado = Planner()._inject_core_step(steps, "q")
+		assert not any(s.step_id == "cg_core_inj" for s in resultado)
+
+	def test_step_unico_nunca_recebe_injecao(self):
+		"""Com 1 code_generation nao ha decomposicao -- ele ja e o core."""
+		steps = [self._cg("unico", ["globalPlugins/A/servico.py"])]
+		resultado = Planner()._inject_core_step(steps, "q")
+		assert len(resultado) == 1
+
+	def test_step_injetado_declara_o_arquivo_certo(self):
+		steps = [
+			self._cg("cg_a", ["globalPlugins/A/a.py"]),
+			self._cg("cg_b", ["globalPlugins/A/b.py"], ["cg_a"]),
+		]
+		core = next(
+			s for s in Planner()._inject_core_step(steps, "q")
+			if s.step_id == "cg_core_inj"
+		)
+		assert "__init__.py" in core.expected_output
+		assert set(core.depends_on) == {"cg_a", "cg_b"}, (
+			"o core precisa depender de TODOS -- ele importa e orquestra os modulos"
+		)
+
+	def test_core_injetado_declara_contexto_nvda(self):
+		"""Sem nvda_topics o step cai no fallback "documentacao completa"
+		(~90k tokens medidos) -- e este e o step que menos pode morrer por
+		estouro de orcamento."""
+		from nvdastudio.core.planner import STEP_CODE_GENERATION, ExecutionStep
+
+		steps = [
+			ExecutionStep("cg_a", STEP_CODE_GENERATION, "x", "alto",
+						  target_files=["globalPlugins/A/a.py"],
+						  nvda_topics=["config"]),
+			ExecutionStep("cg_b", STEP_CODE_GENERATION, "x", "alto",
+						  depends_on=["cg_a"],
+						  target_files=["globalPlugins/A/b.py"],
+						  nvda_topics=["speech"]),
+		]
+		core = next(
+			s for s in Planner()._inject_core_step(steps, "q")
+			if s.step_id == "cg_core_inj"
+		)
+		topicos = set(core.nvda_topics)
+		assert {"scripts", "gui"} <= topicos, (
+			"todo ponto de entrada declara gestos e menu"
+		)
+		assert {"config", "speech"} <= topicos, (
+			"o core importa os modulos dos irmaos -- precisa do contexto deles"
+		)
+
+	def test_core_injetado_usa_o_pacote_real_dos_irmaos(self):
+		"""Deixar o placeholder `<addon>` na descricao poe duas instrucoes
+		conflitantes no mesmo prompt: o bloco de layout do plano diz o caminho
+		verdadeiro e manda usar EXATAMENTE aquele. O pacote ja esta declarado
+		pelos irmaos -- nao ha nada para adivinhar."""
+		from nvdastudio.core.planner import STEP_CODE_GENERATION, ExecutionStep
+
+		steps = [
+			ExecutionStep("cg_a", STEP_CODE_GENERATION, "x", "alto",
+						  target_files=["globalPlugins/AssistenteLeitura/leitura/servico.py"]),
+			ExecutionStep("cg_b", STEP_CODE_GENERATION, "x", "alto",
+						  depends_on=["cg_a"],
+						  target_files=["globalPlugins/AssistenteLeitura/settings_panel.py"]),
+		]
+		core = next(
+			s for s in Planner()._inject_core_step(steps, "q")
+			if s.step_id == "cg_core_inj"
+		)
+		esperado = "globalPlugins/AssistenteLeitura/__init__.py"
+		assert core.expected_output == esperado
+		assert core.target_files == [esperado]
+		assert "<addon>" not in core.description
+		assert esperado in core.description
+
+	def test_sem_pacote_declarado_mantem_o_placeholder(self):
+		"""Sem nenhum caminho de pacote nos irmaos nao ha o que resolver.
+		Inventar um a partir do nome do addon criaria um SEGUNDO pacote em
+		globalPlugins/ -- pior que o problema original."""
+		from nvdastudio.core.planner import STEP_CODE_GENERATION, ExecutionStep
+
+		steps = [
+			ExecutionStep("cg_a", STEP_CODE_GENERATION, "x", "alto",
+						  target_files=["appModules/notepad_helper/util.py"]),
+			ExecutionStep("cg_b", STEP_CODE_GENERATION, "x", "alto",
+						  depends_on=["cg_a"],
+						  target_files=["appModules/notepad_helper/outro.py"]),
+		]
+		core = next(
+			s for s in Planner()._inject_core_step(steps, "q")
+			if s.step_id == "cg_core_inj"
+		)
+		assert core.expected_output == "appModules/notepad_helper/__init__.py"

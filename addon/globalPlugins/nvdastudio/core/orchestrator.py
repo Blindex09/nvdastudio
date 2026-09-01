@@ -29,6 +29,7 @@ from .orch_types import (
 )
 from ..tools.domain_researcher import DomainResearcher
 from ..builder.context_compressor import compressor as context_compressor
+from ..builder.addon_builder import chama_gettext
 from ..builder.nvda_context import nvda_topics_marker
 from ..memory.agent_memory import agent_memory as agent_mem
 # Novos módulos v2.1.0 (Hermes-inspired)
@@ -43,7 +44,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.64.0"
+MODULE_VERSION = "5.66.0"
 _logger = get_logger("orchestrator")
 
 MAX_RETRIES_DEFAULT = 3
@@ -461,6 +462,32 @@ def _acumular_issues(acumulados: list[str], novos: list[str]) -> None:
 		# Descarta os mais ANTIGOS, nao os recentes: um problema apontado ha 3
 		# tentativas e que nunca mais voltou provavelmente ja foi resolvido.
 		del acumulados[: len(acumulados) - _MAX_ISSUES_ACUMULADOS]
+
+
+def _alvos_nao_entregues(step: object, py_files: dict) -> list[str]:
+	"""
+	Arquivos que o step declarou em `target_files` e nao apareceram na saida.
+
+	Comparacao por nome de arquivo: o caminho errado e problema de colocacao,
+	que `addon_builder` ja resolve, e bloquear por isso seria falso positivo. O
+	que nao da para recuperar e o arquivo que simplesmente nao foi escrito.
+
+	Step sem alvo declarado nao e cobrado -- e o caso de todo plano antigo, e
+	exigir entrega sem ter pedido nada especifico nao ajudaria ninguem.
+	"""
+	if getattr(step, "step_type", "") not in ("code_generation", "agent_runner"):
+		return []
+	alvos = getattr(step, "target_files", []) or []
+	if not alvos:
+		return []
+	entregues = {
+		nome.replace("\\", "/").rsplit("/", 1)[-1].lower()
+		for nome in py_files
+	}
+	return [
+		alvo for alvo in alvos
+		if alvo.replace("\\", "/").rsplit("/", 1)[-1].lower() not in entregues
+	]
 
 
 class Orchestrator:
@@ -2481,6 +2508,41 @@ class Orchestrator:
 						for blk in blocks
 						if blk.get("language") == "python" and blk.get("filename")
 					}
+					# 5.66.0 -- O STEP ENTREGOU O QUE DECLAROU?
+					#
+					# `target_files` era declarado pelo planner, injetado no
+					# prompt ("produza EXATAMENTE estes") e nunca CONFERIDO. Quem
+					# reclamava de entrega parcial era o Critic, em prosa, depois
+					# de uma avaliacao de dois estagios -- caro e vago.
+					#
+					# Medido nos relatorios: 17 code_generation reprovados com
+					# "Nenhum codigo Python foi produzido" (1,6 milhao de tokens)
+					# e varios outros por entrega parcial. Sao os dois casos que
+					# esta checagem resolve por comparacao de nomes, antes de
+					# qualquer chamada de modelo.
+					#
+					# Compara por NOME DE ARQUIVO, nao pelo caminho inteiro: o
+					# caminho errado e problema de colocacao (addon_builder ja
+					# trata) e bloquear por isso criaria falso positivo. O que
+					# nao da para recuperar e o arquivo que nao existe.
+					faltando = _alvos_nao_entregues(step, py_files)
+					if faltando:
+						_logger.warning(
+							"[ENTREGA] step %s nao produziu %s",
+							step.step_id, faltando,
+						)
+						last_issues.append(
+							"Entrega incompleta: este step declarou os arquivos "
+							+ ", ".join(getattr(step, "target_files", []))
+							+ " e nao produziu " + ", ".join(faltando)
+							+ ". Responda com um bloco ```python:<caminho> por "
+							"arquivo faltante, com o conteudo COMPLETO do "
+							"arquivo -- nao descreva o que faria, nao entregue "
+							"trecho parcial."
+						)
+						retries += 1
+						continue
+
 					if py_files:
 						exec_check = _CodeSandboxExec(timeout_sec=15).validate_addon_execution(py_files)
 						if not exec_check.success:
@@ -2569,6 +2631,46 @@ class Orchestrator:
 							_logger.info("[LINT] ruff nao aplicado: %s", lint_check.error)
 						else:
 							_logger.info("[LINT] ruff limpo para step %s", step.step_id)
+
+						# 5.65.0 -- NVDA-003 no ponto onde ainda da para corrigir.
+						#
+						# `_()` so existe num modulo de addon depois de
+						# addonHandler.initTranslation(); sem isso o modulo
+						# levanta NameError na primeira string traduzida. E o
+						# ruff nao pega: code_sandbox declara `_` e os irmaos
+						# como builtins de proposito, senao TODO addon
+						# gettext-correto seria reprovado com F821.
+						#
+						# validate_addon_structure ja emitia NVDA-003, mas so no
+						# empacotamento -- tarde demais. Medido no E2E
+						# AssistenteLeituraGemini (2026-08-30): o Critic reprovou
+						# cg_settings por isso 3 vezes, 412 mil tokens, e o step
+						# nunca passou. Um defeito deterministico devolvido como
+						# instrucao concreta custa uma tentativa; devolvido como
+						# nota do Critic custa todas.
+						gettext_sem_init = [
+							nome for nome, codigo in py_files.items()
+							if chama_gettext(codigo)
+							and "initTranslation" not in codigo
+							and "import gettext" not in codigo
+						]
+						if gettext_sem_init:
+							_logger.warning(
+								"[NVDA-003] gettext sem initTranslation em %s",
+								gettext_sem_init,
+							)
+							last_issues.append(
+								"NVDA-003: os modulos a seguir chamam _(), ngettext(), "
+								"pgettext() ou npgettext() sem inicializar a traducao, o "
+								"que levanta NameError na primeira string traduzida: "
+								+ ", ".join(gettext_sem_init)
+								+ ". Adicione `import addonHandler` e "
+								"`addonHandler.initTranslation()` no topo de CADA um "
+								"deles -- a inicializacao vale so para o modulo que a "
+								"chama, nao para o pacote inteiro."
+							)
+							retries += 1
+							continue
 
 						type_check = _static_sandbox.typecheck(py_files)
 						if not type_check.success and not type_check.error and type_check.stdout.strip():
