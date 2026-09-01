@@ -13,7 +13,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.39.0"
+MODULE_VERSION = "2.40.0"
 _logger = get_logger("planner")
 
 
@@ -148,6 +148,27 @@ def format_expected_files_for_prompt(arquivos: list[str]) -> str:
 		"na anotacao de cada bloco (```python:caminho/arquivo.py). Nao invente "
 		"nomes novos e nao renomeie:\n" + linhas + "\n"
 	)
+
+
+def _tem_ciclo(steps: list) -> bool:
+	"""Ha ciclo em depends_on? O orchestrator nao detecta: ele apenas nunca
+	marcaria os steps como prontos, e o pipeline travaria em silencio."""
+	grafo = {s.step_id: [d for d in s.depends_on] for s in steps}
+	visitando: set = set()
+	visitado: set = set()
+
+	def visita(no: str) -> bool:
+		if no in visitando:
+			return True
+		if no in visitado or no not in grafo:
+			return False
+		visitando.add(no)
+		achou = any(visita(dep) for dep in grafo[no])
+		visitando.discard(no)
+		visitado.add(no)
+		return achou
+
+	return any(visita(sid) for sid in grafo)
 
 
 def declara_ponto_de_entrada(alvos: list[str]) -> bool:
@@ -875,11 +896,18 @@ ARCH-010 (decomposicao paralela de features independentes):
         .../video/), com depends_on=[] entre eles (sao independentes -- o orchestrator ja roda
         steps sem dependencia mutua em PARALELO via ThreadPoolExecutor, isso NAO e algo que
         voce precisa configurar, so nao criar uma dependencia artificial entre eles). Adicione
-        MAIS UM code_generation final (ex: step_id "cg_core") que depende de TODOS os
-        code_generation de feature (depends_on=[ids das features], context_from_steps=[idem]) --
-        esse ultimo gera SO o globalPlugins/<addon>/__init__.py raiz, que importa e orquestra
-        os subpacotes ja prontos. Nao decomponha 1-2 features (seria overhead sem beneficio) --
-        so quando ARCH-007 ja pede subpacotes separados.
+        MAIS UM code_generation, que gera SO o globalPlugins/<addon>/__init__.py raiz -- e
+        coloque-o PRIMEIRO, ANTES dos steps de feature, com depends_on=[] entre eles. Os steps
+        de feature e que dependem DELE (depends_on=["cg_core"], context_from_steps=["cg_core"]).
+        MEDIDO em execucao real: quando o nucleo dependia de todas as features, ele nunca chegou
+        a ser executado em NENHUMA das seis execucoes complexas que falharam -- o orcamento
+        acabava antes, e o addon saia sem o unico arquivo que o NVDA carrega. Um addon que
+        carrega com uma feature a menos serve ao usuario; um que nao carrega, nao.
+        O nucleo declara o CONTRATO (nomes de modulo, funcoes que vai chamar) e importa cada
+        subpacote de forma TOLERANTE A AUSENCIA (try/except ImportError que anuncia aquela
+        funcao como indisponivel), e cada step de feature implementa o contrato que recebeu.
+        Nao decomponha 1-2 features (seria overhead sem beneficio) -- so quando ARCH-007 ja
+        pede subpacotes separados.
   JUSTIFICATIVA (achado real, 2026-08-09): um pedido com 3 features grandes e independentes
   (assistente multimodal: imagem+audio+video) virou UM code_generation so, e o modelo REJEITOU
   a propria resposta (score 0, "nenhum codigo produzido") -- tarefa grande demais numa chamada
@@ -1066,6 +1094,7 @@ class Planner:
 			steps = self._inject_accessibility_audit(steps, user_query, complexity)
 			steps = self._inject_manifest(steps, user_query, complexity)
 			steps = self._inject_core_step(steps, user_query, complexity)
+			steps = self._priorizar_ponto_de_entrada(steps)
 
 		steps = self._inject_documentation(steps, complexity)
 
@@ -1390,6 +1419,127 @@ class Planner:
 				f"agent_runner esgotarem todas as tentativas.",
 			)
 		return steps
+
+	def _priorizar_ponto_de_entrada(
+		self, steps: list[ExecutionStep],
+	) -> list[ExecutionStep]:
+		"""
+		O step que gera o ponto de entrada roda PRIMEIRO, nao por ultimo.
+
+		MEDIDO em 2026-09-01, e o achado e categorico: nas SEIS execucoes
+		complexas que falharam, o step que gera globalPlugins/<addon>/
+		__init__.py NUNCA chegou a ser executado. Nenhuma vez. Nao e que ele
+		saia errado -- ele nunca e tentado, porque ARCH-010 o fazia depender de
+		TODOS os code_generation de feature, e o orcamento acaba antes.
+
+		O arquivo mais importante do addon -- o UNICO que o NVDA carrega -- era
+		o ultimo da fila, entao era sempre a primeira baixa. Um addon sem ele
+		instala e nao faz nada; com ele e uma feature so, o usuario tem algo que
+		funciona. Degradacao graciosa exige que o essencial venha antes do
+		completo.
+
+		A inversao tambem muda o que os irmaos recebem: agora eles veem o
+		contrato que o nucleo declarou (nomes de modulo, funcoes chamadas) em
+		vez de o nucleo ter de adivinhar o que eles produziram.
+
+		Nao mexe em plano com 0 ou 1 code_generation: sem decomposicao nao ha
+		ordem a inverter.
+		"""
+		cg_steps = [s for s in steps if s.step_type == STEP_CODE_GENERATION]
+		if len(cg_steps) <= 1:
+			return steps
+
+		nucleo = self._localizar_nucleo(cg_steps)
+		if nucleo is None:
+			_logger.info("[PLAN] Nenhum step identificado como nucleo. Ordem mantida.")
+			return steps
+
+		irmaos = [s for s in cg_steps if s.step_id != nucleo.step_id]
+		ids_irmaos = {s.step_id for s in irmaos}
+		antes = {s.step_id: (list(s.depends_on), list(s.context_from_steps)) for s in steps}
+
+		# O nucleo deixa de esperar os irmaos...
+		nucleo.depends_on = [d for d in nucleo.depends_on if d not in ids_irmaos]
+		nucleo.context_from_steps = [
+			c for c in nucleo.context_from_steps if c not in ids_irmaos
+		]
+		nucleo.dependencies = nucleo.depends_on
+
+		# ...e passa a ser a dependencia deles, para que implementem o contrato
+		# que ele declarou em vez de cada um inventar o seu.
+		for s in irmaos:
+			if nucleo.step_id not in s.depends_on:
+				s.depends_on = list(s.depends_on) + [nucleo.step_id]
+			if nucleo.step_id not in s.context_from_steps:
+				s.context_from_steps = list(s.context_from_steps) + [nucleo.step_id]
+			s.dependencies = s.depends_on
+
+		# O orchestrator nao detecta ciclo: ele so nunca marcaria os steps como
+		# prontos, e o pipeline travaria em silencio ate o timeout. Um ciclo aqui
+		# seria pior que a ordem ruim que estamos consertando.
+		if _tem_ciclo(steps):
+			for s in steps:
+				s.depends_on, s.context_from_steps = antes[s.step_id]
+				s.dependencies = s.depends_on
+			_logger.warning(
+				"[PLAN] Priorizar o nucleo (%s) criaria ciclo de dependencias. "
+				"Ordem original mantida.", nucleo.step_id,
+			)
+			return steps
+
+		nucleo.description = (
+			nucleo.description.rstrip(".") + ". Este arquivo e gerado ANTES dos modulos de feature: "
+			"declare aqui o CONTRATO que eles vao implementar (nomes de modulo, funcoes chamadas, "
+			"assinaturas), e importe cada modulo de feature de forma TOLERANTE A AUSENCIA -- "
+			"try/except ImportError que anuncia ao usuario que aquela funcao especifica esta "
+			"indisponivel, em vez de impedir o addon inteiro de carregar. Um addon que carrega "
+			"com uma feature a menos serve ao usuario; um que nao carrega, nao."
+		)
+
+		reordenados = [s for s in steps if s.step_id != nucleo.step_id]
+		primeiro_irmao = next(
+			(i for i, s in enumerate(reordenados) if s.step_id in ids_irmaos),
+			len(reordenados),
+		)
+		reordenados.insert(primeiro_irmao, nucleo)
+
+		log_decision(
+			_logger, "nucleo_priorizado",
+			f"{nucleo.step_id} gera o ponto de entrada e passou a rodar antes dos "
+			f"{len(irmaos)} step(s) de feature, que agora dependem dele.",
+		)
+		return reordenados
+
+	@staticmethod
+	def _localizar_nucleo(cg_steps: list[ExecutionStep]) -> "ExecutionStep | None":
+		"""
+		Qual destes steps produz o arquivo que o NVDA carrega.
+
+		Pode haver MAIS DE UM candidato: em appModules/, todo .py solto e
+		carregavel por convencao (o NVDA casa o nome com o executavel), entao um
+		plano com dois appModules tem dois pontos de entrada legitimos. Nesse
+		caso o nucleo e o que INTEGRA os outros -- o que mais depende de
+		irmaos -- e nao simplesmente o primeiro da lista.
+		"""
+		ids = {s.step_id for s in cg_steps}
+		candidatos = [
+			s for s in cg_steps
+			if declara_ponto_de_entrada(getattr(s, "target_files", []) or [])
+		]
+		if candidatos:
+			return max(
+				candidatos,
+				key=lambda s: len(ids.intersection(s.depends_on)),
+			)
+		for s in cg_steps:
+			if s.step_id == "cg_core_inj":
+				return s
+		# Sem alvo declarado, vale a definicao estrutural antiga: o que integra
+		# todos os outros.
+		for s in cg_steps:
+			if (ids - {s.step_id}) <= set(s.depends_on):
+				return s
+		return None
 
 	def _inject_core_step(self, steps: list[ExecutionStep],
 		                    user_query: str, complexity: str = "medium") -> list[ExecutionStep]:
@@ -2163,6 +2313,7 @@ class Planner:
 				steps = self._inject_accessibility_audit(steps, original_query, complexity)
 				steps = self._inject_manifest(steps, original_query, complexity)
 				steps = self._inject_core_step(steps, original_query, complexity)
+				steps = self._priorizar_ponto_de_entrada(steps)
 			steps = self._inject_documentation(steps, complexity)
 			steps = self._inject_syntax_validation(steps, complexity)
 			if project_type == "addon":
