@@ -582,6 +582,23 @@ def _run_sub_agent(
 				resp = client.chat(prompt, **round_kwargs, **reasoning_params)
 
 		_tl.last_tokens = resp.tokens_used
+
+		# `resp.truncated` existia desde llm_client 1.1.0 e SO o code_generator
+		# olhava. Todo outro sub-agente -- design_review, engineering_review,
+		# manifest_builder, auditoria -- podia ter a resposta cortada pelo teto de
+		# tokens e entregar um documento pela metade ao Critic, que entao reprovava
+		# por "termina de forma truncada". A peca existia e estava desligada de quem
+		# precisava dela.
+		#
+		# Nao mexe no resultado: cortar ou remendar aqui seria inventar conteudo.
+		# Registra, para que a causa apareca no log em vez de virar "o modelo
+		# escreveu mal".
+		if getattr(resp, "truncated", False):
+			_logger.warning(
+				"[TRUNCADO] Resposta do sub-agente (step_type=%s, modelo=%s) foi "
+				"cortada pelo teto de tokens de saida -- o consumidor vai receber um "
+				"documento incompleto.", step_type or "?", model_id,
+			)
 		result = _extract_final_tool_result(resp, final_tool) if final_tool else resp.content
 		if cache_enabled and result:
 			with _prompt_cache_lock:

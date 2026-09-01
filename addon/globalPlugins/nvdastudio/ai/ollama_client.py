@@ -7,7 +7,7 @@ from .llm_client import LLMClientError, LLMResponse
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from .model_registry import registry as model_registry
 
-MODULE_VERSION = "2.27.0"
+MODULE_VERSION = "2.28.0"
 _logger = get_logger("ollama_client")
 
 _OLLAMA_CLOUD_URL = "https://ollama.com/api/chat"
@@ -33,7 +33,25 @@ _MAX_TOKENS_DEFAULT = 24_000
 # ainda cortou resposta do critic 4x num unico run (3x code_generation,
 # 1x assembly) -- evidencia real de que 48k nao cobre o caso extremo.
 _MAX_TOKENS_EXTENDED = 64_000
-_EXTENDED_TOKENS_STEP_TYPES = frozenset({"code_generation", "agent_runner", "assembly"})
+# Steps que precisam de teto de SAIDA estendido.
+#
+# 2026-09-01: esta lista e _EXTENDED_TIMEOUT_STEP_TYPES discordavam sobre
+# design_review e engineering_review -- os dois estavam na lista de TIMEOUT
+# (ganharam tempo para responder) e fora da lista de TOKENS (sem permissao
+# para responder longo). Ou seja: tempo para escrever, teto para nao caber.
+#
+# O Critic reprovou a revisao de design por isso, com estas palavras: "o texto
+# termina de forma truncada em ?usuarios de...?", "o bloco do Challenger
+# termina abruptamente", "ha um bloco vazio {} no Constraint Guardian".
+# Custo medido: 116.158 a 169.740 tokens por revisao cortada no meio.
+#
+# A diferenca entre as duas listas nunca foi deliberada: design_review e
+# engineering_review foram acrescentados ao timeout quando o problema apareceu
+# la, e ninguem olhou o outro lado da costura. Ha teste travando a igualdade.
+_EXTENDED_TOKENS_STEP_TYPES = frozenset({
+	"code_generation", "agent_runner", "assembly",
+	"design_review", "engineering_review",
+})
 
 _DEFAULT_MODEL = "kimi-k2.7-code"
 _MAX_RETRIES = 2
