@@ -7,16 +7,15 @@ from typing import Any, cast
 
 from ..ai.llm_client import LLMClientError
 from ..ai.llm_factory import create_llm_client
-from ..ai.model_registry import ALTO_MODEL, get_provider_step_models, is_alto_model, resolve_provider_tier_model
+from ..ai.model_registry import ALTO_MODEL, is_alto_model, resolve_provider_tier_model
 from ..builder.nvda_context import NVDA_DOC_TOPICS
 from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTION
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.38.0"
+MODULE_VERSION = "2.39.0"
 _logger = get_logger("planner")
 
-PLANNER_MODEL = "alto"
 
 # Tipos de step que o planner pode gerar
 STEP_CODE_GENERATION    = "code_generation"       # gera codigo Python do addon
@@ -340,11 +339,6 @@ def oversized_code_generation_steps(
 		):
 			oversized.append(step.step_id)
 	return oversized
-
-_PROVIDER_STEP_MODELS: dict[str, dict[str, str]] = {
-	provider: get_provider_step_models(provider)
-	for provider in ("ollama", "anthropic", "openai", "google", "gemini", "xai")
-}
 
 _HEAVY_STEPS: set[str] = {
 	STEP_CODE_GENERATION,

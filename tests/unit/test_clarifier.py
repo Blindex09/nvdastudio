@@ -5,16 +5,28 @@ from unittest.mock import MagicMock, patch
 
 from nvdastudio.ai.clarifier import (
     analyze_query, build_enriched_query,
-    ClarificationResult, CLARIFIER_MODEL, get_clarifier_model,
+    ClarificationResult, get_clarifier_model,
 )
 
 class TestClarifierModel:
-    """Invariante: modelo do Clarifier e kimi-k2.6."""
+    """Invariante: o Clarifier roda no modelo com json_schema estrito garantido.
 
-    def test_clarifier_model_kimi(self):
-        assert CLARIFIER_MODEL == "kimi-k2.6", (
-            f"CLARIFIER_MODEL '{CLARIFIER_MODEL}' nao e kimi-k2.6"
-        )
+    Auditoria 2026-09-01: existia aqui um teste afirmando "Invariante: modelo do
+    Clarifier e kimi-k2.6", verificando a constante CLARIFIER_MODEL. A constante
+    nao era lida por ninguem -- get_clarifier_model() sempre devolveu
+    get_structured_output_model(0), na pratica opencode_go::gpt-5.6-luna. O
+    teste passava, a mensagem de falha dizia que o modelo do Clarifier era
+    kimi-k2.6, e o Clarifier rodava em outro modelo. Falsa confianca: verificar
+    uma constante nao e verificar o comportamento que ela aparenta controlar.
+
+    A constante foi removida (clarifier 1.7.0). O teste abaixo checa quem
+    decide de fato.
+    """
+
+    def test_modelo_do_clarifier_e_o_resolvido_nao_uma_constante(self):
+        from nvdastudio.ai.model_registry import get_structured_output_model
+
+        assert get_clarifier_model() == get_structured_output_model(0)
 
     def test_get_clarifier_model_sempre_opencode_go(self):
         """

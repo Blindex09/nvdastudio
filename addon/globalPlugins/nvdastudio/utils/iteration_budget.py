@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .logger import get_logger
 
-MODULE_VERSION = "1.4.0"
+MODULE_VERSION = "1.5.0"
 _logger = get_logger("iteration_budget")
 
 # Custos por 1M tokens (USD) — atualizar conforme provider
@@ -73,11 +73,22 @@ _TENTATIVAS_ESPERADAS: dict[str, float] = {
 }
 _TENTATIVAS_PADRAO = 1.4
 
-# Teto absoluto, independente do tamanho do plano. Nos relatorios, execucao que
-# passou de ~1,5 milhao nunca entregou nada -- a de 4,6 milhoes com 41
-# retentativas e o caso extremo. O orcamento existe para cortar loop, e este
-# numero e o ponto onde "caro" vira "nao vai terminar".
-_TETO_ABSOLUTO = 2_000_000
+# Teto absoluto, independente do tamanho do plano. Existe para cortar loop: o
+# caso extremo dos relatorios sao 41 retentativas e 4,6 milhoes de tokens sem
+# entregar nada.
+#
+# 1.5.0 -- recalibrado de 2 para 2,5 milhoes. O numero anterior veio da
+# observacao "execucao acima de ~1,5 milhao nunca entregou", contada no
+# `total_tokens` do relatorio -- que, medido em 2026-09-01, SUBESTIMA o consumo
+# real em 1,14x a 1,71x, porque so soma os steps que sobreviveram ao
+# replanejamento. Na unidade que o medidor usa, aquela observacao equivale a
+# algo entre 1,7 e 2,5 milhoes. Manter 2 milhoes seria aplicar um limite
+# calibrado numa regua e cobrado noutra.
+#
+# Cortar loop continua sendo feito com mais precisao pela deteccao de repeticao
+# (_same_as_previous_attempt) e pelos tetos de retentativa; este numero e a
+# ultima linha, nao a primeira.
+_TETO_ABSOLUTO = 2_500_000
 
 _DEFAULT_COST_BUDGET_USD = 5.00
 _RATE_LIMIT_CALLS_PER_MINUTE = 60
@@ -225,9 +236,30 @@ class IterationBudget:
         with self._lock:
             piso = _teto_por_complexidade(complexity)
             estimado = 0.0
+            custo_codigo = 0.0
             for tipo in step_types or []:
                 custo = _CUSTO_MEDIDO_POR_STEP.get(tipo, _CUSTO_PADRAO_POR_STEP)
                 estimado += custo * _TENTATIVAS_ESPERADAS.get(tipo, _TENTATIVAS_PADRAO)
+                if tipo in _TENTATIVAS_ESPERADAS:
+                    custo_codigo += custo
+            # Folga para UMA rodada de replanejamento.
+            #
+            # Medido em 2026-09-01 comparando o medidor do orcamento com o
+            # total do relatorio, nas duas execucoes que morreram por teto:
+            #
+            #   AssistenteLeituraGemini   medidor 1.181.971   relatorio 1.041.202
+            #   GeminiMultimodal          medidor 1.207.312   relatorio   707.841
+            #
+            # O relatorio so soma os steps que SOBREVIVERAM. Replanejamento
+            # substitui os steps que falharam, e o que eles gastaram some da
+            # conta final -- mas nao do consumo real. Estimar o teto pela soma
+            # dos steps do plano ignora exatamente esse gasto, e foi por isso
+            # que as duas execucoes pararam com o plano ainda pela metade.
+            #
+            # Replanejamento e disparado por code_generation/agent_runner
+            # reprovado (_CRITICAL_STEP_TYPES), entao a folga e uma passada a
+            # mais nesses steps -- mecanismo, nao numero magico.
+            estimado += custo_codigo
             teto = min(_TETO_ABSOLUTO, max(piso, int(estimado)))
             self._limits.max_tokens = teto
             _logger.info(

@@ -98,6 +98,7 @@ class PipelineReport:
     complexity: str = ""
     duration_seconds: float = 0.0
     total_tokens: int = 0
+    total_tokens_medidor: int = 0
     total_retries: int = 0
     replan_count: int = 0
     success: bool = False
@@ -165,6 +166,8 @@ class PipelineReport:
         print(f"  Total retries:{self.total_retries}")
         print(f"  Replans:     {self.replan_count}")
         print(f"  Total tokens:{self.total_tokens:,}")
+        if self.total_tokens_medidor:
+            print(f"  Medidor:     {self.total_tokens_medidor:,} (inclui steps descartados por replanejamento)")
         print(f"  Score medio: {self.avg_score:.1f}")
         print(f"  Modelos:     {', '.join(sorted(self.models_used))}")
 
@@ -224,6 +227,7 @@ class PipelineReport:
             "complexity": self.complexity,
             "duration_seconds": round(self.duration_seconds, 2),
             "total_tokens": self.total_tokens,
+            "total_tokens_medidor": self.total_tokens_medidor,
             "total_retries": self.total_retries,
             "replan_count": self.replan_count,
             "success": self.success,
@@ -355,6 +359,7 @@ def _rodar_pipeline_e2e(
     report.success = result.success
     report.plan_id = result.plan_id
     report.total_tokens = getattr(result, "total_tokens", 0)
+    report.total_tokens_medidor = getattr(result, "total_tokens_medidor", 0)
     report.total_retries = result.total_retries
     report.replan_count = getattr(result, "replan_count", 0)
     report.error = result.error or ""

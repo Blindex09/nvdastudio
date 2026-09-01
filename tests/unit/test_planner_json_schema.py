@@ -6,7 +6,7 @@ from addon.globalPlugins.nvdastudio.core.planner import Planner, MODULE_VERSION
 
 class TestPlannerVersao:
     def test_versao_e_1_7_0(self):
-        assert MODULE_VERSION == "2.38.0"
+        assert MODULE_VERSION == "2.39.0"
 
 
 class TestPlannerJsonSchema:

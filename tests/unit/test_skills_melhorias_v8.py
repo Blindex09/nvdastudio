@@ -28,7 +28,7 @@ class TestQueryComplexityClassifier:
 
     def test_versao_orchestrator(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.67.0"
+        assert MODULE_VERSION == "5.69.0"
 
     def test_low_vira_simple(self):
         from nvdastudio.core.orchestrator import classify_query_complexity
@@ -163,9 +163,26 @@ class TestBehavioralContracts:
         assert "threading.Thread" in NVDA_SYSTEM_PROMPT
 
     def test_max_retries_nunca_zero(self):
-        """INVARIANTE: max_retries de qualquer step nunca pode ser 0."""
-        from nvdastudio.core.orchestrator import MAX_RETRIES_DEFAULT
-        assert MAX_RETRIES_DEFAULT > 0
+        """INVARIANTE: max_retries de qualquer step nunca pode ser 0.
+
+        Auditoria 2026-09-01: este teste lia MAX_RETRIES_DEFAULT do
+        orchestrator, constante que a producao nao consultava -- o teto real
+        vem de planner._MAX_RETRIES_BY_STEP_TYPE, com _MAX_RETRIES_PADRAO de
+        fallback. Um step com teto 0 nunca rodaria; e isso que precisa ser
+        garantido, em quem decide."""
+        from nvdastudio.core.planner import (
+            _MAX_RETRIES_BY_STEP_TYPE,
+            _MAX_RETRIES_PADRAO,
+            Planner,
+        )
+
+        assert _MAX_RETRIES_PADRAO > 0
+        assert all(v > 0 for v in _MAX_RETRIES_BY_STEP_TYPE.values())
+        steps = Planner()._build_steps([
+            {"step_id": "s1", "step_type": t, "model_id": "m"}
+            for t in ("code_generation", "design_review", "documentation")
+        ])
+        assert all(s.max_retries > 0 for s in steps)
 
     def test_session_memory_nunca_executa_codigo(self, mem):
         """INVARIANTE (Regra 9): SessionMemory nunca executa o conteudo armazenado."""

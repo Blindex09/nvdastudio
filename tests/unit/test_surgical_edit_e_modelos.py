@@ -27,27 +27,28 @@ def _mock_llm_resp(payload: dict) -> MagicMock:
 
 class TestClarifierModelE120b:
     """
-    Invariante: o Clarifier usa kimi-k2.6.
-    skill: unit-testing-test-generate — invariantes sao testados explicitamente.
+    Auditoria 2026-09-01: esta classe afirmava "Invariante: o Clarifier usa
+    kimi-k2.6" e verificava a constante CLARIFIER_MODEL. A constante nao era
+    lida por ninguem -- get_clarifier_model() sempre devolveu
+    get_structured_output_model(0), na pratica opencode_go::gpt-5.6-luna. Tres
+    testes passavam afirmando um modelo que nunca rodou.
+
+    Verificar uma constante nao e verificar o comportamento que ela aparenta
+    controlar. A constante foi removida (clarifier 1.7.0).
     """
 
-    def test_clarifier_model_e_kimi(self):
-        from nvdastudio.ai.clarifier import CLARIFIER_MODEL
-        assert "kimi" in CLARIFIER_MODEL, (
-            f"CLARIFIER_MODEL deve ser kimi, encontrado: {CLARIFIER_MODEL}"
-        )
+    def test_clarifier_usa_o_modelo_com_json_schema_estrito(self):
+        from nvdastudio.ai.clarifier import get_clarifier_model
+        from nvdastudio.ai.model_registry import get_structured_output_model
 
-    def test_clarifier_model_e_kimi_k2_6(self):
-        from nvdastudio.ai.clarifier import CLARIFIER_MODEL
-        assert CLARIFIER_MODEL == "kimi-k2.6", (
-            f"CLARIFIER_MODEL deve ser kimi-k2.6, encontrado: {CLARIFIER_MODEL}"
-        )
+        assert get_clarifier_model() == get_structured_output_model(0)
 
-    def test_clarifier_model_existe_no_catalogo(self):
-        from nvdastudio.ai.clarifier import CLARIFIER_MODEL
-        assert CLARIFIER_MODEL in ("kimi-k2.6", "deepseek-v4-flash"), (
-            f"CLARIFIER_MODEL '{CLARIFIER_MODEL}' nao esta no catalogo valido"
-        )
+    def test_constante_morta_nao_volta(self):
+        """Se alguem reintroduzir a constante, ela volta a mentir sobre o
+        modelo -- a decisao e do resolvedor, nao de um literal no topo."""
+        from nvdastudio.ai import clarifier
+
+        assert not hasattr(clarifier, "CLARIFIER_MODEL")
 
 
 # ---------------------------------------------------------------------------

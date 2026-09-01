@@ -69,9 +69,16 @@ class TestStudioDialogConstantes:
     """Verifica constantes do studio_dialog sem instanciar wx."""
 
     def test_output_dir_em_documents_nvdastudio(self):
-        from nvdastudio.gui.studio_dialog import _OUTPUT_DIR
-        assert "NVDAStudio" in _OUTPUT_DIR
-        assert "addons_gerados" in _OUTPUT_DIR
+        """Auditoria 2026-09-01: este teste lia studio_dialog._OUTPUT_DIR, uma
+        constante que a producao nao consultava -- o caminho de verdade vem de
+        settings_panel.get_output_dir() (config do usuario, com
+        _DEFAULT_OUTPUT_DIR de fallback). Duas definicoes do mesmo caminho, e o
+        teste verificava a que ninguem usava: mudar o destino no settings_panel
+        deixaria este teste verde apontando para outro lugar."""
+        from nvdastudio.gui.settings_panel import get_output_dir
+        destino = get_output_dir()
+        assert "NVDAStudio" in destino
+        assert "addons_gerados" in destino
 
     def test_announce_timer_ms_positivo(self):
         from nvdastudio.gui.studio_dialog import _ANNOUNCE_TIMER_MS

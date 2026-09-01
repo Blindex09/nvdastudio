@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 class TestClarifierVersao:
     def test_versao_e_1_3_0(self):
         from nvdastudio.ai.clarifier import MODULE_VERSION
-        assert MODULE_VERSION == "1.6.0"
+        assert MODULE_VERSION == "1.7.0"
 
 
 class TestClarifierCapDinamico:
@@ -131,7 +131,7 @@ class TestPlannerUserClarificationStep:
 class TestOrchestratorMidPipelineClarification:
     def test_versao_e_2_6_0(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.67.0"
+        assert MODULE_VERSION == "5.69.0"
 
     def test_set_callbacks_aceita_on_clarify(self):
         from nvdastudio.core.orchestrator import Orchestrator

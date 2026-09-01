@@ -1,7 +1,7 @@
 class TestDomainResearcherVersao:
 	def test_versao_e_1_4_0(self):
 		from nvdastudio.tools.domain_researcher import MODULE_VERSION
-		assert MODULE_VERSION == "1.4.0"
+		assert MODULE_VERSION == "1.5.0"
 
 
 class TestAcentuacaoCorrigida:

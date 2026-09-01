@@ -7,7 +7,7 @@ class TestContextCompression:
 
     def test_orchestrator_versao_3_3_0(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.67.0"
+        assert MODULE_VERSION == "5.69.0"
 
     def test_build_context_output_curto_nao_usa_resumo(self):
         """Outputs curtos passam integralmente sem marcador RESUMO."""
@@ -227,7 +227,7 @@ class TestPlannerSchemaDescriptions:
 
     def test_planner_versao_2_1_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.38.0"
+        assert MODULE_VERSION == "2.39.0"
 
     def test_campos_principais_tem_description(self):
         """Campos do schema de nivel raiz devem ter description."""

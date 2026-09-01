@@ -39,7 +39,7 @@ _PLANO_COMPLEXO_REAL = (
 
 
 def test_versao():
-	assert MODULE_VERSION == "1.4.0"
+	assert MODULE_VERSION == "1.5.0"
 
 
 def test_plano_complexo_real_cabe_no_teto():
@@ -97,3 +97,52 @@ def test_orchestrator_passa_os_steps_do_plano():
 	assert "apply_plan(" in src
 	assert "getattr(plan, \"steps\"" in src
 	assert "apply_complexity(" not in src
+
+
+class TestFolgaDeReplanejamento:
+	"""
+	O teto era estimado somando os steps DECLARADOS no plano. Replanejamento
+	substitui os steps que falharam, e o que eles ja gastaram some da conta
+	final -- mas nao do consumo real.
+
+	Medido em 2026-09-01, comparando o medidor do circuit breaker com o
+	`total_tokens` do relatorio, nas duas execucoes que morreram por teto:
+
+	  AssistenteLeituraGemini   medidor 1.181.971   relatorio 1.041.202  (1,14x)
+	  GeminiMultimodal          medidor 1.207.312   relatorio   707.841  (1,71x)
+
+	Estimar o teto ignorando esse gasto foi o que fez as duas pararem com o
+	plano ainda pela metade -- de novo por aritmetica, so que num degrau acima.
+	"""
+
+	def test_plano_com_codigo_recebe_folga_de_uma_rodada(self):
+		b = IterationBudget()
+		com_codigo = ["code_generation"] * 12 + ["documentation"] * 12
+		sem_codigo = ["documentation"] * 24
+		# a folga e proporcional ao custo dos steps que disparam replanejamento
+		assert b.apply_plan(com_codigo, "high") > b.apply_plan(sem_codigo, "high")
+
+	def test_folga_e_uma_passada_a_mais_nos_steps_criticos(self):
+		"""Mecanismo, nao numero magico: replanejamento e disparado por
+		code_generation/agent_runner reprovado, entao a folga e o custo de
+		refazer exatamente esses."""
+		b = IterationBudget()
+		from nvdastudio.utils.iteration_budget import (
+			_CUSTO_MEDIDO_POR_STEP,
+			_TENTATIVAS_ESPERADAS,
+		)
+
+		plano = ["code_generation"] * 20
+		custo_un = _CUSTO_MEDIDO_POR_STEP["code_generation"]
+		esperado = 20 * custo_un * _TENTATIVAS_ESPERADAS["code_generation"] + 20 * custo_un
+		assert b.apply_plan(plano, "high") == int(esperado)
+
+	def test_o_plano_real_que_morreu_agora_cabe(self):
+		"""GeminiMultimodal, 2026-09-01: teto de 1.093.400 e medidor em
+		1.207.312 com 16 etapas sem executar."""
+		b = IterationBudget()
+		assert b.apply_plan(_PLANO_COMPLEXO_REAL, "high") > 1_207_312
+
+	def test_teto_absoluto_continua_cortando_loop(self):
+		b = IterationBudget()
+		assert b.apply_plan(["code_generation"] * 500, "high") == _TETO_ABSOLUTO

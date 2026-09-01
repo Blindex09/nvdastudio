@@ -1,25 +1,65 @@
 from addon.globalPlugins.nvdastudio.core.orchestrator import (
     OrchestrationResult, StepResult,
-    _STEP_TIMEOUT_SECONDS, MODULE_VERSION,
+    _get_step_timeout, MODULE_VERSION,
 )
 
 
 class TestOrchestratorVersao:
-    def test_versao_e_2_6_0(self):
-        assert MODULE_VERSION == "5.67.0"
+    def test_versao(self):
+        assert MODULE_VERSION == "5.69.0"
 
 
-class TestTimeoutConstante:
-    def test_timeout_positivo(self):
-        assert _STEP_TIMEOUT_SECONDS > 0
+class TestTimeoutPorTipoDeStep:
+    """
+    Auditoria 2026-09-01: estes testes verificavam `_get_step_timeout('manifest_builder')`, uma
+    constante do orchestrator que a producao NUNCA lia -- o timeout real vinha
+    de utils/timeouts.py e de uma segunda tabela local. Um dos testes exigia
+    `<= 600`, e o valor realmente aplicado a code_generation era 1200: o teste
+    passava enquanto o comportamento que ele dizia proteger ja o violava.
 
-    def test_timeout_razoavel(self):
-        """Timeout deve ser grande o suficiente para não falsar positivos."""
-        assert _STEP_TIMEOUT_SECONDS >= 60
+    Agora verificam `_get_step_timeout()`, que e quem o pipeline chama.
+    """
 
-    def test_timeout_nao_excessivo(self):
-        """Timeout não deve ser absurdamente alto (trancaria o NVDA)."""
-        assert _STEP_TIMEOUT_SECONDS <= 600
+    def test_todo_tipo_tem_timeout_positivo(self):
+        for tipo in ("code_generation", "documentation", "manifest_builder"):
+            assert _get_step_timeout(tipo) > 0
+
+    def test_timeout_minimo_evita_falso_positivo(self):
+        assert _get_step_timeout("manifest_builder") >= 60
+
+    def test_step_que_le_o_addon_inteiro_nao_fica_no_default(self):
+        """Medido nos relatorios E2E: 9 steps mortos no default de 180s --
+        documentation 5 vezes (e ela e BLOQUEANTE: morre ela, morre a entrega
+        de um addon pronto), accessibility_audit 2, test_generation 1,
+        assembly 1. Dois deles em addons SIMPLES."""
+        padrao = _get_step_timeout("manifest_builder")
+        for tipo in ("documentation", "accessibility_audit", "test_generation",
+                     "assembly", "engineering_review"):
+            assert _get_step_timeout(tipo) > padrao, (
+                f"{tipo} le o addon inteiro e nao pode ficar no timeout padrao"
+            )
+
+    def test_sub_agente_mais_critic_em_serie_tem_a_faixa_maior(self):
+        """Confirmado ao vivo: 600s era menor que uma UNICA chamada HTTP interna
+        podia legitimamente levar nestes tipos."""
+        for tipo in ("code_generation", "design_review", "agent_runner", "assembly"):
+            assert _get_step_timeout(tipo) == 1200
+
+    def test_timeout_nao_e_ilimitado(self):
+        """Trancaria o NVDA -- o teto existe, so nao era o que o teste antigo dizia."""
+        for tipo in ("code_generation", "documentation", "manifest_builder"):
+            assert _get_step_timeout(tipo) <= 1200
+
+    def test_fonte_unica(self):
+        """Duas tabelas para a mesma regra e a Regra 5 ao contrario: a copia no
+        orchestrator vencia, entao quem lesse timeouts.py via um numero que nao
+        era o aplicado."""
+        from addon.globalPlugins.nvdastudio.core import orchestrator
+        from addon.globalPlugins.nvdastudio.utils import timeouts
+
+        assert not hasattr(orchestrator, "_STEP_TYPE_TIMEOUT_OVERRIDE")
+        for tipo, valor in timeouts._STEP_TYPE_TIMEOUT_OVERRIDE.items():
+            assert _get_step_timeout(tipo) == int(valor)
 
 
 class TestOrchestrationResultTotalTokens:
@@ -83,16 +123,19 @@ class TestTimeoutStepResult:
         r = StepResult(
             step_id="s1", step_type="code_generation",
             output="", approved=False, score=0,
-            issues=[f"Timeout: step excedeu {_STEP_TIMEOUT_SECONDS}s."],
+            issues=[f"Timeout: step excedeu {_get_step_timeout('code_generation')}s."],
         )
         assert r.approved is False
         assert r.score == 0
         assert any("Timeout" in i or "timeout" in i.lower() for i in r.issues)
 
-    def test_timeout_issue_menciona_duracao(self):
-        """A mensagem de timeout deve mencionar a duração."""
-        timeout_msg = f"Timeout: step excedeu {_STEP_TIMEOUT_SECONDS}s."
-        assert str(_STEP_TIMEOUT_SECONDS) in timeout_msg
+    def test_timeout_issue_menciona_a_duracao_do_proprio_tipo(self):
+        """A mensagem tem que citar o timeout DAQUELE tipo de step -- dizer 180s
+        num step que morreu aos 1200s manda o usuario investigar o numero
+        errado."""
+        for tipo in ("code_generation", "documentation", "manifest_builder"):
+            msg = f"Timeout: step excedeu {_get_step_timeout(tipo)}s."
+            assert str(_get_step_timeout(tipo)) in msg
 
 
 
@@ -105,17 +148,17 @@ class TestStepTypeTimeoutOverride:
 	"""design_review tem timeout maior que steps padrao."""
 
 	def test_design_review_tem_timeout_override(self):
-		from nvdastudio.core.orchestrator import _get_step_timeout, _STEP_TIMEOUT_SECONDS
+		from nvdastudio.core.orchestrator import _get_step_timeout
 		t_design = _get_step_timeout("design_review")
-		assert t_design > _STEP_TIMEOUT_SECONDS, (
-			f"design_review deve ter timeout > {_STEP_TIMEOUT_SECONDS}s. "
+		assert t_design > _get_step_timeout('manifest_builder'), (
+			f"design_review deve ter timeout > {_get_step_timeout('manifest_builder')}s. "
 			f"Recebido: {t_design}s"
 		)
 
 	def test_step_padrao_usa_default(self):
-		from nvdastudio.core.orchestrator import _get_step_timeout, _STEP_TIMEOUT_SECONDS
+		from nvdastudio.core.orchestrator import _get_step_timeout
 		assert _get_step_timeout("web_research") == 600
-		assert _get_step_timeout("manifest_builder") == _STEP_TIMEOUT_SECONDS
+		assert _get_step_timeout("manifest_builder") == _get_step_timeout('manifest_builder')
 		assert _get_step_timeout("code_generation") == 1200  # 5.26.0 override
 
 	def test_assembly_tem_timeout_override(self):
@@ -127,10 +170,10 @@ class TestStepTypeTimeoutOverride:
 		chamada HTTP interna (sub-agente OU critic) podia legitimamente levar
 		(ate 660s via _OLLAMA_CLOUD_TIMEOUT_EXTENDED), confirmado ao vivo
 		numa segunda rodada real do test_e36."""
-		from nvdastudio.core.orchestrator import _get_step_timeout, _STEP_TIMEOUT_SECONDS
+		from nvdastudio.core.orchestrator import _get_step_timeout
 		t_assembly = _get_step_timeout("assembly")
-		assert t_assembly > _STEP_TIMEOUT_SECONDS, (
-			f"assembly deve ter timeout > {_STEP_TIMEOUT_SECONDS}s. Recebido: {t_assembly}s"
+		assert t_assembly > _get_step_timeout('manifest_builder'), (
+			f"assembly deve ter timeout > {_get_step_timeout('manifest_builder')}s. Recebido: {t_assembly}s"
 		)
 		assert t_assembly == 1200
 

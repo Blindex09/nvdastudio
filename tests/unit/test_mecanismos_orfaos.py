@@ -34,6 +34,7 @@ motivo. Um orfao novo, nao declarado, quebra o teste.
 """
 
 import ast
+import collections
 import pathlib
 
 _RAIZ = pathlib.Path(__file__).resolve().parents[2] / "addon" / "globalPlugins" / "nvdastudio"
@@ -107,6 +108,145 @@ def _funcoes_publicas_de_topo() -> list[tuple[str, str]]:
 				continue
 			achadas.append((f.stem, node.name))
 	return achadas
+
+
+_CONSTANTES_ACEITAS: dict[str, str] = {
+	# Reexport de compatibilidade: nomes publicos que consumidores externos e
+	# testes usam; a producao le a estrutura original.
+	"planner.STEP_MODEL_MAP_LOW": "alias publico de COMPLEXITY_MAP['low']",
+	"planner.STEP_MODEL_MAP_MEDIUM": "alias publico de STEP_MODEL_MAP",
+	"planner.STEP_MODEL_MAP_HIGH": "alias publico de COMPLEXITY_MAP['high']",
+	"planner.STEP_REASONING_MAP": "alias publico de _STEP_REASONING_MAP_ALIAS",
+	"critic._CRITIC_SYSTEM": "export de compatibilidade de _CRITIC_QUALITY_SYSTEM",
+	# Conhecimento curado que HOJE nao entra em nenhum prompt. Nao e defeito:
+	# e material disponivel e ainda nao ligado. Justificado aqui para que a
+	# escolha seja explicita -- ou se liga, ou se apaga, nunca fica esquecido.
+	"nvda_context.NVDA_QUICK_TIPS": (
+		"16 fatos curtos de API do NVDA; a fonte completa do NVDA ja e injetada "
+		"nos prompts de codigo, entao ligar isto so faria sentido se medisse "
+		"melhora -- ainda nao medido"
+	),
+	"nvda_context.NVDA_VERSION_TABLE": (
+		"tabela de versoes; a politica de baseline aplicada de fato vive em "
+		"utils/project_policy.py (PROJECT_MIN_NVDA), que a producao le"
+	),
+	"controller_client_context.CTRL_CLIENT_RULE_IDS": (
+		"lista de IDs derivada de CTRL_CLIENT_RULES para consulta e teste; as "
+		"regras aplicadas vem do texto completo em CTRL_CLIENT_RULES"
+	),
+	"rule_registry.COMMUNITY_ACCESS_SOURCES": (
+		"procedencia das regras, para auditoria humana e citacao; nao entra em "
+		"decisao de execucao"
+	),
+	"opencode_go_client._KNOWN_MODELS": (
+		"catalogo de referencia do provedor; a validacao real acontece na "
+		"resposta HTTP, nao numa lista local que envelhece"
+	),
+	"settings_panel._DEFAULT_MODELS": (
+		"defaults por provedor consultados pela GUI via resolucao dinamica; "
+		"mantido como referencia do catalogo esperado"
+	),
+	"engineering_principles.SOURCE_DOCS": "procedencia dos 3 documentos de metodologia",
+	"engineering_principles.UPDATED_AT": "data da ultima revisao do conteudo destilado",
+	"rule_registry.UPDATED_AT": "data da ultima revisao do catalogo de regras",
+	"orchestrator._ESCALATION_REASONING": (
+		"alias de _ESCALATION_REASONING_BY_TYPE, que e o consultado; mantido porque o nome curto aparece em comentarios e consumidores antigos"
+	),
+	"project_policy.ABSOLUTE_MIN_NVDA_TUPLE": "forma em tupla, para comparacao futura",
+	"project_policy.PROJECT_LAST_TESTED_NVDA_TUPLE": "forma em tupla, para comparacao futura",
+}
+
+
+def _constantes_de_topo() -> list[tuple[str, str]]:
+	"""(modulo, NOME) de cada constante declarada no nivel de modulo."""
+	achadas: list[tuple[str, str]] = []
+	for f in _modulos():
+		try:
+			tree = ast.parse(f.read_text(encoding="utf-8", errors="ignore"))
+		except SyntaxError:
+			continue
+		for node in tree.body:
+			alvos = []
+			if isinstance(node, ast.Assign):
+				alvos = [t for t in node.targets if isinstance(t, ast.Name)]
+			elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+				alvos = [node.target]
+			for t in alvos:
+				nome = t.id
+				if nome.lstrip("_").isupper() and len(nome.lstrip("_")) > 3:
+					achadas.append((f.stem, nome))
+	return achadas
+
+
+def _nomes_lidos() -> collections.Counter:
+	"""Quantas vezes cada nome e LIDO em producao (Name em Load + atributo)."""
+	usos: collections.Counter = collections.Counter()
+	for f in _modulos():
+		try:
+			tree = ast.parse(f.read_text(encoding="utf-8", errors="ignore"))
+		except SyntaxError:
+			continue
+		for node in ast.walk(tree):
+			if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+				usos[node.id] += 1
+			elif isinstance(node, ast.Attribute):
+				usos[node.attr] += 1
+			elif isinstance(node, ast.ImportFrom):
+				for a in node.names:
+					usos[a.name] += 1
+	return usos
+
+
+class TestConstantesOrfas:
+	"""
+	Mesma regra das funcoes, aplicada a constantes de modulo.
+
+	Foi essa a forma de defeitos reais desta sessao: um limite declarado,
+	documentado e testado -- e nunca consultado. `_MAX_TOTAL_SIZE_MB`,
+	`VALID_STATUSES`, `_MAX_TOOL_TIMEOUT`, `_PROGRESS_MIN_APPROVED_DELTA`,
+	`_STEP_TIMEOUT_SECONDS`.
+
+	Os piores nao eram inertes, eram MENTIROSOS: `CLARIFIER_MODEL = "kimi-k2.6"`
+	com o Clarifier rodando gpt-5.6-luna, e um teste afirmando o contrario;
+	`_STEP_TIMEOUT_SECONDS = 180` com um teste exigindo `<= 600` enquanto o
+	valor aplicado era 1200. Testes verdes protegendo um comportamento que nao
+	existia.
+	"""
+
+	def test_toda_constante_de_topo_e_lida_ou_justificada(self):
+		usos = _nomes_lidos()
+		orfas = []
+		for modulo, nome in _constantes_de_topo():
+			if usos[nome] > 0:
+				continue
+			if f"{modulo}.{nome}" in _CONSTANTES_ACEITAS:
+				continue
+			orfas.append(f"{modulo}.{nome}")
+		assert not orfas, (
+			"Constantes de modulo nunca lidas em producao:\n  "
+			+ ("\n  ").join(sorted(orfas))
+			+ "\n\nLigue a constante a quem decide, apague-a, ou declare-a em "
+			"_CONSTANTES_ACEITAS COM O MOTIVO. Um limite que ninguem consulta e "
+			"pior que nenhum limite: da a impressao de que existe."
+		)
+
+	def test_allowlist_de_constantes_nao_tem_entrada_obsoleta(self):
+		"""Constante que voltou a ser lida (ou sumiu) nao pode ficar na lista --
+		senao a lista vira deposito e para de significar alguma coisa."""
+		usos = _nomes_lidos()
+		existentes = {f"{m}.{n}" for m, n in _constantes_de_topo()}
+		obsoletas = [
+			chave for chave in _CONSTANTES_ACEITAS
+			if chave not in existentes or usos[chave.split(".", 1)[1]] > 0
+		]
+		assert not obsoletas, (
+			"Entradas obsoletas em _CONSTANTES_ACEITAS:\n  "
+			+ ("\n  ").join(sorted(obsoletas))
+		)
+
+	def test_toda_constante_aceita_tem_motivo_de_verdade(self):
+		vagas = [c for c, motivo in _CONSTANTES_ACEITAS.items() if len(motivo.strip()) < 25]
+		assert not vagas, f"Motivo vago demais: {vagas}"
 
 
 class TestMecanismosOrfaos:

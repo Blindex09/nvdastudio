@@ -54,7 +54,6 @@ from ..core.planner import ExecutionPlan, STEP_TEST_GENERATION
 MODULE_VERSION = "5.48.0"
 _logger = get_logger("studio_dialog")
 
-_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Documents", "NVDAStudio", "addons_gerados")
 
 
 def _collect_web_sources(step_results) -> str:

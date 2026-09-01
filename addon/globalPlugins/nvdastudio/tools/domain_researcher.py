@@ -6,10 +6,9 @@ from ..utils.logger import get_logger, log_llm_call, log_llm_response
 from ..core.orch_types import DomainContext
 from .external_search import search_external, format_results_for_prompt
 
-MODULE_VERSION = "1.4.0"
+MODULE_VERSION = "1.5.0"
 _logger = get_logger("domain_researcher")
 
-RESEARCH_MODEL = "kimi-k2.6"
 
 # ---------------------------------------------------------------------------
 # System prompt: o pesquisador de dominio

@@ -6,10 +6,9 @@ from .llm_client import LLMClientError
 from .llm_factory import call_with_structured_output
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 
-MODULE_VERSION = "1.6.0"
+MODULE_VERSION = "1.7.0"
 _logger = get_logger("clarifier")
 
-CLARIFIER_MODEL = "kimi-k2.6"
 
 # 1.6.0: analyze_query() exige JSON estrito (_CLARIFIER_SCHEMA, additionalProperties=
 # False) mas seguia o tier "light" do provider ATIVO do usuario -- no Ollama (default),

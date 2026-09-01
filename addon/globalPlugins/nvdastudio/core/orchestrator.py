@@ -44,57 +44,34 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.67.0"
+MODULE_VERSION = "5.69.0"
 _logger = get_logger("orchestrator")
 
-MAX_RETRIES_DEFAULT = 3
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
 
 # Timeout maximo por step (segundos)
 # v2.1.0 (2026-06-09): Usar timeouts.py centralizado (Hermes-inspired)
-_STEP_TIMEOUT_SECONDS = 180
-
-# Override por tipo de step (mantido para compatibilidade)
-# "assembly" adicionado 2026-08-07 (achado real do golden eval set do
-# pipeline completo, test_e36, addon AssistenteLeituraGemini): assembly
-# consolida o output de TODOS os steps aprovados -- pra um addon complexo
-# (19 arquivos), o contexto e grande o bastante pra estourar o teto padrao
-# de 180s consistentemente (2 tentativas cortadas pelo teto de tokens do
-# critic -- ver ollama_client.py _EXTENDED_TOKENS_STEP_TYPES -- e uma 3a
-# que estourou o timeout). Mesmo raciocinio ja aplicado a design_review/
-# code_generation/agent_runner: assembly e tao pesado quanto esses 3 pra
-# addons complexos, nunca tinha ganho o mesmo tratamento.
-# 600 -> 1200 em 5.26.0 (2026-08-08): um "step" aqui e sub-agente + critic
-# em serie, e o critic AGORA tambem usa o timeout HTTP estendido (ate 660s)
-# pros mesmos 4 step_types (critic.py 3.9.0) -- 600s no orquestrador era
-# menor que uma UNICA chamada HTTP interna podia legitimamente levar.
-# Confirmado ao vivo: code_generation morto por timeout global antes do
-# necessario pra sub-agente+critic completarem.
-_STEP_TYPE_TIMEOUT_OVERRIDE: dict = {
-	"design_review": 1200,
-	"code_generation": 1200,
-	"agent_runner": 1200,
-	"assembly": 1200,
-}
-
 # Periodo de graca depois do timeout global do as_completed (segundos).
 _GRACE_PERIOD_SECONDS = 60
 
 
 def _get_step_timeout(step_type: str) -> int:
-	"""Timeout individual para o tipo de step (override > default).
-
-	v2.1.0: Delega para timeouts.py.get_step_timeout() com fallback para override local.
 	"""
-	# Tenta timeouts.py primeiro (Hermes-inspired)
+	Timeout individual para o tipo de step. Fonte unica: utils/timeouts.py.
+
+	5.68.0 -- havia aqui uma copia da tabela de timeouts.py com valores
+	DIFERENTES (1200 aqui, 600 la). Esta copia era consultada DEPOIS e vencia,
+	entao quem lesse timeouts.py acreditava num numero que nao era o aplicado.
+	Duas tabelas para a mesma regra e a Regra 5 do README ao contrario, e a
+	divergencia tinha consequencia: `documentation` -- que le o addon inteiro e
+	e BLOQUEANTE -- nao estava em nenhuma das duas e morria no default de 180s.
+	Medido nos relatorios: 9 steps mortos assim, incluindo dois addons SIMPLES
+	que falharam so por isso.
+
+	Os valores de la agora sao os que eram aplicados aqui; nada afrouxou.
+	"""
 	from ..utils.timeouts import get_step_timeout as _get_timeout
-	timeout = _get_timeout(step_type)
-
-	# Fallback para override local se existir
-	if step_type in _STEP_TYPE_TIMEOUT_OVERRIDE:
-		return _STEP_TYPE_TIMEOUT_OVERRIDE[step_type]
-
-	return int(timeout)
+	return int(_get_timeout(step_type))
 
 
 # Steps nao-bloqueantes: falha nao impede dependentes
@@ -488,6 +465,43 @@ def _alvos_nao_entregues(step: object, py_files: dict) -> list[str]:
 		alvo for alvo in alvos
 		if alvo.replace("\\", "/").rsplit("/", 1)[-1].lower() not in entregues
 	]
+
+
+def _output_com_ressalva(resultado: "StepResult", step_type: str) -> str:
+	"""
+	Output de step nao-bloqueante REPROVADO, marcado como nao verificado.
+
+	Nao-bloqueante quer dizer "nao para o pipeline". Nao pode querer dizer
+	"passa adiante como se fosse fato". Ate 2026-09-01 o output cru de um step
+	reprovado era guardado em `outputs` e injetado nos steps seguintes sem
+	nenhuma marca, e os `issues` do Critic -- que costumam CONTER a correcao --
+	eram descartados.
+
+	Medido na rodada de 12:26 (AssistenteLeituraGemini): `web_research` foi
+	reprovado com "o output pesquisa o pacote legado google-generativeai, mas o
+	objetivo exige o SDK atual". Essa pesquisa reprovada virou contexto, e
+	`cg_core_service` gastou 419 mil tokens em 3 tentativas para ser reprovado
+	por "o objetivo exige o uso do SDK confirmado pela pesquisa
+	(google-generativeai), mas o codigo...". O gerador seguiu a pesquisa errada
+	porque nada dizia que ela estava errada -- embora o proprio pipeline ja
+	soubesse, por escrito, uma etapa antes.
+
+	Degradacao graciosa e entregar o que deu certo, nao propagar em silencio o
+	que foi reprovado.
+	"""
+	corpo = resultado.output or ""
+	motivos = [str(i) for i in (resultado.issues or []) if str(i).strip()]
+	if not motivos:
+		return corpo
+	return (
+		f"[NAO VERIFICADO] O step {step_type} abaixo foi REPROVADO na "
+		"verificacao. Use com desconfianca: onde ele contradisser o pedido do "
+		"usuario ou os motivos listados a seguir, os motivos valem mais." + "\n"
+		+ "Motivos da reprovacao:" + "\n"
+		+ ("\n").join(f"  - {m}" for m in motivos)
+		+ "\n\nConteudo produzido pelo step (nao confirmado):" + "\n"
+		+ corpo
+	)
 
 
 class Orchestrator:
@@ -1038,7 +1052,10 @@ class Orchestrator:
 							step_results.append(_presult)
 							if _presult.approved or pstep.step_type in _NON_BLOCKING_STEP_TYPES:
 								with self._outputs_lock:
-									outputs[pstep.step_id] = _presult.output
+									outputs[pstep.step_id] = (
+										_presult.output if _presult.approved
+										else _output_com_ressalva(_presult, pstep.step_type)
+									)
 								remaining.remove(pstep)
 								# Checkpoint apos step
 								self._checkpoint_after_step(pstep, _presult, plan)
@@ -1098,7 +1115,10 @@ class Orchestrator:
 					level_results.append(result)
 					if result.approved or step.step_type in _NON_BLOCKING_STEP_TYPES:
 						with self._outputs_lock:
-							outputs[step.step_id] = result.output
+							outputs[step.step_id] = (
+								result.output if result.approved
+								else _output_com_ressalva(result, step.step_type)
+							)
 					else:
 						failed_step_ids.add(step.step_id)
 						# Grava o erro em agent_memory -- so o sucesso era gravado antes,
@@ -1130,7 +1150,10 @@ class Orchestrator:
 						step = next(s for s in ready if s.step_id == r.step_id)
 						if r.approved or step.step_type in _NON_BLOCKING_STEP_TYPES:
 							with self._outputs_lock:
-								outputs[r.step_id] = r.output
+								outputs[r.step_id] = (
+									r.output if r.approved
+									else _output_com_ressalva(r, step.step_type)
+								)
 						else:
 							failed_step_ids.add(r.step_id)
 							try:
@@ -1182,6 +1205,7 @@ class Orchestrator:
 					error=artifact_error,
 					total_retries=sum(r.retries_used for r in step_results),
 					total_tokens=sum(r.tokens_used for r in step_results),
+					total_tokens_medidor=iteration_budget.get_state().tokens_used,
 				)
 				failure.all_issues = [issue for r in step_results for issue in r.issues]
 				self._record_iteration_budget(step_results)
@@ -1221,6 +1245,7 @@ class Orchestrator:
 				dependencies=merged_deps,
 				assembly_output=_assembly_out,
 				total_tokens=sum(r.tokens_used for r in step_results),
+					total_tokens_medidor=iteration_budget.get_state().tokens_used,
 				tokens_by_model=dict(self._tokens_by_model),
 				estimated_cost_usd=estimated_cost,
 				replan_count=replan_count,
@@ -1514,7 +1539,10 @@ class Orchestrator:
 							step_results.append(_presult)
 							if _presult.approved or pstep.step_type in _NON_BLOCKING_STEP_TYPES:
 								with self._outputs_lock:
-									outputs[pstep.step_id] = _presult.output
+									outputs[pstep.step_id] = (
+										_presult.output if _presult.approved
+										else _output_com_ressalva(_presult, pstep.step_type)
+									)
 								remaining.remove(pstep)
 								# 5.44.0: achado real de auditoria de integracao --
 								# este loop (usado por agentic_loop.py::surgical_replan()
@@ -1577,7 +1605,10 @@ class Orchestrator:
 						level_results.append(result)
 						if result.approved or ready[0].step_type in _NON_BLOCKING_STEP_TYPES:
 							with self._outputs_lock:
-								outputs[ready[0].step_id] = result.output
+								outputs[ready[0].step_id] = (
+									result.output if result.approved
+									else _output_com_ressalva(result, ready[0].step_type)
+								)
 						else:
 							failed_step_ids.add(ready[0].step_id)
 							try:
@@ -1609,7 +1640,10 @@ class Orchestrator:
 						step = next(s for s in ready if s.step_id == r.step_id)
 						if r.approved or step.step_type in _NON_BLOCKING_STEP_TYPES:
 							with self._outputs_lock:
-								outputs[r.step_id] = r.output
+								outputs[r.step_id] = (
+									r.output if r.approved
+									else _output_com_ressalva(r, step.step_type)
+								)
 						else:
 							failed_step_ids.add(r.step_id)
 							try:
@@ -1661,6 +1695,7 @@ class Orchestrator:
 					error=artifact_error,
 					total_retries=sum(r.retries_used for r in step_results),
 					total_tokens=sum(r.tokens_used for r in step_results),
+					total_tokens_medidor=iteration_budget.get_state().tokens_used,
 				)
 				failure.all_issues = [issue for r in step_results for issue in r.issues]
 				self._record_iteration_budget(step_results)
@@ -1698,6 +1733,7 @@ class Orchestrator:
 				dependencies=merged_deps,
 				assembly_output=_assembly_out,
 				total_tokens=sum(r.tokens_used for r in step_results),
+					total_tokens_medidor=iteration_budget.get_state().tokens_used,
 				tokens_by_model=dict(self._tokens_by_model),
 				estimated_cost_usd=estimated_cost,
 				replan_count=replan_count,

@@ -6,7 +6,7 @@ class TestClarifierQ10Q14:
 
     def test_versao_clarifier(self):
         from addon.globalPlugins.nvdastudio.ai.clarifier import MODULE_VERSION
-        assert MODULE_VERSION == "1.6.0"
+        assert MODULE_VERSION == "1.7.0"
 
     def test_clarification_result_tem_forbidden(self):
         from addon.globalPlugins.nvdastudio.ai.clarifier import ClarificationResult

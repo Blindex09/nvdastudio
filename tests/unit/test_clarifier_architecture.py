@@ -227,6 +227,6 @@ class TestClarifierVersion:
 
     def test_versao_e_1_5_0(self):
         from nvdastudio.ai.clarifier import MODULE_VERSION
-        assert MODULE_VERSION == "1.6.0", (
+        assert MODULE_VERSION == "1.7.0", (
             f"clarifier versao esperada 1.5.0, encontrada {MODULE_VERSION}."
         )

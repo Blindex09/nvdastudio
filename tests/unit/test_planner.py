@@ -9,7 +9,7 @@ from nvdastudio.core.planner import (
 	STEP_CODE_GENERATION, STEP_MANIFEST, STEP_ACCESSIBILITY_AUDIT,
 	STEP_TEST_GENERATION, STEP_WEB_RESEARCH, STEP_AGENT_TEMPLATE,
 	STEP_AGENT_RUNNER, STEP_ASSEMBLY, STEP_DESIGN_REVIEW,
-	STEP_DOCUMENTATION, STEP_USER_CLARIFICATION, PLANNER_MODEL, _PLAN_SYSTEM_PROMPT,
+	STEP_DOCUMENTATION, STEP_USER_CLARIFICATION, _DEFAULT_MODEL, _PLAN_SYSTEM_PROMPT,
 )
 class TestStepModelMap:
 	"""Invariante: todo step_type tem modelo mapeado no catalogo."""
@@ -146,7 +146,11 @@ class TestPlannerBuildSteps:
 				"description": "x", "expected_output": "y",
 				"depends_on": [], "context_from_steps": []}]
 		steps = self.planner._build_steps(raw)
-		assert steps[0].model_id == PLANNER_MODEL
+		# Auditoria 2026-09-01: este assert usava PLANNER_MODEL, uma constante
+		# que a producao nunca lia -- passava por coincidencia de valor com
+		# _DEFAULT_MODEL. Mudar PLANNER_MODEL quebraria o teste sem mudar
+		# comportamento nenhum; a constante foi removida (planner 2.39.0).
+		assert steps[0].model_id == _DEFAULT_MODEL
 
 	def test_steps_preservam_depends_on(self, valid_plan_json):
 		steps = self.planner._build_steps(valid_plan_json["steps"])

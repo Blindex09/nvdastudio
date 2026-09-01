@@ -50,6 +50,13 @@ class OrchestrationResult:
 	assembly_output: str = ""
 	all_issues: list[str] = field(default_factory=list)
 	total_tokens: int = 0
+	# Consumo REAL medido pelo circuit breaker, que inclui os steps
+	# descartados por replanejamento -- `total_tokens` soma apenas os
+	# step_results que sobreviveram. Medido em 2026-09-01 nas duas execucoes
+	# que morreram por teto: medidor 1.181.971 contra relatorio 1.041.202, e
+	# medidor 1.207.312 contra relatorio 707.841. A diferenca ficava
+	# invisivel, e o teto de orcamento acabou calibrado na regua menor.
+	total_tokens_medidor: int = 0
 	tokens_by_model: dict[str, tuple[int, int]] = field(default_factory=dict)
 	estimated_cost_usd: float = 0.0
 	replan_count: int = 0
