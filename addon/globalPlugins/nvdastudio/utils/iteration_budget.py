@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .logger import get_logger
 
-MODULE_VERSION = "1.3.0"
+MODULE_VERSION = "1.4.0"
 _logger = get_logger("iteration_budget")
 
 # Custos por 1M tokens (USD) — atualizar conforme provider
@@ -44,6 +44,41 @@ _TOKEN_BUDGET_BY_COMPLEXITY: dict[str, int] = {
 	"medium": 700_000,
 	"high": 1_000_000,
 }
+# Custo MEDIDO de uma passada aprovada, por tipo de step: mediana dos steps
+# aprovados sem retentativa nos 391 relatorios E2E (n entre 3 e 132 por tipo).
+# Serve para dimensionar o teto pelo plano que foi realmente aprovado, em vez de
+# por uma constante por complexidade -- ver apply_plan().
+_CUSTO_MEDIDO_POR_STEP: dict[str, int] = {
+	"design_review":       90_000,
+	"code_generation":     35_000,
+	"accessibility_audit": 35_000,
+	"agent_template":      29_000,
+	"agent_runner":        35_000,
+	"documentation":       27_000,
+	"test_generation":     26_000,
+	"assembly":            24_000,
+	"manifest_builder":    22_000,
+	"web_research":         3_000,
+	"user_clarification":       0,
+	"syntax_validation":        0,
+}
+_CUSTO_PADRAO_POR_STEP = 25_000
+
+# Tentativas esperadas por step. Medido: code_generation e agent_runner sao os
+# unicos que retentam com frequencia (produzem codigo que o Critic reprova); os
+# demais passam de primeira na maioria das vezes.
+_TENTATIVAS_ESPERADAS: dict[str, float] = {
+	"code_generation": 2.5,
+	"agent_runner":    2.5,
+}
+_TENTATIVAS_PADRAO = 1.4
+
+# Teto absoluto, independente do tamanho do plano. Nos relatorios, execucao que
+# passou de ~1,5 milhao nunca entregou nada -- a de 4,6 milhoes com 41
+# retentativas e o caso extremo. O orcamento existe para cortar loop, e este
+# numero e o ponto onde "caro" vira "nao vai terminar".
+_TETO_ABSOLUTO = 2_000_000
+
 _DEFAULT_COST_BUDGET_USD = 5.00
 _RATE_LIMIT_CALLS_PER_MINUTE = 60
 
@@ -122,6 +157,15 @@ class RateLimiter:
             time.sleep(0.1)
 
 
+def _teto_por_complexidade(complexity: str) -> int:
+    """Teto base por complexidade. Complexidade desconhecida cai em 'medium',
+    nunca no teto alto: na duvida o comportamento seguro e o mais restritivo."""
+    return _TOKEN_BUDGET_BY_COMPLEXITY.get(
+        (complexity or "").strip().lower(),
+        _TOKEN_BUDGET_BY_COMPLEXITY["medium"],
+    )
+
+
 class IterationBudget:
     """
     Gerenciador de budget de iterações.
@@ -150,14 +194,46 @@ class IterationBudget:
         duvida o comportamento seguro e o mais restritivo.
         """
         with self._lock:
-            teto = _TOKEN_BUDGET_BY_COMPLEXITY.get(
-                (complexity or "").strip().lower(),
-                _TOKEN_BUDGET_BY_COMPLEXITY["medium"],
-            )
+            teto = _teto_por_complexidade(complexity)
             self._limits.max_tokens = teto
             _logger.info(
                 "[BUDGET] Teto ajustado para complexity=%s: %d tokens",
                 complexity or "?", teto,
+            )
+            return teto
+
+    def apply_plan(self, step_types: list[str], complexity: str) -> int:
+        """
+        Dimensiona o teto pelo PLANO aprovado, nao so pela complexidade.
+
+        Motivo medido (2026-09-01): o plano real de um addon complexo tinha 27
+        steps, dos quais 8 de code_generation. Somando o custo medido de UMA
+        passada de cada um, o piso do plano era ~755 mil tokens -- contra um
+        teto de 1 milhao. Ou seja: o orcamento so caberia se absolutamente
+        nenhum step precisasse de uma segunda tentativa, o que nunca acontece.
+        A execucao morreu com 18 steps sem executar, e nao por desperdicio: por
+        aritmetica.
+
+        Um teto constante nao consegue servir ao mesmo tempo um plano de 7
+        steps e um de 27. Este calculo usa o custo medido por tipo e as
+        tentativas esperadas por tipo, e nunca fica ABAIXO do teto por
+        complexidade -- planos pequenos continuam com a folga que ja tinham.
+
+        O teto absoluto preserva o papel de disjuntor: um plano gigante nao
+        vira cheque em branco.
+        """
+        with self._lock:
+            piso = _teto_por_complexidade(complexity)
+            estimado = 0.0
+            for tipo in step_types or []:
+                custo = _CUSTO_MEDIDO_POR_STEP.get(tipo, _CUSTO_PADRAO_POR_STEP)
+                estimado += custo * _TENTATIVAS_ESPERADAS.get(tipo, _TENTATIVAS_PADRAO)
+            teto = min(_TETO_ABSOLUTO, max(piso, int(estimado)))
+            self._limits.max_tokens = teto
+            _logger.info(
+                "[BUDGET] Teto pelo plano: %d steps, complexity=%s, "
+                "estimado=%d, piso=%d -> %d tokens",
+                len(step_types or []), complexity or "?", int(estimado), piso, teto,
             )
             return teto
 

@@ -44,7 +44,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.66.0"
+MODULE_VERSION = "5.67.0"
 _logger = get_logger("orchestrator")
 
 MAX_RETRIES_DEFAULT = 3
@@ -558,7 +558,7 @@ class Orchestrator:
 
 	def _aplicar_orcamento_por_complexidade(self, plan: ExecutionPlan) -> None:
 		"""
-		Ajusta o teto de tokens a complexidade do plano.
+		Ajusta o teto de tokens ao PLANO -- complexidade e tamanho.
 
 		reset() roda no INICIO da execucao, antes de existir plano -- entao o
 		teto so pode ser dimensionado aqui. Ate 2026-08-29 havia um unico teto
@@ -567,14 +567,25 @@ class Orchestrator:
 		Ligado o freio, ele virou o fator limitante e matou dois pedidos
 		complexos aos ~800 mil, com 1 de 11 e 1 de 14 steps aprovados.
 
+		5.67.0: a constante por complexidade virou PISO, nao teto. Medido na
+		rodada de 2026-09-01: o plano real do addon complexo tinha 27 steps, e
+		somando o custo medido de UMA passada de cada um o piso do plano dava
+		~755 mil tokens contra um teto de 1 milhao -- so caberia se nenhum step
+		precisasse de segunda tentativa. A execucao morreu com 18 steps sem
+		executar, por aritmetica, nao por desperdicio. Uma constante nao serve
+		ao mesmo tempo um plano de 7 steps e um de 27; iteration_budget.
+		apply_plan() dimensiona pelo plano aprovado, com teto absoluto para
+		continuar sendo disjuntor.
+
 		Nunca levanta: falha aqui nao pode derrubar um plano valido.
 		"""
 		try:
 			complexidade = getattr(plan, "estimated_complexity", "") or "medium"
-			teto = iteration_budget.apply_complexity(complexidade)
+			tipos = [s.step_type for s in getattr(plan, "steps", []) or []]
+			teto = iteration_budget.apply_plan(tipos, complexidade)
 			_logger.info(
-				"[BUDGET] Plano %s (complexity=%s): teto de %d tokens.",
-				plan.plan_id, complexidade, teto,
+				"[BUDGET] Plano %s (complexity=%s, %d steps): teto de %d tokens.",
+				plan.plan_id, complexidade, len(tipos), teto,
 			)
 		except Exception as exc:  # pragma: no cover - defesa
 			_logger.warning("[BUDGET] Nao foi possivel ajustar o teto: %s", exc)

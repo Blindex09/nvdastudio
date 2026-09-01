@@ -28,7 +28,7 @@ from nvdastudio.core.orchestrator import (
 	_acumular_issues,
 )
 
-assert MODULE_VERSION == "5.66.0"
+assert MODULE_VERSION == "5.67.0"
 
 
 class TestAcumulacao:
