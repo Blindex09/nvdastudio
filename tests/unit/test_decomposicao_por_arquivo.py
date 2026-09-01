@@ -182,3 +182,86 @@ class TestGuardaNaoConfiaNoPlanner:
 	def test_sem_step_de_codigo_nao_levanta(self):
 		"""Divisao por zero seria o jeito mais bobo de derrubar o planejamento."""
 		assert oversized_code_generation_steps([], self._LAYOUT_8) == []
+
+
+class TestCamposNovosSaoObrigatoriosNoSchema:
+	"""
+	ACHADO CARO (2026-09-01): duas correcoes ficaram INERTES em producao porque
+	os campos que elas dependiam estavam declarados nas `properties` do schema e
+	FORA do `required`.
+
+	Com `additionalProperties: False`, campo fora do required e OPCIONAL -- e o
+	modelo simplesmente omitia os dois. Medido nos 486 prompts registrados de
+	duas rodadas E2E reais:
+
+	  - o marcador [NVDA-TOPICS:...] NUNCA apareceu em nenhum prompt;
+	  - o guarda de decomposicao contava zero arquivos e nunca disparava;
+	  - o custo por tentativa ficou IDENTICO antes e depois da correcao
+	    (103.031 -> 103.055 tokens nos steps caros).
+
+	Declarar no schema nao e o mesmo que ser preenchido. E a mesma classe dos
+	outros defeitos desta sessao -- mecanismo que existe e ninguem alimenta --
+	so que desta vez fui eu quem introduziu, duas vezes seguidas, depois de ja
+	ter diagnosticado o padrao.
+
+	Este teste existe para nao haver uma terceira.
+	"""
+
+	def _required_do_step(self) -> list[str]:
+		import inspect
+		import re
+
+		from nvdastudio.core import planner
+
+		src = inspect.getsource(planner)
+		i = src.find("_PLAN_SCHEMA =")
+		assert i != -1, "_PLAN_SCHEMA nao encontrado"
+		bloco = src[i:]
+		j = bloco.find('"required": ["step_id"')
+		assert j != -1, "required do sub-schema de step nao encontrado"
+		trecho = bloco[j:bloco.index("]", j)]
+		return re.findall(r'"(\w+)"', trecho)[1:]  # descarta a chave "required"
+
+	def test_target_files_e_obrigatorio(self):
+		assert "target_files" in self._required_do_step(), (
+			"target_files fora do required -- o modelo vai omitir e o guarda de "
+			"decomposicao volta a contar zero arquivos"
+		)
+
+	def test_nvda_topics_e_obrigatorio(self):
+		assert "nvda_topics" in self._required_do_step(), (
+			"nvda_topics fora do required -- o modelo vai omitir e todo step "
+			"volta a receber os 90 mil tokens de contexto completo"
+		)
+
+	def test_todo_campo_declarado_nas_properties_esta_no_required(self):
+		"""
+		A regra geral, para nao depender de lembrar campo a campo: com
+		`additionalProperties: False`, um campo opcional no schema de step e um
+		campo que o modelo nao preenche. Se algum dia houver um genuinamente
+		opcional, ele entra na excecao COM o motivo.
+		"""
+		import inspect
+		import re
+
+		from nvdastudio.core import planner
+
+		_OPCIONAIS_ACEITOS = {
+			# reasoning_effort e legitimamente omitivel: a propria descricao diz
+			# "Omita se null", e o orchestrator trata ausencia como sem thinking.
+			"reasoning_effort",
+		}
+
+		src = inspect.getsource(planner)
+		i = src.find("_PLAN_SCHEMA =")
+		bloco = src[i:]
+		ini = bloco.find('"step_id":')
+		fim = bloco.find('"required": ["step_id"')
+		props = set(re.findall(r'^\s*"(\w+)":\s*\{"type"', bloco[ini:fim], re.MULTILINE))
+
+		faltando = props - set(self._required_do_step()) - _OPCIONAIS_ACEITOS
+		assert not faltando, (
+			f"Campo(s) do step nas properties e fora do required: {sorted(faltando)}. "
+			"Com additionalProperties=False o modelo omite -- foi assim que "
+			"target_files e nvda_topics ficaram inertes em producao."
+		)

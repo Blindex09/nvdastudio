@@ -1801,10 +1801,18 @@ class Planner:
 									"depends_on":        {"type": "array", "items": {"type": "string"}, "description": "IDs dos steps que devem estar prontos antes deste. Ex: ['s1', 's2']"},
 									"context_from_steps":{"type": "array", "items": {"type": "string"}, "description": "IDs cujos outputs sao passados como contexto para este step. Geralmente igual a depends_on."},
 								},
+								# 2026-09-01: `target_files` e `nvda_topics` estavam declarados
+								# nas properties e FORA do required. Com additionalProperties=False,
+								# campo fora do required e opcional -- e o modelo simplesmente
+								# omitia os dois. Medido nos 486 prompts logados de 2 rodadas E2E:
+								# o marcador [NVDA-TOPICS:...] nunca apareceu, e o guarda de
+								# decomposicao contava zero arquivos. Duas correcoes ficaram INERTES
+								# por isso -- declarar no schema nao e o mesmo que ser preenchido.
 								"required": ["step_id", "step_type", "model_id",
 											 "description", "expected_output", "user_message",
 											 "msg_evaluating", "msg_retrying", "msg_escalating",
-											 "depends_on", "context_from_steps"],
+											 "depends_on", "context_from_steps",
+											 "target_files", "nvda_topics"],
 								"additionalProperties": False,
 							}
 						}

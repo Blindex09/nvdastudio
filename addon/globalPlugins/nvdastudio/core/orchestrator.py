@@ -43,7 +43,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.62.0"
+MODULE_VERSION = "5.63.0"
 _logger = get_logger("orchestrator")
 
 MAX_RETRIES_DEFAULT = 3
@@ -2919,7 +2919,23 @@ class Orchestrator:
 		# Marcador de topicos ANTES de tudo: code_generator.run() le do prompt
 		# (nao recebe o objeto do step). Mesmo canal do project_type_marker.
 		if step.step_type == "code_generation":
-			prompt = nvda_topics_marker(getattr(step, "nvda_topics", []) or []) + prompt
+			_topicos = list(getattr(step, "nvda_topics", []) or [])
+			# 5.63.0 -- RETRY NAO REENVIA O CONTEXTO INTEIRO.
+			#
+			# Medido em 2 rodadas E2E (486 prompts registrados): um step que
+			# falha 3x consome ~103 mil tokens POR TENTATIVA, quase todos de
+			# codigo-fonte do NVDA reenviado identico. Na tentativa 2 o modelo
+			# JA tem o codigo anterior e a lista de problemas acumulados: o que
+			# falta e corrigir um import, nao reaprender a API do NVDA.
+			#
+			# Diferente do escopo por topico (que depende do planner declarar, e
+			# nas rodadas reais ele NAO declarou), esta reducao e deterministica:
+			# so olha se ha problemas anteriores. Um topico desconhecido faz
+			# get_docs_code_generation() devolver apenas o core, que e o piso
+			# que todo arquivo de addon precisa.
+			if previous_issues and not _topicos:
+				_topicos = ["retry_core_apenas"]
+			prompt = nvda_topics_marker(_topicos) + prompt
 
 		if step.step_type in ("code_generation", "agent_runner", "assembly"):
 			_plano_atual = getattr(self, "_current_plan", None)

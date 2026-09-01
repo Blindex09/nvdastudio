@@ -104,9 +104,17 @@ class TestNvdaContextArquiteturaPatterns:
     """nvda_context.py 3.3.0 deve ter padroes de codigo arquiteturais."""
 
     def test_prompt_version(self):
-        """PROMPT_VERSION deve ser 3.26.0."""
+        """PROMPT_VERSION acompanha mudancas no contexto NVDA.
+
+        NOTA (2026-09-01): este assert NAO e coberto por
+        scripts/check_version_asserts.py, que so rastreia `MODULE_VERSION` --
+        nvda_context.py usa `PROMPT_VERSION`. Por isso ele passou batido na
+        verificacao de versoes e so quebrou na suite completa. Se o script
+        ganhar suporte a outros nomes de constante um dia, este comentario pode
+        sair.
+        """
         from nvdastudio.builder.nvda_context import PROMPT_VERSION
-        assert PROMPT_VERSION == "3.27.0"
+        assert PROMPT_VERSION == "3.32.0"
 
     def test_sistema_prompt_tem_arch_separacao(self):
         """NVDA_SYSTEM_PROMPT deve ter o padrao de separacao de camadas (ARCH-004)."""
