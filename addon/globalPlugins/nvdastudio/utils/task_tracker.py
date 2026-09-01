@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from .logger import get_logger
 
 _logger = get_logger("tasks")
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
 
 VALID_STATUSES = {"pending", "in_progress", "completed", "failed", "cancelled"}
 
@@ -28,6 +28,27 @@ class TaskItem:
     elapsed_ms: int = 0      # Tempo decorrido
     retries: int = 0
     issues: List[str] = field(default_factory=list)
+
+
+def _set_status(item: "TaskItem", novo: str) -> None:
+    """
+    Unico ponto que muda o status de uma tarefa, validando contra VALID_STATUSES.
+
+    2026-08-30: `VALID_STATUSES` estava declarado e NUNCA era lido -- os status
+    eram atribuidos como strings literais em start/complete/cancel, e comparados
+    como literais nos filtros e contagens. Um erro de digitacao ("complete" em
+    vez de "completed") criaria em silencio um status que nenhum filtro casa: a
+    tarefa sumiria dos "pendentes" e dos "concluidos" ao mesmo tempo.
+
+    Nao ha caminho de entrada do usuario aqui, entao o risco nao e de runtime --
+    e de edicao futura. Um conjunto de valores validos que ninguem consulta nao
+    e contrato, e comentario.
+    """
+    if novo not in VALID_STATUSES:
+        raise ValueError(
+            f"status invalido: {novo!r}. Validos: {sorted(VALID_STATUSES)}"
+        )
+    item.status = novo
 
 
 class TaskTracker:
@@ -68,12 +89,12 @@ class TaskTracker:
             # Primeiro, finaliza qualquer tarefa in_progress atual
             for item in self._items:
                 if item.status == "in_progress":
-                    item.status = "completed"
+                    _set_status(item, "completed")
 
             # Marca a nova
             for item in self._items:
                 if item.task_id == task_id:
-                    item.status = "in_progress"
+                    _set_status(item, "in_progress")
                     _logger.info("[TASK] Iniciada: %s", task_id)
                     return item
             return None
@@ -83,7 +104,7 @@ class TaskTracker:
         with self._lock:
             for item in self._items:
                 if item.task_id == task_id:
-                    item.status = "completed" if success else "failed"
+                    _set_status(item, "completed" if success else "failed")
                     _logger.info("[TASK] %s: %s", "Concluida" if success else "Falhou", task_id)
                     return item
             return None
@@ -93,7 +114,7 @@ class TaskTracker:
         with self._lock:
             for item in self._items:
                 if item.task_id == task_id:
-                    item.status = "cancelled"
+                    _set_status(item, "cancelled")
                     _logger.info("[TASK] Cancelada: %s", task_id)
                     return item
             return None

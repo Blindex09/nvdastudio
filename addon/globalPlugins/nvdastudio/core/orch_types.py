@@ -147,7 +147,12 @@ def compute_progress(
 	# 1. Steps aprovados
 	prev_approved = sum(1 for r in prev.step_results if r.approved)
 	curr_approved = sum(1 for r in curr.step_results if r.approved)
-	if curr_approved > prev_approved:
+	# O threshold estava declarado no bloco acima e a condicao era `>` hardcoded
+	# -- com o valor 1 os dois sao equivalentes, entao o comportamento sempre
+	# esteve certo, mas o "botao" nao estava ligado no fio: tunar a constante
+	# para 2 nao teria efeito nenhum, apesar do comentario dizer "tunados".
+	# Achado na varredura de mecanismos orfaos de 2026-08-30.
+	if curr_approved - prev_approved >= _PROGRESS_MIN_APPROVED_DELTA:
 		score += 40.0
 		reasons.append(f"+{curr_approved - prev_approved} aprovado(s)")
 	elif curr_approved < prev_approved:

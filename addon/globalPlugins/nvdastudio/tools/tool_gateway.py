@@ -1,16 +1,27 @@
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ..utils.logger import get_logger
+from ..utils.timeouts import get_tool_timeout
 
 _logger = get_logger("tool_gateway")
-MODULE_VERSION = "3.2.0"
+MODULE_VERSION = "3.3.0"
 
 # Limites
 _MAX_CALLS_PER_MINUTE = 10
-_MAX_TOOL_TIMEOUT = 120  # segundos
+# 2026-08-30: `_MAX_TOOL_TIMEOUT = 120` ficava aqui declarado e NUNCA era
+# lido -- o comentario do passo 6 prometia "executa com timeout e retry" e
+# `_execute_with_retry()` chamava o handler direto, sem timeout nenhum. Uma
+# tool travada pendurava o pipeline indefinidamente: para o usuario cego,
+# nada acontece, nada e dito, e ele nao tem como saber se deve esperar.
+#
+# A constante foi REMOVIDA em vez de ligada: `utils/timeouts.py` ja e a fonte
+# de verdade (get_tool_timeout, com override por tool), e o executor irmao
+# em tool_system/executor.py ja a consome. Manter um terceiro numero local
+# seria repor a duplicacao que a Regra 5 proibe.
 _MAX_RETRIES = 1
 
 # Tools que precisam de approval
@@ -54,6 +65,10 @@ class ToolGateway:
         self._call_history: List[ToolCall] = []          # Historico de chamadas
         self._rate_tracker: Dict[str, List[float]] = {}  # tool -> timestamps
         self._lock = threading.Lock()
+        # Pool dedicado para aplicar TIMEOUT por tool. Threads daemon: em
+        # timeout a tool travada continua viva ate terminar sozinha, mas nao
+        # impede o NVDA de fechar -- o que importa e o pipeline seguir.
+        self._pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="gateway_tool")
 
         # Callbacks de UI
         self._on_tool_start: Optional[Callable[[str], None]] = None
@@ -208,7 +223,7 @@ class ToolGateway:
 
         # 6. Executa o handler local com timeout e retry.
         start_time = time.time()
-        result, error = self._execute_with_retry(tool_info["handler"], args)
+        result, error = self._execute_with_retry(tool_info["handler"], args, name)
         elapsed_ms = int((time.time() - start_time) * 1000)
 
         # 8. Registra chamada
@@ -283,14 +298,39 @@ class ToolGateway:
         return False
 
     def _execute_with_retry(
-        self, handler: Callable[..., Any], args: Dict[str, Any]
+        self, handler: Callable[..., Any], args: Dict[str, Any],
+        tool_name: str = "",
     ) -> Tuple[Any, Optional[str]]:
-        """Executa handler com retry automatico."""
+        """
+        Executa handler com TIMEOUT e retry automatico.
+
+        O timeout vem de `utils/timeouts.get_tool_timeout()` -- mesma fonte que
+        o executor de tool_system/ ja usava. Antes de 2026-08-30 esta funcao
+        chamava `handler(**args)` direto: uma tool travada pendurava o pipeline
+        para sempre, sem sinal nenhum para o usuario.
+
+        O handler roda em thread separada porque nao ha como interromper uma
+        chamada sincrona em Python de fora dela. Em timeout a thread continua
+        viva ate terminar sozinha (o pool e daemon), mas o PIPELINE segue --
+        que e o ponto: nao deixar o usuario esperando indefinidamente.
+        """
+        timeout_s = get_tool_timeout(tool_name) if tool_name else get_tool_timeout("")
         last_error = None
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                result = handler(**args)
+                future = self._pool.submit(handler, **args)
+                result = future.result(timeout=timeout_s)
                 return result, None
+            except FuturesTimeout:
+                future.cancel()
+                last_error = f"timeout apos {timeout_s:.0f}s"
+                _logger.warning(
+                    "[GATEWAY] Tool %s excedeu %.0fs (tentativa %d).",
+                    tool_name or "?", timeout_s, attempt + 1,
+                )
+                if attempt >= _MAX_RETRIES:
+                    break
+                time.sleep(0.5)
             except Exception as e:
                 last_error = str(e)
                 if attempt < _MAX_RETRIES:
