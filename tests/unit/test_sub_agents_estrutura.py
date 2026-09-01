@@ -1305,7 +1305,7 @@ class TestDesignReviewTokenAccumulation:
 
     def test_versao_design_review_e_2_4_0(self):
         from nvdastudio.sub_agents.design_review_agent import MODULE_VERSION
-        assert MODULE_VERSION == "2.14.0"
+        assert MODULE_VERSION == "2.15.0"
 
 # ==========================================================================
 # Testes de contexto especializado — v1.1.0 dos sub-agentes sem docs

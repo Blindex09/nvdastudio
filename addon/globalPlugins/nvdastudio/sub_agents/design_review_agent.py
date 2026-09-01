@@ -6,11 +6,14 @@ from ..builder.nvda_context import get_docs_design_review
 from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
 
 _logger = get_logger("design_review_agent")
-MODULE_VERSION = "2.14.0"
+MODULE_VERSION = "2.15.0"
 
 # 2.12.0: catalogo completo de prefixos de rule ID usados no projeto
 # (nvda_context.py/rule_registry.py) -- usado pelos 2 reforcos mecanicos
 # abaixo (_dedupe_repeated_rule_mentions/_strip_rule_ids).
+# Marca interna: o ID vira um token unico para que a limpeza da pontuacao
+# saiba onde ele estava. Nunca aparece na saida final.
+_MARCA_ID = chr(0xE000) + "ID" + chr(0xE001)  # area de uso privado: nao aparece em texto real
 _RULE_ID_RE = re.compile(r"\b(?:NVDA|WX-A11Y|ARCH|NVDA-UX)-\d+\b")
 
 
@@ -55,8 +58,38 @@ def _strip_rule_ids(advocate_output: str) -> str:
 	a correcao mais segura e remover qualquer ID que escape -- elimina a
 	classe inteira de alucinacao de rule ID nesta secao, nao so o caso
 	observado.
+
+	2.15.0 -- REMOVER O ID NAO PODE DEIXAR O ESQUELETO DELE.
+
+	A versao anterior apagava so o identificador e deixava a pontuacao que
+	SO existia para segura-lo:
+
+	    "o usuario precisa (NVDA-011) de foco"  ->  "o usuario precisa () de foco"
+	    "Restricao NVDA-016: escrita em disco"  ->  "Restricao : escrita em disco"
+
+	Medido na rodada E2E de 2026-09-01 (14h): o Critic reprovou a revisao de
+	design nos DOIS addons por causa disso -- "as restricoes do User Advocate
+	aparecem com os IDs vazios" e "a secao do User Advocate perdeu os
+	identificadores das regras". Custo: 116.158 e 158.478 tokens num addon,
+	129.028 e 125.059 no outro. Um reforco mecanico que produzia texto
+	quebrado, e o texto quebrado reprovava o step.
 	"""
-	return _RULE_ID_RE.sub("", advocate_output)
+	texto = _RULE_ID_RE.sub(_MARCA_ID, advocate_output)
+
+	# Delimitador que existia so para embrulhar o ID sai junto com ele.
+	for padrao, troca in (
+		(r"\s*[(\[]\s*" + _MARCA_ID + r"(?:\s*[,;e]\s*" + _MARCA_ID + r")*\s*[)\]]", ""),
+		(r"\s*" + _MARCA_ID + r"\s*:", ""),
+		(r"(?:\s*[,;]?\s*(?:e|and)?\s*)?" + _MARCA_ID, ""),
+	):
+		texto = re.sub(padrao, troca, texto)
+
+	# Sobras: espaco duplo, espaco antes de pontuacao, "regras  se aplicam".
+	texto = re.sub(r"[ 	]{2,}", " ", texto)
+	texto = re.sub(r"\s+([,.;:!?])", lambda mm: mm.group(1), texto)
+	texto = re.sub(r"\(\s*\)|\[\s*\]", "", texto)
+	return texto
+
 
 _REASONING_CHALLENGER: dict = {}
 _REASONING_GUARDIAN: dict   = {}
