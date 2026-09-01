@@ -7,7 +7,11 @@ from ..builder.addon_builder import _PIP_ALIASES, _NVDA_MODULES, _STDLIB_MODULES
 from ..ai.llm_factory import create_llm_client
 from ..ai.anthropic_memory_tool import handle_memory_command
 from ..utils.logger import get_logger
-from ..builder.nvda_context import NVDA_SYSTEM_PROMPT, get_docs_code_generation
+from ..builder.nvda_context import (
+	NVDA_SYSTEM_PROMPT,
+	extract_nvda_topics,
+	get_docs_code_generation,
+)
 from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
 from ..utils.engineering_principles import ENGINEERING_CODEGEN_PROMPT_TEXT
 from ..memory.session_memory import memory
@@ -646,7 +650,13 @@ def run(prompt: str, model_id: str, reasoning_params: dict, cache_key: str | Non
 		_generation_system = CTRL_CLIENT_SYSTEM_PROMPT
 		full_system = CTRL_CLIENT_SYSTEM_PROMPT + "\n" + _TOOL_PREAMBLE_INSTRUCTION
 	else:
-		_code_docs = get_docs_code_generation()
+		# Contexto NVDA proporcional ao que ESTE step precisa. Os topicos vem
+		# declarados no plano e chegam pelo marcador no prompt (o sub-agente nao
+		# recebe o objeto do step). Sem marcador -> contexto completo, que era o
+		# comportamento anterior: contexto faltando custa mais que contexto
+		# sobrando. Medido em 2026-08-30: os 26 arquivos-fonte custavam ~90 mil
+		# tokens FIXOS por tentativa; um step com escopo declarado paga 27-44 mil.
+		_code_docs = get_docs_code_generation(topics=extract_nvda_topics(prompt))
 		_generation_system = _SYSTEM
 		full_system = NVDA_SYSTEM_PROMPT + "\n\n" + _SYSTEM + "\n\n" + _code_docs + "\n" + _TOOL_PREAMBLE_INSTRUCTION
 

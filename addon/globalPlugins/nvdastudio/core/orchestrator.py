@@ -29,6 +29,7 @@ from .orch_types import (
 )
 from ..tools.domain_researcher import DomainResearcher
 from ..builder.context_compressor import compressor as context_compressor
+from ..builder.nvda_context import nvda_topics_marker
 from ..memory.agent_memory import agent_memory as agent_mem
 # Novos módulos v2.1.0 (Hermes-inspired)
 from ..tools.skills_hub import get_skill
@@ -2915,6 +2916,11 @@ class Orchestrator:
 		# addon_builder._infer_python_filename(), justamente o unico nome que o
 		# NVDA nunca carrega dentro de um pacote. Injetado so nos steps que
 		# escrevem arquivo; nos demais seria ruido no contexto.
+		# Marcador de topicos ANTES de tudo: code_generator.run() le do prompt
+		# (nao recebe o objeto do step). Mesmo canal do project_type_marker.
+		if step.step_type == "code_generation":
+			prompt = nvda_topics_marker(getattr(step, "nvda_topics", []) or []) + prompt
+
 		if step.step_type in ("code_generation", "agent_runner", "assembly"):
 			_plano_atual = getattr(self, "_current_plan", None)
 			if _plano_atual is not None:

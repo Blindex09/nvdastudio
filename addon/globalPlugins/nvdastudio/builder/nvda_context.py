@@ -8,7 +8,7 @@ from ..utils.project_policy import (
 	PROJECT_SUPPORTED_RANGE,
 )
 
-PROMPT_VERSION = "3.27.0"
+PROMPT_VERSION = "3.32.0"
 
 # ------------------------------------------------------------------
 # Tabela de versoes do projeto.
@@ -2190,13 +2190,110 @@ NVDA_ADDON_CHAT_SYSTEM_LITE: str = NVDA_ADDON_CHAT_SYSTEM[:_CHAT_SYSTEM_MAX_CHAR
 # Versao: 2.9.0
 # ------------------------------------------------------------------
 
-def get_docs_code_generation(docs_dir: str = _NVDA_DOCS_DIR) -> str:
+# ---------------------------------------------------------------------------
+# Contexto NVDA por TOPICO, para geracao de codigo.
+#
+# MOTIVO (medido em 2026-08-30): `get_docs_code_generation()` injetava os 26
+# arquivos-fonte SEMPRE, em toda chamada -- 362 mil chars, ~90 mil tokens. Com o
+# _SYSTEM do gerador, o custo FIXO por tentativa passava de 100 mil tokens.
+#
+# Nos relatorios E2E reais isso aparecia assim: um unico code_generation que
+# falhava 3 vezes consumia 412 mil tokens -- 41% do orcamento inteiro do addon --
+# antes de qualquer trabalho util. E o step que geraria o `__init__.py` nunca
+# chegava a rodar, o que fazia o addon ser recusado por falta de ponto de
+# entrada. O gargalo nao era o modelo nem o loop: era o pedagio de entrada.
+#
+# Pior: a decomposicao por arquivo (planner 2.33.0), correta em si, MULTIPLICA
+# esse custo -- cada step novo paga o pedagio de novo.
+#
+# Um step que gera `gemini/client.py` (cliente HTTP puro) nao precisa de
+# speech/commands, tones, aria nem documentBase. Um que gera `settings_panel.py`
+# precisa de gui/settingsDialogs e config, nao de inputCore.
+#
+# QUEM DECIDE (Regra 7): a IA declara os topicos no plano (`step.nvda_topics`);
+# este modulo apenas MONTA o que foi declarado. Sem declaracao, devolve tudo --
+# mesmo comportamento de antes, porque o custo de um contexto faltando e maior
+# que o de um contexto sobrando.
+# ---------------------------------------------------------------------------
+
+# Sempre incluidos: os arquivos que QUALQUER arquivo de addon precisa conhecer,
+# todos pequenos. O piso de contexto, nao um topico.
+_DOCS_CORE: tuple[str, ...] = (
+	"globalPluginHandler.py", "addonHandler/__init__.py", "api.py",
+	"ui.py", "NVDAState.py", "queueHandler.py", "config/configSpec.py",
+	"TEMPLATE: buildVars.py",
+)
+
+NVDA_DOC_TOPICS: dict[str, tuple[str, ...]] = {
+	# Atalhos, scripts e captura de teclado.
+	"scripts": ("scriptHandler.py", "inputCore.py", "keyboardHandler.py", "globalCommands.py"),
+	# Qualquer interface wx: dialogos, paineis, painel de configuracoes do NVDA.
+	"gui": ("gui/__init__.py", "gui/guiHelper.py", "gui/message.py", "gui/settingsDialogs.py"),
+	# Persistencia de preferencias.
+	"config": ("config/__init__.py",),
+	# Navegacao pela arvore de objetos e eventos do NVDA.
+	"objects": ("NVDAObjects/__init__.py", "baseObject.py", "eventHandler.py",
+				"documentBase.py", "aria.py"),
+	# Fala, prioridades e sinais sonoros.
+	"speech": ("speech/commands.py", "speech/priorities.py", "tones.py"),
+	# Addon especifico de aplicativo.
+	"appmodule": ("appModuleHandler.py",),
+	# Timers, restart, janelas e extension points.
+	"system": ("core.py", "windowUtils.py", "extensionPoints/__init__.py"),
+}
+
+
+_NVDA_TOPICS_MARKER = "[NVDA-TOPICS:"
+
+
+def nvda_topics_marker(topics: list[str] | None) -> str:
 	"""
-	Contexto para CodeGenerator: geracao de codigo Python de addon NVDA.
-	Cobre: scriptHandler, globalPluginHandler, appModuleHandler, api,
-	eventHandler, gui/guiHelper, tones, config, NVDAState, queueHandler,
-	extensionPoints, NVDAObjects/__init__, keyboardHandler, baseObject,
-	speech/commands, ui, windowUtils.
+	Marcador de roteamento deterministico prependido ao prompt do step.
+
+	Mesmo padrao ja usado por `controller_client_context.project_type_marker()`:
+	o orchestrator sabe o topico (esta no plano), o sub-agente nao recebe o
+	objeto do step -- so o prompt. O marcador e o canal.
+
+	Lista vazia devolve string vazia: sem marcador, o gerador injeta TUDO, que e
+	o comportamento seguro de antes.
+	"""
+	limpos = [str(t).strip().lower() for t in (topics or []) if str(t).strip()]
+	if not limpos:
+		return ""
+	return f"{_NVDA_TOPICS_MARKER}{','.join(limpos)}]" + chr(10)
+
+
+def extract_nvda_topics(prompt: str) -> list[str]:
+	"""
+	Le o marcador do prompt. Deterministico (Regra 5), nunca decisao do LLM.
+
+	Ausente ou malformado devolve lista vazia -> contexto completo. Nunca
+	levanta: uma falha aqui trocaria "prompt grande" por "step morto".
+	"""
+	if not prompt or _NVDA_TOPICS_MARKER not in prompt:
+		return []
+	try:
+		inicio = prompt.index(_NVDA_TOPICS_MARKER) + len(_NVDA_TOPICS_MARKER)
+		fim = prompt.index("]", inicio)
+		return [t.strip() for t in prompt[inicio:fim].split(",") if t.strip()]
+	except ValueError:
+		return []
+
+
+def get_docs_code_generation(
+	docs_dir: str = _NVDA_DOCS_DIR, topics: list[str] | None = None,
+) -> str:
+	"""
+	Contexto para CodeGenerator: codigo-fonte real do NVDA.
+
+	topics: nomes de NVDA_DOC_TOPICS declarados pelo plano para ESTE step. O
+	grupo _DOCS_CORE entra sempre. `None` ou lista vazia devolve TUDO -- o
+	comportamento anterior, e o padrao seguro: contexto faltando custa mais caro
+	que contexto sobrando, e um planner que nao declarou topicos nao deve gerar
+	codigo as cegas.
+
+	Topico desconhecido e ignorado em silencio: nome errado vindo do modelo nao
+	pode derrubar a geracao.
 	"""
 	src = os.path.join(docs_dir, "nvda", "source")
 	pairs = [
@@ -2242,13 +2339,19 @@ def get_docs_code_generation(docs_dir: str = _NVDA_DOCS_DIR) -> str:
 		("speech/priorities.py",                os.path.join(src, "speech", "priorities.py"),         0),
 		("TEMPLATE: buildVars.py",              os.path.join(docs_dir, "AddonTemplate-master", "buildVars.py"), 0),
 	]
+
+	if topics:
+		permitidos = set(_DOCS_CORE)
+		for topico in topics:
+			permitidos.update(NVDA_DOC_TOPICS.get(str(topico).strip().lower(), ()))
+		pairs = [t for t in pairs if t[0] in permitidos]
+
 	sections = []
 	for label, path, max_c in pairs:
 		content = _read_docs_file(path, max_chars=max_c) if max_c else _read_docs_file(path)
 		if content:
 			sections.append(f"=== NVDA SOURCE: {label} ===\n{content}")
 	return "\n\n".join(sections)
-
 
 def get_docs_accessibility_audit(docs_dir: str = _NVDA_DOCS_DIR) -> str:
 	"""

@@ -12,7 +12,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.34.0"
+MODULE_VERSION = "2.35.0"
 _logger = get_logger("planner")
 
 PLANNER_MODEL = "alto"
@@ -492,6 +492,16 @@ class ExecutionStep:
 	# arquivos o step tentava produzir de uma vez. Os caros eram reprovados por
 	# entrega parcial ("nao foi gerado o arquivo solicitado gemini_service.py").
 	target_files: list[str] = field(default_factory=list)
+	# Topicos de contexto NVDA que ESTE step precisa (ver
+	# builder/nvda_context.NVDA_DOC_TOPICS). Medido em 2026-08-30: injetar os
+	# 26 arquivos-fonte do NVDA em toda chamada custava ~90 mil tokens FIXOS
+	# por tentativa. Um code_generation que falhava 3x queimava 412 mil tokens
+	# -- 41% do orcamento do addon -- antes de qualquer trabalho util, e o step
+	# que geraria o __init__.py nunca chegava a rodar.
+	#
+	# Vazio = contexto COMPLETO (comportamento anterior). Contexto faltando
+	# custa mais caro que contexto sobrando, entao o padrao seguro e tudo.
+	nvda_topics: list[str] = field(default_factory=list)
 
 	def __post_init__(self):
 		# Sincroniza depends_on e dependencies — aceita ambos os nomes
@@ -1786,6 +1796,7 @@ class Planner:
 									"msg_evaluating":    {"type": "string", "description": "Mensagem enquanto o resultado e verificado. Ex: 'Conferindo se o codigo segue as diretrizes do NVDA...'"},
 									"msg_retrying":      {"type": "string", "description": "Mensagem ao tentar novamente. Ex: 'Ajustando o codigo com base nos problemas encontrados...'"},
 									"msg_escalating":    {"type": "string", "description": "Mensagem ao usar analise mais aprofundada. Ex: 'Aplicando revisao mais cuidadosa para resolver os problemas...'"},
+									"nvda_topics":      {"type": "array", "items": {"type": "string"}, "description": "Topicos de contexto NVDA que ESTE step precisa para gerar seu(s) arquivo(s). Valores validos: scripts (atalhos, @script, captura de teclado), gui (dialogos wx, SettingsPanel), config (persistir preferencias em config.conf), objects (arvore de objetos e eventos do NVDA), speech (fala, prioridades, tons), appmodule (addon de aplicativo especifico), system (timers, restart, extension points). Declare SO os que o arquivo realmente usa: cada topico a mais custa dezenas de milhares de tokens em TODA tentativa deste step, e um step que estoura o orcamento impede os seguintes de rodar. Um cliente HTTP puro geralmente nao precisa de nenhum; um settings_panel.py precisa de gui e config; o __init__.py do plugin costuma precisar de scripts e gui. Lista vazia faz o step receber o contexto COMPLETO (mais caro, use so se estiver realmente em duvida)."},
 									"target_files":      {"type": "array", "items": {"type": "string"}, "description": "Arquivos que ESTE step deve produzir, escolhidos de expected_files. OBRIGATORIO para step_type='code_generation': liste no MAXIMO 2 arquivos por step. Um step que tenta produzir uma feature inteira de uma vez (servico + dialogo + painel de configuracao + testes) e reprovado por entrega parcial e custa 3x mais que um step focado -- medido em execucao real. Divida por ARQUIVO, nao por funcionalidade: cada arquivo do layout vira um step, e os steps dependem uns dos outros via depends_on. Deixe vazio para steps que nao escrevem arquivo (web_research, design_review, accessibility_audit)."},
 									"depends_on":        {"type": "array", "items": {"type": "string"}, "description": "IDs dos steps que devem estar prontos antes deste. Ex: ['s1', 's2']"},
 									"context_from_steps":{"type": "array", "items": {"type": "string"}, "description": "IDs cujos outputs sao passados como contexto para este step. Geralmente igual a depends_on."},
