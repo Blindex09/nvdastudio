@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.6.0"
+MODULE_VERSION = "1.7.0"
 _logger = get_logger("code_sandbox")
 
 _SANDBOX_TIMEOUT = 10  # segundos
@@ -636,9 +636,51 @@ class CodeSandbox:
             if not rel.replace("\\", "/").endswith(".py") or not conteudo:
                 continue
             novo = self._ruff_fix_um_arquivo(rel, conteudo, timeout)
-            if novo is not None and novo != conteudo:
-                corrigidos[rel] = novo
+            if novo is None or novo == conteudo:
+                continue
+            # A correcao NUNCA pode piorar o arquivo. O `--fix` do ruff remove
+            # import "nao usado", e ha import que existe por EFEITO COLATERAL --
+            # verificado: `import gui` sozinho e apagado. Se a remocao deixar
+            # algum nome indefinido que antes nao existia, o arquivo volta ao
+            # original: trocar um aviso de estilo por um NameError em execucao no
+            # NVDA do usuario seria um pessimo negocio.
+            if self._nomes_indefinidos(rel, novo, timeout) > self._nomes_indefinidos(
+                rel, conteudo, timeout,
+            ):
+                _logger.warning(
+                    "[LINT-FIX] %s: a correcao criaria nome indefinido -- descartada.",
+                    rel,
+                )
+                continue
+            corrigidos[rel] = novo
         return corrigidos
+
+    def _nomes_indefinidos(
+        self, rel: str, conteudo: str, timeout: int | None = None,
+    ) -> int:
+        """Quantos F821/F823 o ruff acha neste conteudo. -1 quando nao da para
+        saber (ruff ausente, timeout) -- e nesse caso a comparacao nunca acusa
+        piora, porque duas medidas desconhecidas sao iguais."""
+        with tempfile.TemporaryDirectory(prefix="nvdastudio_undef_") as tmpdir:
+            cfg = os.path.join(tmpdir, "ruff.toml")
+            with open(cfg, "w", encoding="utf-8") as f:
+                f.write(_GENERATED_RUFF_CONFIG)
+            try:
+                proc = subprocess.run(
+                    [sys.executable, "-m", "ruff", "check", "--no-cache",
+                     "--config", cfg, "--select", "F821,F823",
+                     "--output-format=concise", "--stdin-filename", rel, "-"],
+                    input=conteudo, capture_output=True, text=True,
+                    timeout=timeout or _LINT_TIMEOUT,
+                )
+            except (subprocess.TimeoutExpired, OSError):
+                return -1
+        if proc.returncode not in (0, 1):
+            return -1
+        return sum(
+            1 for linha in proc.stdout.splitlines()
+            if "F821" in linha or "F823" in linha
+        )
 
     def _ruff_fix_um_arquivo(
         self, rel: str, conteudo: str, timeout: int | None = None,

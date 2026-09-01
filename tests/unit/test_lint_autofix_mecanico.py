@@ -137,3 +137,64 @@ class TestCorrecaoVoltaParaOOutput:
 		assert i_fix < i_lint, (
 			"a correcao mecanica precisa rodar ANTES do lint que reprova"
 		)
+
+
+class TestGuardaContraPiorar:
+	"""
+	O autofix MODIFICA codigo que vai para o usuario. Um mecanismo desses
+	precisa de uma garantia de que nunca piora o arquivo.
+
+	Verificado: `--fix` do ruff remove `import gui` quando o nome nao e
+	referenciado -- e em addon NVDA existe import por efeito colateral. Quando a
+	remocao deixa um nome INDEFINIDO que antes nao existia, o arquivo volta ao
+	original: trocar um aviso de lint por um NameError em execucao no NVDA do
+	usuario seria um pessimo negocio.
+	"""
+
+	def test_contador_de_nomes_indefinidos(self):
+		s = CodeSandbox()
+		limpo = "import json" + NL + "X = json.dumps({})" + NL
+		quebrado = "X = Client()" + NL
+		assert s._nomes_indefinidos("globalPlugins/A/m.py", limpo) == 0
+		assert s._nomes_indefinidos("globalPlugins/A/m.py", quebrado) >= 1
+
+	def test_gettext_nao_conta_como_indefinido(self):
+		"""`_` e injetado por addonHandler.initTranslation(); sem a config
+		curada, TODO addon traduzido pareceria cheio de nomes indefinidos."""
+		s = CodeSandbox()
+		assert s._nomes_indefinidos("globalPlugins/A/m.py", 'X = _("oi")' + NL) == 0
+
+	def test_correcao_que_criaria_nome_indefinido_e_descartada(self, monkeypatch):
+		"""Prova que o guarda DISPARA -- nao basta ele existir."""
+		s = CodeSandbox()
+		original = "import json" + NL + "X = json.dumps({})" + NL
+		monkeypatch.setattr(
+			CodeSandbox, "_ruff_fix_um_arquivo",
+			lambda self, rel, conteudo, timeout=None: "X = json.dumps({})" + NL,
+		)
+		out = s.lint_autofix({"globalPlugins/A/m.py": original})
+		assert out["globalPlugins/A/m.py"] == original, (
+			"a correcao removeu o import de um nome ainda usado e passou"
+		)
+
+	def test_correcao_boa_continua_passando_pelo_guarda(self, monkeypatch):
+		s = CodeSandbox()
+		original = "import os" + NL + "import json" + NL + "X = json.dumps({})" + NL
+		limpo = "import json" + NL + "X = json.dumps({})" + NL
+		monkeypatch.setattr(
+			CodeSandbox, "_ruff_fix_um_arquivo",
+			lambda self, rel, conteudo, timeout=None: limpo,
+		)
+		assert s.lint_autofix({"globalPlugins/A/m.py": original})["globalPlugins/A/m.py"] == limpo
+
+	def test_ruff_ausente_nao_bloqueia_nem_altera(self, monkeypatch):
+		"""-1 em ambas as medidas: duas incognitas nao acusam piora, e o
+		conteudo segue intacto porque nao houve correcao."""
+		s = CodeSandbox()
+		monkeypatch.setattr(
+			CodeSandbox, "_nomes_indefinidos",
+			lambda self, rel, conteudo, timeout=None: -1,
+		)
+		src = "import os" + NL + "X = 1" + NL
+		out = s.lint_autofix({"globalPlugins/A/m.py": src})
+		assert isinstance(out["globalPlugins/A/m.py"], str)
