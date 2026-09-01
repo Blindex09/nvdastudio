@@ -33,7 +33,7 @@ class _MemoriaFake:
 
 
 def test_versao():
-	assert MODULE_VERSION == "4.11.0"
+	assert MODULE_VERSION == "4.12.0"
 
 
 def test_run_nao_grava_mais_no_cache():

@@ -1,3 +1,4 @@
+import os
 import re
 import threading
 from typing import Optional
@@ -17,9 +18,11 @@ from ._base import (
 )
 
 _logger = get_logger("web_researcher")
-MODULE_VERSION = "4.11.0"
+MODULE_VERSION = "4.12.0"
 
 # Cache: registros com menos de N dias sao considerados frescos.
+# Opt-in explicito para busca real sob pytest. Ver o comentario em run().
+_ENV_BUSCA_REAL = "NVDASTUDIO_BUSCA_REAL"
 _CACHE_MAX_AGE_DAYS: int = 7
 
 # Mesma string literal de core/orchestrator.py::_build_step_prompt() -- unico
@@ -529,9 +532,30 @@ def run(
 	_logger.info("[WEB_SEARCH] pesquisando fonte atual para '%s'", topic[:60])
 	# A suite isolada nao acessa a rede, exceto quando o proprio teste injeta
 	# uma funcao de busca simulada. Isso nao interpreta o texto da consulta.
+	#
+	# 4.12.0 -- O GUARDA ERA LARGO DEMAIS E INVALIDOU MEDICAO.
+	#
+	# "pytest esta importado" pegava tambem os testes E2E, que existem
+	# justamente para exercitar o pipeline de verdade e carregam chaves de API
+	# reais. Resultado medido na rodada 5: 43 buscas iniciadas, 3 sinteses
+	# concluidas -- 40 cairam no fallback por conhecimento do modelo.
+	#
+	# Consequencia: em SEIS rodadas E2E, todo step de web_research respondeu
+	# so com o conhecimento de treino, e foi reprovado sempre pelo mesmo
+	# motivo -- "usa o pacote legado google-generativeai". A conclusao obvia
+	# ("a pesquisa e ruim") estava medindo o arnes de teste, nao o produto.
+	#
+	# Agora e opt-in EXPLICITO: sem a variavel, teste nenhum vai a rede (o
+	# padrao seguro continua); com ela, o E2E mede o que o usuario teria.
 	import sys
 	search_is_real = getattr(on_demand_web_search, "__module__", "") == __name__
-	if ("pytest" in sys.modules or "unittest" in sys.modules) and search_is_real:
+	em_teste = "pytest" in sys.modules or "unittest" in sys.modules
+	busca_liberada = os.environ.get(_ENV_BUSCA_REAL, "").strip() == "1"
+	if em_teste and search_is_real and not busca_liberada:
+		_logger.info(
+			"[WEB_SEARCH] busca real desligada sob teste (defina %s=1 para "
+			"habilitar). Caindo no conhecimento do modelo.", _ENV_BUSCA_REAL,
+		)
 		raw_web = ""
 	else:
 		raw_web = on_demand_web_search(prompt, model_id=model_id)
