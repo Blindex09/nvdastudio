@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.5.0"
+MODULE_VERSION = "1.6.0"
 _logger = get_logger("code_sandbox")
 
 _SANDBOX_TIMEOUT = 10  # segundos
@@ -599,6 +599,78 @@ class CodeSandbox:
             config_filename="ruff.toml",
             config_content=_GENERATED_RUFF_CONFIG,
         )
+
+    def lint_autofix(
+        self, files: dict[str, str], timeout: int | None = None,
+    ) -> dict[str, str]:
+        """
+        Aplica as correcoes SEGURAS do ruff no codigo gerado e devolve o
+        conteudo corrigido, arquivo a arquivo.
+
+        Medido nos 391 relatorios E2E: 9 steps de code_generation reprovados
+        por lint, 3.298.179 tokens. Das 60 ocorrencias citadas, 49 sao F401
+        (import nao usado, 43x), F841 (variavel nao usada) e B007 -- defeitos
+        reais, mas SEM decisao semantica nenhuma: apagar uma linha. Pagar
+        tres tentativas de um modelo a ~140 mil tokens cada para remover um
+        import e o mesmo erro que ja custou caro com indentacao e gettext.
+
+        As 11 restantes (F821 nome indefinido, F823 uso antes da atribuicao)
+        NAO tem correcao mecanica -- sao bug de verdade, e continuam indo pro
+        modelo via lint_check(). Corrigir o mecanico limpa o ruido e deixa o
+        retry falando so do que exige julgamento.
+
+        So correcoes seguras: `--fix` sem `--unsafe-fixes`. O ruff classifica
+        como insegura toda correcao que pode mudar comportamento (remover uma
+        atribuicao com efeito colateral, por exemplo) -- essas ficam de fora
+        de proposito.
+
+        Nunca levanta e nunca piora: arquivo cujo resultado nao compile, ou
+        que o ruff nao consiga processar, volta identico ao original. Ruff
+        ausente devolve tudo intacto (mesma politica fail-open de
+        lint_check()).
+
+        Regra 9: nao executa o addon. `ruff` faz analise estatica.
+        """
+        corrigidos = dict(files)
+        for rel, conteudo in files.items():
+            if not rel.replace("\\", "/").endswith(".py") or not conteudo:
+                continue
+            novo = self._ruff_fix_um_arquivo(rel, conteudo, timeout)
+            if novo is not None and novo != conteudo:
+                corrigidos[rel] = novo
+        return corrigidos
+
+    def _ruff_fix_um_arquivo(
+        self, rel: str, conteudo: str, timeout: int | None = None,
+    ) -> str | None:
+        """Conteudo corrigido, ou None quando nao da para confiar no resultado."""
+        import ast
+
+        with tempfile.TemporaryDirectory(prefix="nvdastudio_fix_") as tmpdir:
+            cfg = os.path.join(tmpdir, "ruff.toml")
+            with open(cfg, "w", encoding="utf-8") as f:
+                f.write(_GENERATED_RUFF_CONFIG)
+            try:
+                proc = subprocess.run(
+                    [sys.executable, "-m", "ruff", "check", "--fix", "--no-cache",
+                     "--config", cfg, "--stdin-filename", rel, "-"],
+                    input=conteudo, capture_output=True, text=True,
+                    timeout=timeout or _LINT_TIMEOUT,
+                )
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                _logger.info("[LINT-FIX] %s: %s", rel, exc)
+                return None
+
+        saida = proc.stdout
+        if not saida.strip():
+            # ruff ausente, ou erro antes de escrever o arquivo corrigido.
+            return None
+        try:
+            ast.parse(saida)
+        except SyntaxError:
+            _logger.warning("[LINT-FIX] %s: resultado nao compila -- descartado.", rel)
+            return None
+        return saida
 
     def typecheck(
         self, files: dict[str, str], timeout: int | None = None,

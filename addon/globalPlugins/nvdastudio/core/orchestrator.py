@@ -20,7 +20,12 @@ from .planner import (
 from ..ai.critic import Critic, CriticResult, Verdict
 from ..utils.logger import get_logger, log_decision
 from ..sub_agents.dispatcher import dispatch_step_with_tokens
-from ..builder.addon_builder import extract_code_blocks, validate_python_syntax, validate_python_imports
+from ..builder.addon_builder import (
+	extract_code_blocks,
+	substituir_codigo_dos_blocos,
+	validate_python_syntax,
+	validate_python_imports,
+)
 from ..sub_agents._base import clear_client_cache, narrate, LiveNarrator, _truncate_at_word
 from ..memory.session_memory import memory
 from ..utils.cost_tracker import estimate_pipeline_cost
@@ -44,7 +49,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.70.0"
+MODULE_VERSION = "5.71.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -2662,6 +2667,38 @@ class Orchestrator:
 						# quebrar o addon de quem nao tem dev tooling instalado
 						# seria pior que nao lintar.
 						_static_sandbox = _CodeSandboxExec()
+
+						# 5.71.0 -- corrige o MECANICO antes de cobrar do modelo.
+						#
+						# Medido nos relatorios: 9 steps reprovados por lint,
+						# 3.298.179 tokens. Das 60 ocorrencias, 49 sao F401 (import
+						# nao usado, 43x), F841 e B007 -- defeito real, mas sem
+						# decisao semantica nenhuma: apagar uma linha. Pagar tres
+						# tentativas a ~140 mil tokens para remover um import e o
+						# mesmo erro que ja custou caro com indentacao e gettext.
+						#
+						# As 11 restantes (F821, F823) nao tem correcao mecanica --
+						# sao bug de verdade e seguem para o modelo abaixo, agora sem
+						# o ruido do que o codigo mesmo resolvia.
+						#
+						# A correcao volta para `last_output` de proposito: e ELE que
+						# vai para o assembly e para o disco. Corrigir so a copia
+						# extraida entregaria o addon ainda com o defeito.
+						_corrigidos = _static_sandbox.lint_autofix(py_files)
+						_mudados = {
+							rel: novo for rel, novo in _corrigidos.items()
+							if novo != py_files.get(rel)
+						}
+						if _mudados:
+							_reescrito = substituir_codigo_dos_blocos(last_output, _mudados)
+							if _reescrito != last_output:
+								last_output = _reescrito
+								py_files = _corrigidos
+								_logger.info(
+									"[LINT-FIX] %d arquivo(s) corrigidos mecanicamente no step %s: %s",
+									len(_mudados), step.step_id, ", ".join(sorted(_mudados)),
+								)
+
 						lint_check = _static_sandbox.lint_check(py_files)
 						if not lint_check.success and not lint_check.error:
 							# success=False com error vazio == ruff rodou e

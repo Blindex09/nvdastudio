@@ -57,7 +57,7 @@ class TestAddonBuilderFolderNamesFiltered:
 
     def test_versao_addon_builder_e_3_6_0(self):
         from nvdastudio.builder.addon_builder import MODULE_VERSION
-        assert MODULE_VERSION == "4.17.0", (
+        assert MODULE_VERSION == "4.18.0", (
             f"addon_builder versao esperada 3.7.0, encontrada {MODULE_VERSION}."
         )
 

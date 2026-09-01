@@ -44,7 +44,7 @@ def _actual_version(dotted: str) -> str | None:
         return None
 
 
-def _check_file(path: Path) -> list[str]:
+def _check_file(path: Path, aplicar: bool = False) -> list[str]:
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
 
@@ -58,6 +58,7 @@ def _check_file(path: Path) -> list[str]:
         imports.append((lineno, m.group(1), alias))
 
     problems = []
+    correcoes: list[tuple[int, str, str]] = []
     for lineno, line in enumerate(lines, start=1):
         m = ASSERT_RE.search(line)
         if not m:
@@ -77,15 +78,44 @@ def _check_file(path: Path) -> list[str]:
                 f"{path.relative_to(REPO_ROOT)}:{lineno} — {module_path} "
                 f"MODULE_VERSION real e '{actual}', teste espera '{expected}'"
             )
+            correcoes.append((lineno, expected, actual))
+
+    if aplicar and correcoes:
+        for lineno, esperado, real in correcoes:
+            lines[lineno - 1] = lines[lineno - 1].replace(
+                '"' + esperado + '"', '"' + real + '"',
+            ).replace("'" + esperado + "'", "'" + real + "'")
+        # splitlines() descarta a quebra final; recoloca-la e obrigatorio --
+        # sem isso o proprio --fix introduz W292 em todo arquivo que toca.
+        novo = chr(10).join(lines)
+        if text.endswith(chr(10)):
+            novo += chr(10)
+        path.write_text(novo, encoding="utf-8")
+
     return problems
 
 
 def main() -> int:
+    # --fix atualiza os asserts em vez de so reclamar.
+    #
+    # Sem isso, cada bump de MODULE_VERSION virava uma rodada de sed na mao
+    # sobre 20+ arquivos -- trabalhoso, e perigoso: um `sed` por VALOR (e nao
+    # por linha) atinge asserts de outros modulos que por acaso estao na mesma
+    # versao. Aconteceu nesta sessao, com "1.4.0" de tres modulos diferentes.
+    # A informacao de qual linha corrigir ja estava aqui; so nao era usada.
+    aplicar = "--fix" in sys.argv
+
     all_problems: list[str] = []
     for path in sorted(TESTS_DIR.rglob("test_*.py")):
         if "lib" in path.parts:
             continue
-        all_problems.extend(_check_file(path))
+        all_problems.extend(_check_file(path, aplicar=aplicar))
+
+    if all_problems and aplicar:
+        print(f"{len(all_problems)} assert(s) de versao atualizado(s):")
+        for problem in all_problems:
+            print(f"  - {problem}")
+        return 0
 
     if all_problems:
         print("Asserts de versao desatualizados encontrados:\n")
