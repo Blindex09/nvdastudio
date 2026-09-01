@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, List, Optional
 from ..utils.logger import get_logger
 
 _logger = get_logger("checkpoint")
-MODULE_VERSION = "2.1.0"
+MODULE_VERSION = "2.2.0"
 
 # Config
 _MAX_SNAPSHOTS = 20
@@ -308,17 +308,51 @@ class CheckpointManager:
                 return
 
             checkpoints = sorted(project_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
-            if len(checkpoints) <= _MAX_SNAPSHOTS:
+
+            # Dois limites, nao um. _MAX_SNAPSHOTS controla QUANTIDADE;
+            # _MAX_TOTAL_SIZE_MB controla ESPACO -- e ate 2026-08-30 era uma
+            # constante declarada que ninguem lia (achado por auditoria de
+            # mecanismos orfaos). Contar arquivos nao protege o disco: 20
+            # checkpoints de um addon multi-arquivo com contexto grande passam
+            # facilmente dos 100 MB, e o usuario cego nao tem como perceber o
+            # disco enchendo. Limite declarado e nao aplicado e pior que limite
+            # nenhum: da a impressao de que o problema esta tratado.
+            excedentes = max(0, len(checkpoints) - _MAX_SNAPSHOTS)
+            to_remove = checkpoints[:excedentes]
+
+            # Do mais ANTIGO para o mais novo, ate o que sobra caber no teto.
+            restantes = checkpoints[excedentes:]
+            limite_bytes = _MAX_TOTAL_SIZE_MB * 1024 * 1024
+            total = 0
+            for cp in restantes:
+                try:
+                    total += cp.stat().st_size
+                except OSError:
+                    continue
+            i = 0
+            while total > limite_bytes and i < len(restantes) - 1:
+                # Nunca remove o ULTIMO: um checkpoint sozinho acima do teto
+                # ainda e a unica chance de retomada que o usuario tem.
+                try:
+                    total -= restantes[i].stat().st_size
+                except OSError:
+                    pass
+                to_remove.append(restantes[i])
+                i += 1
+
+            if not to_remove:
                 return
 
-            to_remove = checkpoints[:len(checkpoints) - _MAX_SNAPSHOTS]
             for cp in to_remove:
                 try:
                     cp.unlink()
                 except Exception as exc:
                     _logger.debug("[DEBUG] Falha ao remover checkpoint antigo %s: %s", cp, exc)
 
-            _logger.info("[CHECKPOINT] Pruned: removidos %d checkpoints antigos", len(to_remove))
+            _logger.info(
+                "[CHECKPOINT] Pruned: %d removidos (teto de %d snapshots e %d MB)",
+                len(to_remove), _MAX_SNAPSHOTS, _MAX_TOTAL_SIZE_MB,
+            )
 
 
 # Instancia global

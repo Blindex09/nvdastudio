@@ -156,7 +156,6 @@ Versoes auditadas diretamente do codigo em 2026-07-14. Modulos marcados com `—
 | `ollama_client.py` | 2.27.0 | Cliente Ollama Cloud com thinking separado do conteudo visivel; kimi-k2.7-code adicionado as capabilities e como _DEFAULT_MODEL; `web_search()`; `web_fetch()` novo -- busca conteudo completo de uma URL via `https://ollama.com/api/web_fetch`; `_adapt_structured_output()` agora aterra o schema JSON como texto no prompt tambem no caminho nativo (Kimi), nao so no caminho GLM -- pratica recomendada pela doc oficial mesmo com `format` nativo ligado; teto de tokens de saida escala com step_type (`_MAX_TOKENS_EXTENDED`, code_generation/agent_runner) -- causa raiz real de codigo cortado no meio de metodos, achado 2026-08-04; `gpt-oss:20b` ganha entrada propria em `_MODEL_CAPABILITIES` e recebe nivel string ("low"/"medium"/"high") no campo `think` em vez de booleano -- doc oficial confirma que GPT-OSS ignora booleano, so aceita nivel (achado 2026-08-04); 2.27.0 acrescenta `engineering_review` a `_EXTENDED_TIMEOUT_STEP_TYPES` -- o step recebe o codigo gerado inteiro como entrada, mesmo perfil de contexto longo de `design_review` |
 | `model_registry.py` | 1.12.0 | Registry auditado de modelos e resolucao Alto heavy/light; modelos superados por geracao mais nova marcados DEPRECATED (claude-opus-4-7, claude-opus-4-8, claude-sonnet-4-6, gpt-5.5/5.4/5.4-mini, gemini-2.5-pro/flash, gemini-3-flash-preview); claude-fable-5 REMOVIDO por completo do registry (nao so excluido dos defaults); claude-opus-5 e o tier heavy da Anthropic; gemini-3.6-flash e o novo tier light do Gemini; kimi-k2.7-code e o tier heavy default do Ollama (Kimi K3 esta no catalogo mas retorna HTTP 402, extra usage gated -- nao aplicavel, confirmado via teste real da API); glm-5.2/minimax-m3/gpt-oss:20b adicionados ao catalogo Ollama e a `_FALLBACK_CHAINS["ollama"]`, ainda nao promovidos a default; grok-build-0.1 (coding agentico) e o tier heavy do xAI; grok-4.20-0309-reasoning/non-reasoning/multi-agent-0309 adicionados por completude de catalogo (confirmados na tabela de precos oficial, mas sem descricao de proposito -- nao promovidos a nenhum tier); "Grok 4.6" investigado e descartado -- rastreado a sites agregadores nao-oficiais, nao existe em docs.x.ai; `get_active_models_for_ui_provider()` novo -- fonte unica de modelos pro dropdown da UI (settings_panel.py 6.5.0 nao mantem mais lista propria); `ModelInfo.context_window` novo, populado por pesquisa dedicada -- fonte unica de janela de contexto por modelo (era so context_compressor.py, tabela parcial e com deepseek-v4-flash errado) |
 | `anthropic_memory_tool.py` | 1.0.0 | Handler client-side do memory tool nativo da Anthropic (memory_20250818) -- 6 comandos (view/create/str_replace/insert/delete/rename) contra `%APPDATA%/NVDAStudio/claude_memory/`, protecao contra path traversal |
-| `prompt_optimizer.py` | 1.0.0 | A/B testing de variantes de prompt; record_result() e select_best_variant() |
 
 ### builder/
 
@@ -216,7 +215,6 @@ MCP, A2A (Agent-to-Agent), browser-use e computer-use **nao fazem parte do escop
 | `project_policy.py` | 1.0.0 | Fonte unica do baseline e da politica anti-legado |
 | `evaluation_framework.py` | 1.0.0 | Registro de metricas de pipeline (duracao, sucesso, tokens, issues); trending e regressao |
 | `iteration_budget.py` | 1.3.0 | Controle de iteracoes, tokens, custo USD, rate limiting; 1.3.0 troca o teto unico de 500 mil por teto POR COMPLEXIDADE (low 300 mil / medium 700 mil / high 1 milhao), dimensionado pela mediana real medida nos 379 relatorios -- addon simples bem-sucedido tem mediana de 204 mil, complexo de 821 mil. `apply_complexity()` e chamado pelo orchestrator quando o plano existe (`reset()` roda antes disso e nao teria como saber); complexidade desconhecida cai em medium, nunca no alto. `reset()` restaura o padrao -- o budget e singleton de processo e uma sessao high deixaria o teto alto valendo para a query seguinte |
-| `scheduler.py` | 2.1.0 | Scheduler local de tarefas agendadas em background |
 | `cost_tracker.py` | — | Consciencia de custo para roteamento inteligente |
 | `smart_retry.py` | 1.0.0 | Retry inteligente com analise de raiz do erro |
 | `user_visible_text.py` | 1.0.0 | Contrato central de texto simples para leitor de telas; remove raciocinio e decoracao visual |
@@ -274,7 +272,7 @@ nvdastudio/
 |           |-- __init__.py
 |           |-- AI_MODULE_SPEC.md
 |           |-- skill_registry.json
-|           |-- ai/              (clarifier, critic, llm_client, llm_factory, ollama_client, model_registry, prompt_optimizer)
+|           |-- ai/              (clarifier, critic, llm_client, llm_factory, ollama_client, model_registry)
 |           |-- builder/         (addon_builder, addon_loader, nvda_context, api_key_validator, code_sandbox, context_compressor, trajectory_compressor)
 |           |-- core/            (orchestrator, agentic_loop, planner, orch_types, checkpoint_manager)
 |           |-- gui/             (studio_dialog, settings_panel)
@@ -283,7 +281,7 @@ nvdastudio/
 |           |-- sub_agents/      (13 agentes especializados)
 |           |-- tool_system/     (registry, executor, approval, builtins/)
 |           |-- tools/           (domain_researcher, external_search, skills_hub, tool_gateway)
-|           |-- utils/           (logger, project_policy, engineering_principles, addon_versioning, evaluation_framework, iteration_budget, scheduler, cost_tracker, smart_retry, user_visible_text, task_tracker, timeouts)
+|           |-- utils/           (logger, project_policy, engineering_principles, addon_versioning, evaluation_framework, iteration_budget, cost_tracker, smart_retry, user_visible_text, task_tracker, timeouts)
 |           |-- agent_templates/
 |           |-- lib/             (dependencias vendorizadas: httpx, tinydb, ...)
 |-- tests/
@@ -413,4 +411,4 @@ Instalacao:
 5. **model_registry** — Já wired: `planner.py`, `critic.py`, `clarifier.py`, chat rapido, domain research e fallback do orquestrador resolvem modelos pelo registry.
 
 Próximas prioridades de wiring:
-- `prompt_optimizer.py`: Conectar `record_result()` e `select_best_variant()`
+- (nenhuma pendente) — `prompt_optimizer.py` foi REMOVIDO em 2026-08-30 em vez de ligado: ficou 3+ meses como TODO sem consumidor, e a Regra 3 manda remover, não acumular. Se otimização de prompt voltar a ser desejada, a implementação deve nascer conectada.

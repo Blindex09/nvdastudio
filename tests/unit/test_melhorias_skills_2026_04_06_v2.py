@@ -227,7 +227,7 @@ class TestPlannerSchemaDescriptions:
 
     def test_planner_versao_2_1_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.33.0"
+        assert MODULE_VERSION == "2.34.0"
 
     def test_campos_principais_tem_description(self):
         """Campos do schema de nivel raiz devem ter description."""

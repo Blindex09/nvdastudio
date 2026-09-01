@@ -236,7 +236,7 @@ class TestAddonLoaderIntegracao:
 class TestPlannerVersaoAtualizada:
     def test_versao_e_1_7_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.33.0"
+        assert MODULE_VERSION == "2.34.0"
 
     def test_step_user_clarification_no_model_map(self):
         from nvdastudio.core.planner import STEP_USER_CLARIFICATION, STEP_MODEL_MAP

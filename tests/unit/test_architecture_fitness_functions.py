@@ -187,21 +187,19 @@ class TestUtilsEhCamadaFolhaPura:
 	utils/ comecar a importar de ai/gui/core, deixa de ser reutilizavel
 	como fundacao e vira parte do emaranhado que ela deveria evitar.
 
-	Excecao documentada (achada ao escrever este teste, 2026-08-09):
-	utils/scheduler.py importa memory/session_memory.py, mas so DENTRO de
-	2 funcoes (backup_sessions_handler/weekly_report_handler, imports
-	locais/lazy, nao top-level) -- sao 2 HANDLERS BUILT-IN especificos que
-	precisam ler sessoes salvas, nao um acoplamento estrutural do modulo
-	inteiro. Nao e o padrao "utils vira parte do emaranhado" que esta
-	regra existe pra evitar -- o resto de scheduler.py (a infraestrutura
-	de agendamento em si) continua sem depender de memory/. Permitido
-	nomeadamente aqui; qualquer OUTRA importacao de utils/ pra outro
-	subpacote deve reprovar.
+	2026-08-30: a UNICA excecao que existia aqui (utils -> memory) vinha de
+	utils/scheduler.py, removido por ser codigo morto -- 430 linhas com zero
+	referencias em producao, importando `croniter`, pacote que nem estava
+	declarado em requirements.txt. Com ele fora, utils/ voltou a ser camada
+	folha PURA, e a excecao saiu junto: manter uma permissao que nada mais usa
+	so abriria porta para o proximo acoplamento entrar sem discussao.
+
+	Se um dia utils/ precisar de outro subpacote, a excecao volta -- COM o
+	motivo escrito, como esta estava.
 	"""
 
-	_EXCECOES_DOCUMENTADAS: dict[str, frozenset[str]] = {
-		"utils": frozenset({"memory"}),
-	}
+	# Vazio de proposito: utils/ e camada folha pura. Ver docstring acima.
+	_EXCECOES_DOCUMENTADAS: dict[str, frozenset[str]] = {}
 
 	def test_utils_nao_importa_outros_subpacotes_do_projeto_alem_das_excecoes(self):
 		graph = _build_subpackage_dependency_graph()

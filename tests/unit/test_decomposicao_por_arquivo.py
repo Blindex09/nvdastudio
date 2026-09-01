@@ -29,7 +29,7 @@ from nvdastudio.core.planner import (
 	oversized_code_generation_steps,
 )
 
-assert MODULE_VERSION == "2.33.0"
+assert MODULE_VERSION == "2.34.0"
 
 
 def _step(step_id: str, alvos: list[str], descricao: str = "gerar", tipo: str = "code_generation"):
@@ -117,3 +117,68 @@ class TestEscopoNoPromptDoStep:
 		i = src.find("ARQUIVOS DESTE STEP")
 		trecho = src[max(0, i - 300):i]
 		assert "code_generation" in trecho and "agent_runner" in trecho
+
+
+class TestGuardaNaoConfiaNoPlanner:
+	"""
+	ACHADO AO VIVO (E2E 2026-08-30, quarta rodada): o criterio por
+	`target_files` NUNCA disparou em execucao real. Os unicos registros de
+	"Subtarefas grandes detectadas" nos logs eram `cg_grande` -- fixture de
+	teste unitario. O planner simplesmente nao preencheu o campo.
+
+	`target_files` e declarado OBRIGATORIO no schema. Mas "obrigatorio no
+	schema" nao e o mesmo que "preenchido": o guarda contava zero arquivos e
+	deixava passar um step que na pratica produzia seis. Confiar que a IA
+	preencheu um campo e o mesmo erro de confiar que ela seguiu uma regra --
+	precisa de verificacao.
+
+	A verificacao adicionada e ARITMETICA, nao adivinhacao: se o layout declara
+	mais .py do que os steps conseguem cobrir no teto, entao por contagem
+	simples algum step produz mais que o permitido. Nao inferimos QUAL arquivo
+	vai em QUAL step -- isso continua sendo decisao semantica do planner.
+	"""
+
+	_LAYOUT_8 = [f"globalPlugins/X/f{i}.py" for i in range(8)] + [
+		"manifest.ini",
+		"doc/en/userGuide.html",
+	]
+
+	def test_caso_real_tres_steps_sem_declarar_layout_de_oito(self):
+		"""Reproduz a rodada 4: 3 code_generation, nenhum declarou, layout com
+		8 arquivos .py. Capacidade maxima = 3 x 2 = 6 < 8."""
+		steps = [_step("a", []), _step("b", []), _step("c", [])]
+		assert sorted(oversized_code_generation_steps(steps, self._LAYOUT_8)) == ["a", "b", "c"]
+
+	def test_layout_que_cabe_nao_e_marcado(self):
+		"""4 steps x 2 arquivos = 8 = exatamente o layout. Cabe."""
+		steps = [_step(f"c{i}", ["a.py", "b.py"]) for i in range(4)]
+		assert oversized_code_generation_steps(steps, self._LAYOUT_8) == []
+
+	def test_so_marca_quem_se_omitiu(self):
+		"""Um step que declarou 2 arquivos esta dentro do contrato e nao deve
+		ser penalizado porque OUTRO step do plano se omitiu."""
+		steps = [_step("bom", ["a.py", "b.py"]), _step("omisso", [])]
+		assert oversized_code_generation_steps(steps, self._LAYOUT_8) == ["omisso"]
+
+	def test_layout_pequeno_sem_declaracao_nao_e_marcado(self):
+		"""Addon de 1 arquivo nao precisa declarar nada -- marcar seria falso
+		positivo em todo addon simples, que hoje converge a 100%."""
+		steps = [_step("a", [])]
+		layout = ["globalPlugins/X/__init__.py", "manifest.ini"]
+		assert oversized_code_generation_steps(steps, layout) == []
+
+	def test_sem_layout_mantem_o_comportamento_anterior(self):
+		"""Chamada sem o parametro (planos antigos, testes existentes) nao pode
+		mudar de comportamento."""
+		assert oversized_code_generation_steps([_step("a", [])]) == []
+
+	def test_manifest_e_doc_nao_contam_como_arquivo_de_codigo(self):
+		"""code_generation nao produz manifest.ini nem userGuide.html -- inclui-los
+		na contagem inflaria o layout e geraria replanejamento desnecessario."""
+		steps = [_step("a", [])]
+		layout = ["globalPlugins/X/__init__.py", "manifest.ini", "doc/en/userGuide.html"]
+		assert oversized_code_generation_steps(steps, layout) == []
+
+	def test_sem_step_de_codigo_nao_levanta(self):
+		"""Divisao por zero seria o jeito mais bobo de derrubar o planejamento."""
+		assert oversized_code_generation_steps([], self._LAYOUT_8) == []

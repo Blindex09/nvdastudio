@@ -14,7 +14,14 @@ Regras centrais:
 - O projeto nao mantem compatibilidade ativa com versoes anteriores a esse baseline.
 - Codigo legado, arquivos sem uso real, fluxos duplicados e documentacao depreciada devem ser removidos, nao preservados.
 - `build.py` e o unico fluxo canonico de build e empacotamento atualmente suportado.
-- **v2.1.0**: Wiring de 9 novos módulos (evaluation_framework, code_sandbox, agent_memory, api_key_validator, model_registry, prompt_optimizer, web_search_tool, context_compressor, mcp_connector)
+- **v2.1.0**: Wiring de novos módulos — evaluation_framework, code_sandbox, agent_memory,
+  api_key_validator, model_registry, web_search_tool, context_compressor.
+  **Correção 2026-08-30 (auditoria de mecanismos órfãos):** esta linha afirmava 9 módulos e
+  duas das afirmações eram falsas. `prompt_optimizer` NUNCA foi ligado — tem zero referências
+  em produção, e o próprio README o lista em "Próximas prioridades de wiring", contradizendo
+  este contrato. `mcp_connector` foi REMOVIDO do projeto (Regra 3, resposta hardcoded sem
+  chamada de rede real) e não existe mais. Contrato que declara feito o que não foi é pior que
+  contrato omisso: quem lê para de procurar.
 
 ---
 
@@ -28,7 +35,7 @@ Os modulos estao organizados fisicamente em subpacotes dentro de `addon/globalPl
 
 | Subpacote | Conteudo |
 |-----------|----------|
-| `ai/` | clarifier, critic, llm_client, llm_factory, provider_client, ollama_client, model_registry, prompt_optimizer |
+| `ai/` | clarifier, critic, llm_client, llm_factory, provider_client, ollama_client, model_registry |
 | `builder/` | addon_builder, addon_loader, nvda_context, api_key_validator, code_sandbox, context_compressor, trajectory_compressor |
 | `core/` | orchestrator, agentic_loop, planner, orch_types, checkpoint_manager |
 | `gui/` | studio_dialog, settings_panel |
@@ -37,7 +44,7 @@ Os modulos estao organizados fisicamente em subpacotes dentro de `addon/globalPl
 | `sub_agents/` | 14 agentes especializados |
 | `tool_system/` | registry, executor, approval, builtins/ |
 | `tools/` | domain_researcher, external_search, skills_hub, tool_gateway |
-| `utils/` | logger, project_policy, engineering_principles, addon_versioning, evaluation_framework, iteration_budget, scheduler, cost_tracker, smart_retry, user_visible_text, task_tracker, timeouts |
+| `utils/` | logger, project_policy, engineering_principles, addon_versioning, evaluation_framework, iteration_budget, cost_tracker, smart_retry, user_visible_text, task_tracker, timeouts |
 | `lib/` | dependencias vendorizadas para CPython 3.13 (httpx, tinydb e cadeias transitivas) |
 
 ### Raiz do pacote
@@ -67,7 +74,6 @@ Os modulos estao organizados fisicamente em subpacotes dentro de `addon/globalPl
 | `provider_client.py` | 2.10.0 | OpenAI/xAI via Responses API (/v1/responses, tools flat, text.format, reasoning.effort); Gemini via Interactions API (/v1/interactions, GA 2026-06, modo stateful via previous_interaction_id); Anthropic com retry em 529 (overloaded); `native_web_search()` preserva citacoes/provenance (url_citation da OpenAI/xAI/Gemini, web_search_result_location da Anthropic) em vez de descartar tudo exceto o texto; bug real corrigido: `_native_web_search_gemini()` so lia `output_text` (campo nao garantido pela Interactions API em tool calls) -- agora le `steps`/`model_output` igual ao caminho principal de chat; server tools nativos misturados com function-tools no mesmo array; streaming funciona com tools ativo (`_stream_sse` com contrato `on_event(data)`, acumula tool_calls por item/index em paralelo ao texto -- base do "tool preamble" ao vivo); `on_reasoning_chunk`/`include_reasoning` REMOVIDOS (sem consumidor em producao); `tool_choice` agora repassado tambem para Anthropic (`{"type": "none"}`) e Gemini (`"none"` no nivel raiz do payload) -- antes so OpenAI/xAI recebiam, usado por code_generator.py pra fechar loop de tool-calling |
 | `ollama_client.py` | 2.27.0 | Cliente Ollama Cloud; preserva a resposta integral para parsing e separa thinking do conteudo visivel; kimi-k2.7-code adicionado as capabilities e como _DEFAULT_MODEL; `web_search()`/`web_fetch()` -- endpoints dedicados de pesquisa e busca de pagina completa; streaming funciona com tools ativo (`_stream()` acumula tool_calls, best-effort conforme issue ollama/ollama#12557); `on_reasoning_chunk`/`include_reasoning` REMOVIDOS (sem consumidor em producao); campo "thinking" continua acumulado em LLMResponse.reasoning; API nativa /api/chat NAO tem tool_choice (confirmado, so o shim OpenAI-compat tem) -- quando tool_choice="none" e pedido, `tools` e omitido do payload como mitigacao; `_adapt_structured_output()` aterra o schema JSON como texto no prompt tambem no caminho nativo (Kimi) -- doc oficial recomenda isso mesmo com `format` nativo ligado, so o caminho GLM fazia antes; achado de auditoria 2026-08-04 (log de producao real, causa raiz de codigo cortado no meio): `_MAX_TOKENS_DEFAULT` (24k) era fixo pra toda chamada -- `_MAX_TOKENS_EXTENDED` (48k) agora selecionado via `step_type` (code_generation/agent_runner), mesmo mecanismo do `_EXTENDED_TIMEOUT_STEP_TYPES` ja existente; achado de auditoria 2026-08-04 (pesquisa web contra docs.ollama.com/capabilities/thinking): `gpt-oss:20b` nunca teve entrada em `_MODEL_CAPABILITIES` (herdava capabilities erradas do fallback Kimi) e o campo `think` sempre era booleano -- GPT-OSS e a excecao documentada oficialmente que IGNORA booleano, so aceita nivel string ("low"/"medium"/"high"); corrigido nos dois pontos; 2.27.0 acrescenta `engineering_review` a `_EXTENDED_TIMEOUT_STEP_TYPES` -- o step recebe o codigo gerado inteiro como entrada, mesmo perfil de contexto longo de `design_review` |
 | `model_registry.py` | 1.12.0 | Registry auditado de modelos, fallbacks e resolucao Alto heavy/light sem catalogo externo; modelos superados por geracao mais nova marcados DEPRECATED (agora incluindo claude-opus-4-8); claude-fable-5 REMOVIDO por completo do registry (Felipe: "tire fable 5 do claude" -- nao so excluido dos defaults como na rodada anterior); claude-opus-5 e o tier heavy da Anthropic; gemini-3.6-flash e o novo tier light do Gemini; kimi-k2.7-code e o tier heavy default do Ollama (kimi-k3 esta no catalogo real da conta mas retorna HTTP 402 -- extra usage gated, confirmado via teste isolado contra a API); glm-5.2/minimax-m3/gpt-oss:20b adicionados ao catalogo Ollama e a fallback chain (testados contra a conta real 2026-08-04), `get_fallback_chain()` ganhou fold de provider pros 3 novos fabricantes (zhipu/minimax/openai_oss) -- sem isso a cadeia de escalacao cruzada ficava vazia pra eles; grok-build-0.1 e o tier heavy do xAI; grok-4.20-0309-reasoning/non-reasoning/multi-agent-0309 adicionados por completude (confirmados na tabela de precos oficial docs.x.ai, sem descricao de proposito -- nao promovidos a tier); "Grok 4.6" investigado e descartado -- rastreado a agregadores nao-oficiais; `get_active_models_for_ui_provider()` novo -- fonte unica de modelos pro dropdown da UI; `ModelInfo.context_window` novo (fonte unica de janela de contexto por modelo, consumido por `context_compressor.py`) |
-| `prompt_optimizer.py` | 1.0.0 | A/B testing de variantes de prompt; record_result() e select_best_variant() |
 | `anthropic_memory_tool.py` | 1.0.0 | Handler client-side do memory tool nativo da Anthropic (memory_20250818) -- 6 comandos (view/create/str_replace/insert/delete/rename) contra `%APPDATA%/NVDAStudio/claude_memory/`, protecao contra path traversal. Achado de auditoria 2026-08-04: fisicamente mora em `ai/`, estava documentado (erradamente) na tabela de `sub_agents/` -- movido pra ca |
 
 ### builder/
@@ -129,7 +135,6 @@ Os modulos estao organizados fisicamente em subpacotes dentro de `addon/globalPl
 | `project_policy.py` | 1.0.0 | Baseline oficial, helpers de versao e politica anti-legado |
 | `evaluation_framework.py` | 1.0.0 | Registro de metricas de pipeline (duracao, sucesso, tokens, issues); trending e regressao |
 | `iteration_budget.py` | 1.3.0 | Controle de iteracoes, tokens, custo USD, rate limiting; 1.3.0 troca o teto unico de 500 mil por teto POR COMPLEXIDADE (low 300 mil / medium 700 mil / high 1 milhao), dimensionado pela mediana real medida nos 379 relatorios -- addon simples bem-sucedido tem mediana de 204 mil, complexo de 821 mil. `apply_complexity()` e chamado pelo orchestrator quando o plano existe (`reset()` roda antes disso e nao teria como saber); complexidade desconhecida cai em medium, nunca no alto. `reset()` restaura o padrao -- o budget e singleton de processo e uma sessao high deixaria o teto alto valendo para a query seguinte |
-| `scheduler.py` | 2.1.0 | Scheduler local de tarefas agendadas em background |
 | `cost_tracker.py` | — | Consciencia de custo para roteamento inteligente |
 | `smart_retry.py` | 1.0.0 | Retry inteligente com analise de raiz do erro |
 | `user_visible_text.py` | 1.0.0 | Contrato central de texto simples para leitor de telas; remove raciocinio e decoracao visual |

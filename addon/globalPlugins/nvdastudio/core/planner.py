@@ -12,7 +12,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.33.0"
+MODULE_VERSION = "2.34.0"
 _logger = get_logger("planner")
 
 PLANNER_MODEL = "alto"
@@ -186,19 +186,61 @@ def _normalize_gestures(raw: object) -> list[str]:
 	return saida
 
 
-def oversized_code_generation_steps(steps: list["ExecutionStep"]) -> list[str]:
-	"""Retorna ids de steps de código grandes demais para uma rodada."""
+def _arquivos_de_codigo(expected_files: list[str] | None) -> list[str]:
+	"""Só os .py do layout -- manifest.ini e doc/ não saem de code_generation."""
+	return [
+		caminho for caminho in (expected_files or [])
+		if caminho.lower().endswith(".py")
+	]
+
+
+def oversized_code_generation_steps(
+	steps: list["ExecutionStep"], expected_files: list[str] | None = None,
+) -> list[str]:
+	"""
+	Retorna ids de steps de código grandes demais para uma rodada.
+
+	Três critérios, do mais forte ao mais fraco:
+
+	1. NÚMERO DE ARQUIVOS DECLARADOS (`target_files`) acima do teto. É o sinal
+	   direto, quando o planner preenche o campo.
+
+	2. LAYOUT QUE NÃO CABE NOS STEPS -- 2.34.0. Achado ao vivo (E2E 2026-08-30):
+	   o critério 1 NUNCA disparou em execução real, porque o planner
+	   simplesmente não preencheu `target_files`. O campo é declarado como
+	   obrigatório no schema, mas "obrigatório no schema" não é o mesmo que
+	   "preenchido" -- e o guarda contava zero arquivos e deixava passar um step
+	   que na prática produzia seis. Confiar que a IA preencheu um campo é o
+	   mesmo erro de confiar que ela seguiu uma regra: precisa de verificação.
+
+	   Aqui a verificação é ARITMÉTICA, não adivinhação: se o layout declara
+	   mais arquivos .py do que os steps de code_generation conseguem cobrir no
+	   teto máximo, então por contagem simples algum step está produzindo mais
+	   que o permitido -- independentemente de qual. Não inferimos QUAL arquivo
+	   vai em QUAL step (isso é decisão semântica, do planner); só constatamos
+	   que a divisão declarada não fecha.
+
+	3. COMPRIMENTO da descrição/mensagem. Rede de segurança do critério
+	   original -- proxy fraco (descrição curta pode pedir 6 arquivos), mantido
+	   porque ainda pega o caso do step com contexto excessivo.
+	"""
 	oversized: list[str] = []
-	for step in steps:
-		if step.step_type != STEP_CODE_GENERATION:
-			continue
+	cg_steps = [s for s in steps if s.step_type == STEP_CODE_GENERATION]
+
+	# Critério 2: o layout cabe nos steps que existem?
+	arquivos = _arquivos_de_codigo(expected_files)
+	capacidade = len(cg_steps) * _MAX_FILES_POR_CODE_STEP
+	layout_nao_cabe = bool(arquivos) and bool(cg_steps) and len(arquivos) > capacidade
+
+	for step in cg_steps:
 		if (
 			len(step.description) > _MAX_CODE_STEP_DESCRIPTION_CHARS
 			or len(step.user_message) > _MAX_CODE_STEP_USER_MESSAGE_CHARS
-			# Criterio principal desde 2026-08-29: numero de ARQUIVOS. O
-			# comprimento da descricao continua valendo como rede, mas era um
-			# proxy fraco -- uma descricao curta pode pedir 6 arquivos.
 			or len(step.target_files) > _MAX_FILES_POR_CODE_STEP
+			# Só marca os que NÃO declararam: um step que declarou 2 arquivos
+			# está dentro do contrato e não deve ser penalizado porque outro
+			# step do plano se omitiu.
+			or (layout_nao_cabe and not step.target_files)
 		):
 			oversized.append(step.step_id)
 	return oversized
@@ -863,7 +905,12 @@ class Planner:
 		# Uma tarefa grande demais degrada a qualidade mesmo quando o modelo é
 		# forte. Pede uma nova decomposição uma única vez, antes de injetar os
 		# steps obrigatórios, para não gerar um loop de replanejamento.
-		oversized = oversized_code_generation_steps(steps)
+		_layout_declarado = _normalize_expected_files(
+			plan_data.get("expected_files", []),
+			plan_data.get("addon_name", ""),
+			project_type,
+		)
+		oversized = oversized_code_generation_steps(steps, _layout_declarado)
 		if oversized:
 			_logger.warning("[PLAN] Subtarefas grandes detectadas: %s. Replanejando.", oversized)
 			decomposition_prompt = (
@@ -885,13 +932,21 @@ class Planner:
 				decomposed_steps = self._build_steps(
 					decomposed_data.get("steps", []), decomposed_data.get("complexity", complexity),
 				)
-				if not oversized_code_generation_steps(decomposed_steps):
+				_layout_decomposto = _normalize_expected_files(
+					decomposed_data.get("expected_files", []),
+					decomposed_data.get("addon_name", ""),
+					decomposed_data.get("project_type", project_type),
+				)
+				if not oversized_code_generation_steps(decomposed_steps, _layout_decomposto):
 					plan_data = decomposed_data
 					complexity = plan_data.get("complexity", complexity)
 					project_type = plan_data.get("project_type", project_type)
 					steps = decomposed_steps
 				else:
-					_logger.error("[PLAN] Replanejamento ainda gerou subtarefas grandes: %s", oversized_code_generation_steps(decomposed_steps))
+					_logger.error(
+						"[PLAN] Replanejamento ainda gerou subtarefas grandes: %s",
+						oversized_code_generation_steps(decomposed_steps, _layout_decomposto),
+					)
 			except Exception as exc:
 				_logger.error("[PLAN] Falha ao decompor subtarefas grandes: %s", exc)
 
