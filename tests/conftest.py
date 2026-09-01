@@ -66,6 +66,37 @@ install_nvda_stubs()
 # Fixtures de sessao
 # --------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Isolamento do banco de memoria
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="session", autouse=True)
+def _memoria_isolada(tmp_path_factory):
+    """
+    A suite NUNCA escreve no banco real do usuario.
+
+    Achado em 2026-09-01: havia em %APPDATA%/NVDAStudio/memory.json uma
+    entrada de web_knowledge com topic="prompt" e content="output valido" --
+    string de mock desta propria suite, gravada como se fosse conhecimento
+    pesquisado.
+
+    Esse banco alimenta get_similar_sessions(), get_common_mistakes() e a busca
+    proativa do code_generator. Dado sintetico ali vira contexto de uma geracao
+    real: o pipeline aprendia com mock. E rodar teste passava a alterar o estado
+    do usuario, efeito colateral que teste nenhum deveria ter.
+
+    autouse e de sessao porque o problema nao esta nos testes que lembram de
+    isolar -- esta nos que nao lembram.
+    """
+    destino = tmp_path_factory.mktemp("memoria_de_teste")
+    os.environ["NVDASTUDIO_MEMORY_DIR"] = str(destino)
+
+    import nvdastudio.memory.session_memory as sm
+    sm._DB_DIR = str(destino)
+    sm._DB_PATH = str(destino / "memory.json")
+    yield destino
+
+
 @pytest.fixture(scope="session")
 def fake_api_key() -> str:
     """Chave API falsa para testes sem chamada real a API."""

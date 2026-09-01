@@ -34,7 +34,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.16.0"
+MODULE_VERSION = "4.17.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -156,6 +156,78 @@ def _linhas_de_codigo(code: str) -> set[int] | None:
 	except (tokenize.TokenError, IndentationError, SyntaxError):
 		return None
 	return linhas
+
+
+def garantir_init_translation(code: str) -> str:
+	"""
+	Garante addonHandler.initTranslation() em modulo que chama gettext.
+
+	Num addon NVDA, `_()` so existe depois de addonHandler.initTranslation(), e
+	a inicializacao vale APENAS para o modulo que a chama -- ela injeta o nome
+	nos globals do frame chamador. Um settings_panel.py que chama _("Chave de
+	API") sem inicializar levanta NameError quando o usuario abre o painel, e o
+	addon parece simplesmente nao ter configuracao.
+
+	Medido nos 391 relatorios E2E: 12 steps de code_generation reprovados por
+	isso, 3.285.409 tokens. E o maior desperdicio identificado no corpus --
+	maior que a indentacao (838 mil) -- para uma correcao de DUAS linhas, sem
+	nenhuma decisao semantica. README Regra 7: o que e deterministico o codigo
+	resolve; a IA decide conteudo.
+
+	Nao inventa traducao nem mexe em quem ja inicializa. As linhas entram depois
+	da docstring e dos imports `__future__` (que a linguagem exige em primeiro
+	lugar) e antes de qualquer uso. Rede de seguranca: se o resultado nao
+	compilar, devolve o original.
+	"""
+	if not chama_gettext(code):
+		return code
+	if "initTranslation" in code or "import gettext" in code:
+		return code
+	try:
+		arvore = ast.parse(code)
+	except SyntaxError:
+		return code
+
+	# Primeira linha que NAO e docstring nem "from __future__ import ...".
+	linha_insercao = 0
+	for no in arvore.body:
+		e_docstring = (
+			isinstance(no, ast.Expr)
+			and isinstance(no.value, ast.Constant)
+			and isinstance(no.value.value, str)
+		)
+		e_future = isinstance(no, ast.ImportFrom) and no.module == "__future__"
+		if e_docstring or e_future:
+			linha_insercao = (no.end_lineno or no.lineno)
+			continue
+		break
+
+	# Quando o modulo JA importa addonHandler, a chamada entra depois desse
+	# import -- inseri-la no topo colocaria o uso antes do nome existir, e o
+	# NameError so mudaria de linha.
+	# So imports de NIVEL DE MODULO: um `import addonHandler` dentro de uma
+	# funcao nao deixa o nome disponivel no escopo global, e ancorar a chamada
+	# nele colocaria codigo de modulo dentro do corpo da funcao.
+	linha_import = 0
+	for topo in arvore.body:
+		if isinstance(topo, ast.Import) and any(
+			a.name == "addonHandler" for a in topo.names
+		):
+			linha_import = max(linha_import, topo.end_lineno or topo.lineno)
+
+	if linha_import:
+		ponto, insercao = linha_import, ["addonHandler.initTranslation()", ""]
+	else:
+		ponto = linha_insercao
+		insercao = ["import addonHandler", "addonHandler.initTranslation()", ""]
+
+	linhas = code.split(chr(10))
+	novo = chr(10).join(linhas[:ponto] + insercao + linhas[ponto:])
+	try:
+		ast.parse(novo)
+	except SyntaxError:
+		return code
+	return novo
 
 
 def normalizar_indentacao(code: str) -> str:
@@ -600,6 +672,7 @@ def extract_code_blocks(text: str) -> list[dict]:
 	for bloco in blocks:
 		if (bloco.get("language") or "").lower() == "python" and bloco.get("code"):
 			bloco["code"] = normalizar_indentacao(bloco["code"])
+			bloco["code"] = garantir_init_translation(bloco["code"])
 
 	return blocks
 

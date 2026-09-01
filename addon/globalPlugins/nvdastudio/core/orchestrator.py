@@ -9,7 +9,7 @@ from typing import Callable
 from .orch_types import StepResult, OrchestrationResult, compute_progress
 from .planner import (
 	Planner, ExecutionPlan, ExecutionStep, STEP_USER_CLARIFICATION,
-	STEP_SYNTAX_VALIDATION, STEP_TEST_GENERATION,
+	STEP_SYNTAX_VALIDATION, STEP_TEST_GENERATION, STEP_WEB_RESEARCH,
 	format_expected_files_for_prompt,
 	# tests/unit/test_syntax_validator.py::test_step_syntax_validation_importado
 	# depende dele como re-export deste modulo (ver changelog v5.12.0 acima:
@@ -44,7 +44,7 @@ from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.69.0"
+MODULE_VERSION = "5.70.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -2781,6 +2781,21 @@ class Orchestrator:
 			_previous_issue_signature = _issue_signature
 
 			if crit.verdict == Verdict.APPROVED:
+				# 5.70.0 -- so cacheia pesquisa que passou na verificacao.
+				#
+				# web_researcher gravava o resultado no fim do proprio run(),
+				# ANTES de o Critic existir na historia: uma pesquisa que o
+				# pipeline julgava errada virava "conhecimento" persistido por 7
+				# dias e servido a toda execucao seguinte, inclusive a busca
+				# proativa do code_generator. Medido: 15 relatorios com a MESMA
+				# reprovacao (pacote legado google-generativeai). Quem conhece o
+				# veredicto e este ponto, entao e daqui que a gravacao sai.
+				if step.step_type == STEP_WEB_RESEARCH:
+					try:
+						from ..sub_agents.web_researcher import salvar_se_aprovado
+						salvar_se_aprovado(prompt, last_output)
+					except Exception as exc:  # pragma: no cover - defesa
+						_logger.info("[CACHE] nao foi possivel salvar: %s", exc)
 				self._emit("APROVADO", step.step_type)
 				# skill: agent-orchestration-improve-agent (Performance Baseline)
 				# skill: llm-app-patterns Section 4 (LLMOps): latency_ms completa o baseline

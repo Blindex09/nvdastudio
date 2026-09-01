@@ -81,7 +81,7 @@ class TestSessionMemoryPruning:
 
     def test_versao_session_memory_e_2_7_0(self):
         from nvdastudio.memory.session_memory import MODULE_VERSION
-        assert MODULE_VERSION == "3.5.0"
+        assert MODULE_VERSION == "3.6.0"
 
     def test_constantes_de_pruning_existem(self):
         from nvdastudio.memory import session_memory

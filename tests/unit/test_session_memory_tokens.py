@@ -5,7 +5,7 @@ from addon.globalPlugins.nvdastudio.memory.session_memory import SessionMemory, 
 
 class TestSessionMemoryVersao:
     def test_versao_e_2_5_0(self):
-        assert MODULE_VERSION == "3.5.0"
+        assert MODULE_VERSION == "3.6.0"
 
 
 @pytest.fixture

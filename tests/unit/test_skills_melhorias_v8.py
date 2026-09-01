@@ -28,7 +28,7 @@ class TestQueryComplexityClassifier:
 
     def test_versao_orchestrator(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.69.0"
+        assert MODULE_VERSION == "5.70.0"
 
     def test_low_vira_simple(self):
         from nvdastudio.core.orchestrator import classify_query_complexity
@@ -71,7 +71,7 @@ class TestSessionMemoryComplexityLevel:
 
     def test_versao_session_memory(self):
         from nvdastudio.memory.session_memory import MODULE_VERSION
-        assert MODULE_VERSION == "3.5.0"
+        assert MODULE_VERSION == "3.6.0"
 
     def test_log_step_metric_aceita_complexity_level(self, mem):
         # Nao deve lancar excecao com o novo parametro

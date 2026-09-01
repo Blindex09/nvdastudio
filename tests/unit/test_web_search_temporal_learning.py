@@ -206,8 +206,22 @@ class TestWebResearcherTemporalSearch:
         empty_mem.close()
         sm_mod._DB_PATH = orig
 
-    def test_resultado_substantivo_salvo_em_cache(self, tmp_path):
-        """Resultado substantivo deve ser salvo em web_knowledge para proxima vez."""
+    def test_resultado_substantivo_so_e_salvo_depois_de_aprovado(self, tmp_path):
+        """web_researcher 4.11.0: run() NAO cacheia mais.
+
+        Ate aqui o resultado era gravado no fim do proprio run() -- antes de o
+        Critic existir na historia, porque ele so avalia depois que o agente
+        retorna. Uma pesquisa que o pipeline julgava errada virava conhecimento
+        persistido por 7 dias e servido a toda execucao seguinte, inclusive a
+        busca proativa do code_generator.
+
+        Medido nos relatorios E2E: 15 reprovacoes com a MESMA queixa (pacote
+        legado google-generativeai), e um code_generation gastando 419.747
+        tokens para ser reprovado por seguir essa pesquisa.
+
+        Este teste travava o comportamento antigo. Agora trava o novo: run()
+        pesquisa e devolve; quem grava e salvar_se_aprovado(), chamada pelo
+        orchestrator no ramo do veredicto aprovado."""
         from unittest.mock import MagicMock, patch
         import nvdastudio.memory.session_memory as sm_mod
         orig = sm_mod._DB_PATH
@@ -235,14 +249,23 @@ class TestWebResearcherTemporalSearch:
         with patch("nvdastudio.sub_agents.web_researcher.create_llm_client", return_value=mock_client), \
              patch("nvdastudio.ai.llm_factory.create_llm_client", return_value=relevance_client):
             from nvdastudio.sub_agents import web_researcher
-            web_researcher.run("como usar requests com NVDA", "modelo", {}, _memory=mem,
+            resultado = web_researcher.run(
+                "como usar requests com NVDA", "modelo", {}, _memory=mem,
             )
 
-            # Verifica que foi salvo
+            # run() nao grava: o veredicto ainda nao existe neste ponto
+            assert not mem.get_web_knowledge("requests", max_age_days=1), (
+                "run() voltou a cachear antes da verificacao"
+            )
+
+            # aprovado pelo Critic, o orchestrator manda gravar
+            web_researcher.salvar_se_aprovado(
+                "como usar requests com NVDA", resultado, _memory=mem,
+            )
             saved = mem.get_web_knowledge("requests", max_age_days=1)
 
         assert len(saved) >= 1, (
-            "Resultado substantivo deve ter sido salvo em web_knowledge"
+            "pesquisa aprovada deve ser cacheada para a proxima execucao"
         )
 
         mem.close()

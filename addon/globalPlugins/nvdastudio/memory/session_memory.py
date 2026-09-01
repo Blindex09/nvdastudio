@@ -15,10 +15,31 @@ except ImportError:
 from ..utils.logger import get_logger
 from .relevance import rank_relevant
 
-MODULE_VERSION = "3.5.0"
+MODULE_VERSION = "3.6.0"
 _logger = get_logger("session_memory")
 
-_DB_DIR  = os.path.join(os.path.expanduser("~"), "AppData", "Roaming", "NVDAStudio")
+# NVDASTUDIO_MEMORY_DIR redireciona o banco -- existe para ISOLAMENTO DE TESTE.
+#
+# Achado em 2026-09-01: a suite de testes escrevia no banco REAL do usuario
+# (%APPDATA%/NVDAStudio/memory.json). Encontrada la uma entrada de
+# web_knowledge com topic="prompt" e content="output valido" -- string de mock
+# de teste, nao conhecimento pesquisado.
+#
+# Esse banco alimenta get_similar_sessions(), get_common_mistakes() e a busca
+# proativa do code_generator: dado sintetico ali vira contexto de uma geracao
+# real. Rodar teste nao pode mudar o estado do usuario, e muito menos ensinar
+# coisa errada ao pipeline.
+def resolver_dir_do_banco() -> str:
+	"""Diretorio do banco: NVDASTUDIO_MEMORY_DIR quando definido, senao o do
+	usuario. Funcao, e nao expressao solta, para poder ser testada sem
+	recarregar o modulo -- recarregar troca a identidade das classes e quebra
+	o `isinstance` de outros testes."""
+	return os.environ.get("NVDASTUDIO_MEMORY_DIR", "").strip() or os.path.join(
+		os.path.expanduser("~"), "AppData", "Roaming", "NVDAStudio"
+	)
+
+
+_DB_DIR  = resolver_dir_do_banco()
 _DB_PATH = os.path.join(_DB_DIR, "memory.json")
 
 # Limites de retencao para evitar crescimento ilimitado das tabelas.

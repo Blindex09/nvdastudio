@@ -17,7 +17,7 @@ from ._base import (
 )
 
 _logger = get_logger("web_researcher")
-MODULE_VERSION = "4.10.0"
+MODULE_VERSION = "4.11.0"
 
 # Cache: registros com menos de N dias sao considerados frescos.
 _CACHE_MAX_AGE_DAYS: int = 7
@@ -567,12 +567,46 @@ def run(
 		)
 		result = _correct_code_fence_violation(result, model_id)
 
-	# 4. Salva resultado no cache
-	if _memory is not None:
-		try:
-			_memory.save_web_knowledge(topic, result)
-			_logger.info("[CACHE] salvo para '%s'.", topic[:60])
-		except Exception as exc:
-			_logger.info("[CACHE] erro ao salvar: %s", exc)
-
+	# 4. NAO salva aqui. Ver salvar_se_aprovado().
+	#
+	# Ate 2026-09-01 o resultado era cacheado NESTE ponto, antes de o Critic
+	# existir na historia -- ele so avalia depois que este agente retorna. Uma
+	# pesquisa que o proprio pipeline julgava errada virava "conhecimento"
+	# persistido por 7 dias e servido a toda execucao seguinte.
+	#
+	# Medido: 15 relatorios com a MESMA reprovacao -- "a pesquisa usa o pacote
+	# legado google-generativeai, mas o objetivo exige google-genai". E o cache
+	# tambem alimenta o code_generator (busca proativa), entao a pesquisa
+	# reprovada chegava direto na geracao de codigo.
+	#
+	# Cachear so o que passou na verificacao nao e otimizacao: e a diferenca
+	# entre memoria e boato.
 	return result
+
+
+def salvar_se_aprovado(prompt: str, content: str, _memory=None) -> bool:
+	"""
+	Persiste a pesquisa no cache -- so quando o Critic aprovou.
+
+	Chamado pelo orchestrator, que e quem conhece o veredicto. O topico e
+	derivado do MESMO `_extract_topic()` usado na leitura, entao gravacao e
+	leitura nao podem divergir (Regra 5).
+
+	Nunca levanta: falha ao cachear nao pode derrubar um step aprovado.
+	"""
+	if not (content or "").strip():
+		return False
+	if _memory is None:
+		try:
+			from ..memory.session_memory import memory as _default_mem
+			_memory = _default_mem
+		except Exception:
+			return False
+	try:
+		topico = _extract_topic(prompt)
+		_memory.save_web_knowledge(topico, content)
+		_logger.info("[CACHE] salvo (aprovado) para '%s'.", topico[:60])
+		return True
+	except Exception as exc:
+		_logger.info("[CACHE] erro ao salvar: %s", exc)
+		return False
