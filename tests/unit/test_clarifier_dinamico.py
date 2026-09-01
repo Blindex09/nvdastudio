@@ -131,7 +131,7 @@ class TestPlannerUserClarificationStep:
 class TestOrchestratorMidPipelineClarification:
     def test_versao_e_2_6_0(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.63.0"
+        assert MODULE_VERSION == "5.64.0"
 
     def test_set_callbacks_aceita_on_clarify(self):
         from nvdastudio.core.orchestrator import Orchestrator

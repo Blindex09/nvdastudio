@@ -35,7 +35,7 @@ from nvdastudio.utils.iteration_budget import (
 )
 
 assert BUDGET_VERSION == "1.3.0"
-assert ORCH_VERSION == "5.63.0"
+assert ORCH_VERSION == "5.64.0"
 
 
 @pytest.fixture(autouse=True)

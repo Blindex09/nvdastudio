@@ -142,7 +142,7 @@ class TestOrchestratorSyntaxValidation:
 
     def test_versao_orchestrator(self):
         from addon.globalPlugins.nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.63.0"
+        assert MODULE_VERSION == "5.64.0"
 
     def test_sv_em_non_blocking(self):
         from addon.globalPlugins.nvdastudio.core.orchestrator import _NON_BLOCKING_STEP_TYPES

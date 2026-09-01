@@ -139,65 +139,45 @@ class TestCosturaComOStep:
 		)
 
 
-class TestRetryNaoReenviaContextoInteiro:
+class TestReducaoNoRetryFoiRevertida:
 	"""
-	CORRECAO DETERMINISTICA (2026-09-01), depois que a anterior falhou.
+	HIPOTESE TESTADA EM E2E REAL E DERRUBADA (2026-09-01).
 
-	O escopo por topico (`nvda_topics`) so funciona se o PLANNER declarar -- e
-	nas duas rodadas E2E reais ele NAO declarou. Medido nos 486 prompts
-	registrados: o marcador [NVDA-TOPICS:...] nunca apareceu, e o custo por
-	tentativa ficou identico antes e depois (103.031 -> 103.055 tokens).
+	A ideia: "na tentativa 2 o modelo ja tem o codigo e a lista de problemas
+	acumulados; falta corrigir um import, nao reaprender a API do NVDA". Enviar
+	so o core no retry cortava 75% dos docs e 56% do custo do step.
 
-	Causa raiz: `target_files` e `nvda_topics` estavam nas `properties` do schema
-	e FORA do `required`; com additionalProperties=False, o modelo omitia os
-	dois. Corrigido -- mas o projeto ja documenta que nenhum modelo do Ollama
-	Cloud honra json_schema de verdade, entao `required` sozinho nao basta.
+	O mecanismo funcionou como projetado -- custo por tentativa caiu de ~103 mil
+	para ~67 mil tokens. E o RESULTADO piorou muito:
 
-	Esta reducao NAO depende do modelo: olha apenas se existem problemas
-	anteriores. Na tentativa 2 o modelo ja tem o codigo gerado e a lista
-	acumulada de defeitos -- o que falta e corrigir um import, nao reaprender a
-	API do NVDA.
+	    AssistenteLeituraGemini   nota 52.0 -> 15.7
+	    GeminiMultimodal         nota 32.7 ->  9.1
+
+	O modelo PRECISA do contexto para fazer a correcao que o Critic pediu; sem a
+	fonte do NVDA ele corrige no escuro. Economia de tokens que reduz a taxa de
+	acerto nao e economia -- e so falhar mais barato.
+
+	Estes testes existem para que a ideia nao volte sem medicao nova. O escopo
+	por TOPICO continua valendo: ali o contexto e menor por ser IRRELEVANTE ao
+	arquivo, nao por ser sonegado ao modelo.
 	"""
 
-	def test_retry_recebe_so_o_core(self):
-		completo = len(get_docs_code_generation())
-		retry = len(get_docs_code_generation(topics=["retry_core_apenas"]))
-		assert retry < completo * 0.30, (
-			f"retry custa {retry} de {completo} -- a economia precisa ser grande, "
-			"e o retry o caso que queima o orcamento (3 tentativas x 103 mil tokens)"
-		)
-
-	def test_core_do_retry_mantem_o_essencial(self):
-		"""Reduzir nao pode virar cegar: o piso que todo arquivo de addon usa
-		precisa continuar la, senao troca-se custo por retrabalho."""
-		saida = get_docs_code_generation(topics=["retry_core_apenas"])
-		for essencial in ("globalPluginHandler", "addonHandler", "api.py", "ui.py"):
-			assert essencial in saida, f"{essencial} sumiu do contexto de retry"
-
-	def test_orchestrator_reduz_apenas_quando_ha_problemas_anteriores(self):
-		"""A primeira tentativa precisa do contexto completo -- e onde o modelo
-		de fato escreve o arquivo do zero."""
+	def test_retry_recebe_o_mesmo_contexto_da_primeira_tentativa(self):
 		import inspect
 
 		from nvdastudio.core.orchestrator import Orchestrator
 
 		src = inspect.getsource(Orchestrator._build_step_prompt)
-		assert "if previous_issues and not _topicos:" in src, (
-			"a reducao precisa ser condicionada a existir problema anterior"
+		assert "retry_core_apenas" not in src, (
+			"a reducao de contexto no retry voltou -- ela foi medida em E2E real "
+			"e DERRUBOU a nota de 52.0 para 15.7. Nao reintroduzir sem medir."
 		)
-		assert "retry_core_apenas" in src
 
-	def test_topicos_declarados_tem_precedencia_sobre_a_reducao(self):
-		"""Se o planner declarou escopo, o retry mantem esse escopo -- ele ja e
-		pequeno, e cortar para o core perderia contexto que o step precisa."""
+	def test_topicos_declarados_continuam_valendo(self):
+		"""O que foi revertido foi a reducao no RETRY, nao o escopo por topico."""
 		import inspect
 
 		from nvdastudio.core.orchestrator import Orchestrator
 
 		src = inspect.getsource(Orchestrator._build_step_prompt)
-		i_topicos = src.find('_topicos = list(getattr(step, "nvda_topics"')
-		i_reducao = src.find("if previous_issues and not _topicos:")
-		assert -1 < i_topicos < i_reducao, (
-			"os topicos declarados precisam ser lidos ANTES da reducao, e a "
-			"reducao so vale quando nao ha nenhum"
-		)
+		assert "nvda_topics_marker" in src

@@ -6,7 +6,7 @@ from addon.globalPlugins.nvdastudio.core.orchestrator import (
 
 class TestOrchestratorVersao:
     def test_versao_e_2_6_0(self):
-        assert MODULE_VERSION == "5.63.0"
+        assert MODULE_VERSION == "5.64.0"
 
 
 class TestTimeoutConstante:
