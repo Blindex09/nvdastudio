@@ -10,7 +10,7 @@ class TestDecisionLog:
 
     def test_versao_e_2_4_0(self):
         from addon.globalPlugins.nvdastudio.sub_agents.design_review_agent import MODULE_VERSION
-        assert MODULE_VERSION == "2.15.0"
+        assert MODULE_VERSION == "2.16.0"
 
     # 2026-08-29: removidos os 6 testes de _DECISION_LOG_SYSTEM e do
     # _SYNTHESIS_TEMPLATE de 6 estagios. Verificavam um estagio (Decision

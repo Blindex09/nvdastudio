@@ -6,7 +6,7 @@ from ..builder.nvda_context import get_docs_design_review
 from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
 
 _logger = get_logger("design_review_agent")
-MODULE_VERSION = "2.15.0"
+MODULE_VERSION = "2.16.0"
 
 # 2.12.0: catalogo completo de prefixos de rule ID usados no projeto
 # (nvda_context.py/rule_registry.py) -- usado pelos 2 reforcos mecanicos
@@ -192,6 +192,49 @@ O gerador DEVE abordar cada risco identificado, cada restricao listada,
 e cada ponto critico de acessibilidade levantado pelo User Advocate."""
 
 
+def _estagio_com_reforco(nome: str, executar) -> tuple:
+	"""
+	Roda um estagio da revisao e repete UMA vez se ele voltar vazio.
+
+	Medido na rodada 7 (2026-09-01 21:32): o Challenger devolveu ZERO
+	caracteres enquanto o Guardian entregou 10.896 e o Advocate 4.517. O
+	documento foi montado com a secao vazia e submetido assim mesmo -- o
+	Critic reprovou com "a secao Challenger esta vazia, sem riscos ou
+	suposicoes identificados", e os 115.687 tokens da revisao inteira foram
+	perdidos num resultado que ja nascia reprovado.
+
+	Secao vazia e uma condicao de falha CONHECIDA e detectavel de graca: nao
+	ha revisao de design possivel sem riscos identificados. Repetir so o
+	estagio que falhou custa uma fracao de perder a revisao toda.
+
+	`_extract_final_tool_result` ja cai para `resp.content` quando o modelo
+	nao chama a ferramenta de entrega, entao vazio aqui significa que o
+	estagio realmente nao produziu nada -- nao e falta de extracao.
+	"""
+	saida = executar()
+	tokens = get_last_tokens()
+	if (saida or "").strip():
+		return saida, tokens
+
+	_logger.warning(
+		"[DESIGN-REVIEW] Estagio %s voltou VAZIO. Repetindo uma vez -- uma "
+		"secao vazia reprova a revisao inteira.", nome,
+	)
+	saida = executar()
+	tokens += get_last_tokens()
+	if not (saida or "").strip():
+		_logger.error(
+			"[DESIGN-REVIEW] Estagio %s voltou vazio de novo. A revisao segue "
+			"declarando a lacuna em vez de fingir que a secao existe.", nome,
+		)
+		saida = (
+			f"[SECAO INDISPONIVEL] O estagio {nome} nao produziu analise nesta "
+			"execucao. Trate esta perspectiva como NAO COBERTA -- nao assuma que "
+			"a ausencia de achados significa ausencia de risco."
+		)
+	return saida, tokens
+
+
 def run(prompt: str, model_id: str, reasoning_params: dict, cache_key: str | None = None) -> str:
 	"""
 	Executa revisao de design em tres estagios e retorna documento de revisao.
@@ -221,71 +264,77 @@ def run(prompt: str, model_id: str, reasoning_params: dict, cache_key: str | Non
 	# Narracao previa removida (v2.9.2): final_tool liga live_narrate automaticamente,
 	# entao o proprio modelo ja narra ao vivo no content antes de entregar a critica --
 	# um narrate() aqui em cima ficaria redundante com essa narracao ao vivo.
-	challenger_output = _run_sub_agent(
-		_CHALLENGER_SYSTEM,
-		f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
-		model_id,
-		_REASONING_CHALLENGER,
-		extra_docs=_docs_challenger, cache_key=cache_key,
-		step_type="design_review",
-		final_tool={
-			"name": "entregar_critica_challenger",
-			"description": "Entrega a critica final do estagio Challenger: suposicoes frageis, "
-				"casos de falha previstos e ambiguidades nao resolvidas no design proposto.",
-			"param_name": "critica",
-			"param_description": "A critica completa do Challenger (suposicoes que podem estar "
-				"erradas, casos de falha previstos, ambiguidades nao resolvidas), em prosa, sem Markdown.",
-		},
+	challenger_output, _challenger_tokens = _estagio_com_reforco(
+		"Challenger",
+		lambda: _run_sub_agent(
+			_CHALLENGER_SYSTEM,
+			f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
+			model_id,
+			_REASONING_CHALLENGER,
+			extra_docs=_docs_challenger, cache_key=cache_key,
+			step_type="design_review",
+			final_tool={
+				"name": "entregar_critica_challenger",
+				"description": "Entrega a critica final do estagio Challenger: suposicoes frageis, "
+					"casos de falha previstos e ambiguidades nao resolvidas no design proposto.",
+				"param_name": "critica",
+				"param_description": "A critica completa do Challenger (suposicoes que podem estar "
+					"erradas, casos de falha previstos, ambiguidades nao resolvidas), em prosa, sem Markdown.",
+			},
+		),
 	)
-	_challenger_tokens = get_last_tokens()
 	log_decision(_logger, "challenger_concluido",
 				 f"chars={len(challenger_output)}")
 
 	# Estagio 2: Constraint Guardian
 	# Narracao previa removida (v2.9.2): mesmo motivo do Estagio 1 -- final_tool
 	# ja cobre a narracao ao vivo, um narrate() antes seria redundante.
-	guardian_output = _run_sub_agent(
-		_GUARDIAN_SYSTEM,
-		f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
-		model_id,
-		_REASONING_GUARDIAN,
-		extra_docs=_docs_guardian, cache_key=cache_key,
-		step_type="design_review",
-		final_tool={
-			"name": "entregar_critica_guardian",
-			"description": "Entrega a critica final do estagio Constraint Guardian: restricoes "
-				"NVDA e WX-A11Y criticas para este addon, citando os IDs exatos do catalogo de regras.",
-			"param_name": "critica",
-			"param_description": "A critica completa do Constraint Guardian (restricoes NVDA "
-				"criticas, restricoes WX criticas, contrato de implementacao com IDs de regra citados), "
-				"em prosa, sem Markdown.",
-		},
+	guardian_output, _guardian_tokens = _estagio_com_reforco(
+		"Constraint Guardian",
+		lambda: _run_sub_agent(
+			_GUARDIAN_SYSTEM,
+			f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
+			model_id,
+			_REASONING_GUARDIAN,
+			extra_docs=_docs_guardian, cache_key=cache_key,
+			step_type="design_review",
+			final_tool={
+				"name": "entregar_critica_guardian",
+				"description": "Entrega a critica final do estagio Constraint Guardian: restricoes "
+					"NVDA e WX-A11Y criticas para este addon, citando os IDs exatos do catalogo de regras.",
+				"param_name": "critica",
+				"param_description": "A critica completa do Constraint Guardian (restricoes NVDA "
+					"criticas, restricoes WX criticas, contrato de implementacao com IDs de regra citados), "
+					"em prosa, sem Markdown.",
+			},
+		),
 	)
-	_guardian_tokens = get_last_tokens()
 	log_decision(_logger, "guardian_concluido",
 				 f"chars={len(guardian_output)}")
 	guardian_output = _dedupe_repeated_rule_mentions(guardian_output)
 
 	# Estagio 3: User Advocate
 	# Narracao previa removida (v2.9.2): mesmo motivo dos estagios 1 e 2.
-	advocate_output = _run_sub_agent(
-		_ADVOCATE_SYSTEM,
-		f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
-		model_id,
-		_REASONING_ADVOCATE,
-		extra_docs=_docs_advocate, cache_key=cache_key,
-		step_type="design_review",
-		final_tool={
-			"name": "entregar_critica_advocate",
-			"description": "Entrega a critica final do estagio User Advocate: perspectiva do "
-				"usuario cego sobre acessibilidade do fluxo, atalhos, linguagem e configuracao do addon.",
-			"param_name": "critica",
-			"param_description": "A critica completa do User Advocate (acessibilidade do fluxo, "
-				"atalhos e conflitos, linguagem e mensagens, configuracao acessivel, pontos criticos "
-				"de UX), em prosa, sem Markdown.",
-		},
+	advocate_output, _advocate_tokens = _estagio_com_reforco(
+		"User Advocate",
+		lambda: _run_sub_agent(
+			_ADVOCATE_SYSTEM,
+			f"Pedido do usuario para revisar:\n\n{_prompt_with_lock}",
+			model_id,
+			_REASONING_ADVOCATE,
+			extra_docs=_docs_advocate, cache_key=cache_key,
+			step_type="design_review",
+			final_tool={
+				"name": "entregar_critica_advocate",
+				"description": "Entrega a critica final do estagio User Advocate: perspectiva do "
+					"usuario cego sobre acessibilidade do fluxo, atalhos, linguagem e configuracao do addon.",
+				"param_name": "critica",
+				"param_description": "A critica completa do User Advocate (acessibilidade do fluxo, "
+					"atalhos e conflitos, linguagem e mensagens, configuracao acessivel, pontos criticos "
+					"de UX), em prosa, sem Markdown.",
+			},
+		),
 	)
-	_advocate_tokens = get_last_tokens()
 	log_decision(_logger, "advocate_concluido",
 				 f"chars={len(advocate_output)}")
 	advocate_output = _strip_rule_ids(advocate_output)

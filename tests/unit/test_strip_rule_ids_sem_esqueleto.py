@@ -30,7 +30,7 @@ from nvdastudio.sub_agents.design_review_agent import (
 
 
 def test_versao():
-	assert MODULE_VERSION == "2.15.0"
+	assert MODULE_VERSION == "2.16.0"
 
 
 def test_parentese_que_so_segurava_o_id_sai_junto():

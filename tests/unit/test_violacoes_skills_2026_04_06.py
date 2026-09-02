@@ -15,7 +15,7 @@ class TestRevisaoDeDesign:
 
     def test_versao_design_review_e_2_5_0(self):
         from nvdastudio.sub_agents.design_review_agent import MODULE_VERSION
-        assert MODULE_VERSION == "2.15.0"
+        assert MODULE_VERSION == "2.16.0"
 
     # 2026-08-29: removidos os testes de _UNDERSTANDING_LOCK_SYSTEM,
     # _REASONING_LOCK, _DECISION_LOG_SYSTEM e {understanding_lock}. O
