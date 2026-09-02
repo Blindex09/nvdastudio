@@ -49,7 +49,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.77.0"
+MODULE_VERSION = "5.78.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -317,40 +317,39 @@ _SEM_SALDO_RE = re.compile(
 
 def _modelo_de_outro_provedor(provedor_atual: str) -> str:
 	"""
-	Modelo de um provedor DIFERENTE, que tenha chave configurada.
+	Modelo de um provedor DIFERENTE, para quando a CONTA atual nao atende.
 
-	O fallback de infraestrutura existente troca de modelo dentro do MESMO
-	provedor -- util para timeout ou 503, inutil para 401: se a conta esta
-	rejeitando, nenhum modelo dela vai responder.
+	Delega para model_router.select_model_and_provider(), que ja existia e faz
+	isto melhor do que uma lista propria: pontua candidatos de todos os
+	provedores com chave, e -- quando o provedor principal do usuario e o
+	ollama -- restringe o resgate a _OLLAMA_RESCUE_PROVIDERS, para nao cair num
+	provedor pago em que ele pode nao ter assinatura.
 
-	Medido em 2026-09-02: duas execucoes perderam um step inteiro para
-	"OpenCode Go API falhou: 401 Unauthorized", com retries=0 e tokens=0,
-	enquanto o Ollama estava configurado e funcionando na mesma maquina. Um
-	addon nao pode morrer porque UMA das contas expirou.
+	A primeira versao desta funcao percorria uma lista fixa de provedores
+	escrita a mao. Era duplicacao de fluxo (Regra 5) e pior que o que ja
+	existia -- ignorava pontuacao e podia escolher um provedor pago sem
+	assinatura.
 
-	Devolve string vazia quando nao ha outro provedor com chave -- ai nao ha o
-	que tentar, e o erro segue como estava.
+	Devolve "" quando nenhum outro provedor tem chave: ai nao ha o que tentar,
+	e o erro segue como estava.
 	"""
 	try:
-		from ..ai.model_registry import get_provider_step_models
-		from ..gui.settings_panel import get_api_key
+		from ..ai.model_router import select_model_and_provider
 	except Exception:  # pragma: no cover - defesa
 		return ""
-
-	# Ordem deliberada: o provedor local/proprio do usuario primeiro.
-	for provedor in ("ollama", "opencode_go", "anthropic", "openai", "gemini", "xai"):
-		if provedor == provedor_atual:
-			continue
-		try:
-			if not get_api_key(provedor):
-				continue
-			modelos = get_provider_step_models(provedor)
-		except Exception:
-			continue
-		escolhido = modelos.get("heavy") or modelos.get("light") or ""
-		if escolhido:
-			return escolhido
-	return ""
+	try:
+		escolha = select_model_and_provider(
+			step_type="code_generation",
+			complexity="medium",
+			exclude_provider=provedor_atual,
+			active_provider=provedor_atual,
+		)
+	except Exception:  # pragma: no cover - defesa
+		return ""
+	if not escolha:
+		return ""
+	_provedor, modelo = escolha
+	return modelo
 
 
 def _get_resilience_model(step_type: str = "", complexity: str = "medium") -> str:
