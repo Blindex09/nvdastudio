@@ -91,3 +91,119 @@ def test_apenas_erros_de_conta_disparam():
 
 	src = inspect.getsource(og._sinalizar_conta_indisponivel)
 	assert "(401, 402, 403, 429)" in src
+
+
+class TestCadeiaChegaNoProvedorDegradado:
+	"""
+	A cadeia de saida estruturada tem 5 modelos e TODOS no OpenCode Go. Quando
+	a conta fica sem saldo, os 5 falham em sequencia e a excecao sobe -- foi o
+	que matou a execucao de 2026-09-02 04:22 em 5 segundos, com zero steps.
+
+	`call_with_structured_output()` reconsulta `get_structured_output_model(idx)`
+	a cada iteracao, entao basta o disjuntor disparar na PRIMEIRA falha para a
+	segunda iteracao ja cair no provedor ativo.
+
+	O que faltava era o disjuntor nao ser acionado no endpoint certo: ele estava
+	ligado so em /chat/completions, e o Clarifier usa a Responses API
+	(/v1/responses). Cinco tentativas falhavam sem nunca marcar o provedor.
+	"""
+
+	def test_apos_o_disjuntor_a_cadeia_muda_de_provedor(self):
+		_limpar()
+		try:
+			primeiro = mr.get_structured_output_model(0)
+			mr.marcar_saida_estruturada_indisponivel("HTTP 401: CreditsError")
+			segundo = mr.get_structured_output_model(1)
+			assert primeiro.startswith("opencode_go::")
+			assert not segundo.startswith("opencode_go::"), (
+				"a cadeia continuaria batendo na conta sem saldo ate esgotar"
+			)
+		finally:
+			_limpar()
+
+	def test_TODA_requisicao_do_cliente_aciona_o_disjuntor(self):
+		"""Contagem EXATA contra `raise_for_status`, nao um minimo.
+
+		A primeira versao deste teste exigia ">= 2" e passou com o defeito: eu
+		tinha instrumentado as duas chamadas nao-streaming e deixado as duas de
+		STREAMING de fora -- e o Clarifier usa streaming. A execucao morreu de
+		novo em 1,55s, com o teste verde.
+
+		Um minimo nao verifica cobertura; so a contagem contra o total verifica.
+		"""
+		import inspect
+
+		from nvdastudio.ai import opencode_go_client as og
+
+		linhas = inspect.getsource(og).split(chr(10))
+		requisicoes = sum(1 for ln in linhas if ln.strip() == "resp.raise_for_status()")
+		ganchos = sum(
+			1 for ln in linhas
+			if ln.strip() == "_sinalizar_conta_indisponivel(resp)"
+		)
+		assert requisicoes > 0, "precondicao: o cliente faz requisicoes"
+		assert ganchos == requisicoes, (
+			f"{requisicoes} requisicoes e so {ganchos} acionam o disjuntor -- "
+			"a que ficar de fora mata a execucao sem marcar o provedor"
+		)
+
+	def test_streaming_le_o_corpo_antes_de_checar(self):
+		"""Em resposta de streaming o corpo so existe apos read(); sem isso a
+		mensagem de CreditsError chegaria vazia e o motivo logado seria inutil."""
+		import inspect
+
+		from nvdastudio.ai import opencode_go_client as og
+
+		assert "resp.read()" in inspect.getsource(og)
+
+
+class TestPlannerRefazNoProvedorDegradado:
+	"""
+	O Planner chama `create_llm_client()` DIRETO, sem passar pela cadeia de
+	`llm_factory.call_with_structured_output()` -- e por isso nao reconsultava o
+	modelo depois que o disjuntor disparava.
+
+	Medido em 2026-09-02: TRES execucoes seguidas do complexo minimo morreram em
+	1,5 a 5 segundos, com zero steps e zero tokens. Em isolamento o mecanismo
+	funcionava (o Clarifier degradava e concluia), porque ele passa pela cadeia.
+	O Planner nao passa: capturava LLMClientError, logava e relancava.
+
+	A chamada que DISPARA o disjuntor precisa ser a primeira a se beneficiar
+	dele.
+	"""
+
+	def test_refaz_uma_vez_quando_o_modelo_muda(self):
+		import inspect
+
+		from nvdastudio.core.planner import Planner
+
+		src = inspect.getsource(Planner._call_planner_llm)
+		i = src.index("except LLMClientError")
+		trecho = src[i:]
+		assert "get_structured_output_model(0)" in trecho, (
+			"o Planner nao reconsulta o modelo depois da falha"
+		)
+		assert "cliente_degradado" in trecho
+
+	def test_nao_refaz_quando_o_modelo_e_o_mesmo(self):
+		"""Sem essa guarda viraria laco contra um provedor que nao vai
+		responder -- e o erro original ficaria escondido atras de repeticao."""
+		import inspect
+
+		from nvdastudio.core.planner import Planner
+
+		src = inspect.getsource(Planner._call_planner_llm)
+		i = src.index("modelo_degradado = ")
+		assert "if modelo_degradado == planner_model:" in src[i:i + 260]
+		assert "raise" in src[i:i + 320]
+
+	def test_a_degradacao_do_planner_e_anunciada(self):
+		"""O plano degradado pode cair em `_minimal_plan()` -- um pedido
+		complexo viraria addon simples. Quem le o log precisa saber."""
+		import inspect
+
+		from nvdastudio.core.planner import Planner
+
+		src = inspect.getsource(Planner._call_planner_llm)
+		assert "SEM garantia de json_schema" in src
+		assert "plano cai no minimo" in src

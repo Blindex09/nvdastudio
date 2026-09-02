@@ -1,0 +1,37 @@
+{
+  "addon_name": "ResumoGemini",
+  "query": "Crie um addon NVDA chamado ResumoGemini que usa a API do Google Gemini para resumir o texto selecionado. Funcionalidades: (1) um atalho NVDA+shift+r que pega o texto selecionado e fala o resumo; (2) u",
+  "timestamp": "2026-09-02T04:26:14.981243",
+  "plan_id": "?",
+  "complexity": "",
+  "duration_seconds": 1.71,
+  "total_tokens": 0,
+  "total_tokens_medidor": 0,
+  "total_retries": 0,
+  "replan_count": 0,
+  "success": false,
+  "error": "[ERRO] OpenCode Go Responses API falhou: Client error '401 Unauthorized' for url 'https://opencode.ai/zen/go/v1/responses'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401",
+  "steps": [],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "ERRO",
+      ""
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 0.0,
+  "models_used": []
+}

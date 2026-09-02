@@ -187,7 +187,7 @@ class TestPlannerAddonNameCanonical:
 
     def test_planner_versao_2_2_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.40.0"
+        assert MODULE_VERSION == "2.41.0"
 
     def test_addon_name_no_dataclass(self):
         """ExecutionPlan deve ter campo addon_name."""

@@ -13,7 +13,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.40.0"
+MODULE_VERSION = "2.41.0"
 _logger = get_logger("planner")
 
 
@@ -2164,7 +2164,40 @@ class Planner:
 			return resp.content or ""
 		except LLMClientError as exc:
 			_logger.warning("[AVISO] Planner: falhou com modelo %s. %s", planner_model, exc)
-			raise
+
+			# 2.41.0 -- UMA nova tentativa quando o provedor de saida estruturada
+			# caiu no meio desta chamada.
+			#
+			# O client do OpenCode Go marca o disjuntor
+			# (model_registry.marcar_saida_estruturada_indisponivel) ao ver
+			# 401/402/403/429, e a partir dai get_structured_output_model()
+			# resolve no provedor ATIVO. Mas a chamada que DISPAROU o disjuntor
+			# ainda levantava e matava o pipeline inteiro.
+			#
+			# Medido em 2026-09-02: tres execucoes seguidas morreram em 1,5 a 5
+			# segundos, com zero steps e zero tokens, na assinatura sem saldo. Em
+			# isolamento o mecanismo funcionava -- o Clarifier degradava e
+			# concluia -- porque ele passa por
+			# llm_factory.call_with_structured_output(), que reconsulta o modelo a
+			# cada item da cadeia. O Planner chama direto, e nao reconsultava.
+			#
+			# So UMA nova tentativa, e so quando o modelo REALMENTE mudou: sem
+			# isso viraria laco contra um provedor que nao vai responder.
+			modelo_degradado = get_structured_output_model(0)
+			if modelo_degradado == planner_model:
+				raise
+			_logger.warning(
+				"[PLAN] Refazendo o plano em %s -- SEM garantia de json_schema "
+				"estrito. Se o JSON vier quebrado, o plano cai no minimo.",
+				modelo_degradado,
+			)
+			cliente_degradado = create_llm_client(model_id=modelo_degradado)
+			resp = cliente_degradado.chat(
+				full_prompt,
+				reasoning_effort="high",
+				response_format=_PLAN_SCHEMA,
+			)
+			return resp.content or ""
 
 	def _parse_plan(self, raw: str) -> dict:
 		clean = raw.strip()

@@ -272,6 +272,12 @@ class OpenCodeGoClient:
 			trunc = False
 			with _httpx.Client(timeout=_HTTP_TIMEOUT) as client:
 				with client.stream("POST", _OPENCODE_GO_URL, headers=headers, json=payload) as resp:
+					if resp.status_code in (401, 402, 403, 429):
+						try:
+							resp.read()
+						except Exception:  # pragma: no cover - defesa
+							pass
+					_sinalizar_conta_indisponivel(resp)
 					resp.raise_for_status()
 					for line in resp.iter_lines():
 						if not line or not line.startswith("data:"):
@@ -388,6 +394,7 @@ class OpenCodeGoClient:
 				return self._stream_responses(payload, headers, on_chunk)
 			with _httpx.Client(timeout=_HTTP_TIMEOUT) as client:
 				resp = client.post(_OPENCODE_GO_RESPONSES_URL, headers=headers, json=payload)
+				_sinalizar_conta_indisponivel(resp)
 				resp.raise_for_status()
 				result = resp.json()
 				if result.get("error"):
@@ -456,6 +463,12 @@ class OpenCodeGoClient:
 				"POST", _OPENCODE_GO_RESPONSES_URL, headers=headers,
 				json={**payload, "stream": True},
 			) as resp:
+				if resp.status_code in (401, 402, 403, 429):
+					try:
+						resp.read()
+					except Exception:  # pragma: no cover - defesa
+						pass
+				_sinalizar_conta_indisponivel(resp)
 				resp.raise_for_status()
 				for line in resp.iter_lines():
 					if not line or not line.startswith("data:"):

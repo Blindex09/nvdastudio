@@ -29,7 +29,7 @@ from nvdastudio.core.planner import (
 	oversized_code_generation_steps,
 )
 
-assert MODULE_VERSION == "2.40.0"
+assert MODULE_VERSION == "2.41.0"
 
 
 def _step(step_id: str, alvos: list[str], descricao: str = "gerar", tipo: str = "code_generation"):
