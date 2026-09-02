@@ -33,7 +33,7 @@ CERCA = chr(96) * 3
 
 
 def test_versao():
-	assert MODULE_VERSION == "4.18.0"
+	assert MODULE_VERSION == "4.19.0"
 
 
 class TestAutofix:
@@ -198,3 +198,51 @@ class TestGuardaContraPiorar:
 		src = "import os" + NL + "X = 1" + NL
 		out = s.lint_autofix({"globalPlugins/A/m.py": src})
 		assert isinstance(out["globalPlugins/A/m.py"], str)
+
+
+class TestPontoDeEntradaNaoEReexport:
+	"""
+	O ruff se recusa a remover import nao usado de `__init__.py` porque assume
+	re-export de pacote -- e a recusa e amarrada ao NOME do arquivo. Verificado:
+	nem `--unsafe-fixes` nem `ignore-init-module-imports` (deprecado) mudam isso.
+
+	Mas o `globalPlugins/<Addon>/__init__.py` de um addon NVDA nao re-exporta
+	nada: e o modulo do plugin, o arquivo que o NVDA carrega e executa.
+
+	Medido na rodada 8: cg_core reprovado por "F401 `os` imported but unused" no
+	__init__.py, 336.994 tokens, enquanto o MESMO defeito era corrigido sem
+	drama nos outros arquivos do mesmo addon.
+	"""
+
+	def _morto(self):
+		return (
+			"import os" + NL + "import globalPluginHandler" + NL + NL
+			+ "class GlobalPlugin(globalPluginHandler.GlobalPlugin): pass" + NL
+		)
+
+	def test_import_morto_no_ponto_de_entrada_e_removido(self):
+		cam = "globalPlugins/A/__init__.py"
+		out = CodeSandbox().lint_autofix({cam: self._morto()})[cam]
+		assert "import os" not in out
+		assert "import globalPluginHandler" in out
+
+	def test_import_usado_no_ponto_de_entrada_e_preservado(self):
+		cam = "globalPlugins/A/__init__.py"
+		usado = (
+			"import os" + NL + "import globalPluginHandler" + NL + NL
+			+ "class GlobalPlugin(globalPluginHandler.GlobalPlugin):" + NL
+			+ chr(9) + "p = os.sep" + NL
+		)
+		assert "import os" in CodeSandbox().lint_autofix({cam: usado})[cam]
+
+	def test_subpacote_mantem_a_excecao_do_ruff(self):
+		"""Em `<Addon>/<sub>/__init__.py` o re-export E legitimo -- ali a
+		excecao do ruff continua valendo."""
+		cam = "globalPlugins/A/sub/__init__.py"
+		assert "import os" in CodeSandbox().lint_autofix({cam: self._morto()})[cam]
+
+	def test_appmodule_solto_nao_e_afetado(self):
+		"""appModules/<exe>.py nao e __init__.py -- caminho normal do ruff."""
+		cam = "appModules/notepad.py"
+		out = CodeSandbox().lint_autofix({cam: self._morto()})[cam]
+		assert "import os" not in out

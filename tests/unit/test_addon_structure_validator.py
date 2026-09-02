@@ -1,7 +1,7 @@
 class TestAddonBuilderVersaoV13:
     def test_versao_e_1_8_0(self):
         from nvdastudio.builder.addon_builder import MODULE_VERSION
-        assert MODULE_VERSION == "4.18.0"
+        assert MODULE_VERSION == "4.19.0"
 
 
 class TestValidateAddonStructureImport:

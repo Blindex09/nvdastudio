@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.8.0"
+MODULE_VERSION = "1.9.0"
 _logger = get_logger("code_sandbox")
 
 _SANDBOX_TIMEOUT = 10  # segundos
@@ -165,6 +165,23 @@ class SandboxResult:
     error: str = ""
     exit_code: int = -1
     timed_out: bool = False
+
+
+_DIRS_DE_ENTRADA = (
+	"globalPlugins", "appModules", "synthDrivers", "brailleDisplayDrivers",
+	"visionEnhancementProviders",
+)
+
+
+def _e_ponto_de_entrada_de_addon(rel: str) -> bool:
+	"""globalPlugins/<Addon>/__init__.py e o modulo do plugin, nao um pacote de
+	re-export -- a excecao do ruff para __init__.py nao vale aqui."""
+	partes = rel.replace(chr(92), "/").lstrip("/").split("/")
+	return (
+		len(partes) == 3
+		and partes[0] in _DIRS_DE_ENTRADA
+		and partes[-1] == "__init__.py"
+	)
 
 
 def _result_evidence(result: SandboxResult) -> str:
@@ -678,6 +695,44 @@ class CodeSandbox:
             corrigidos[rel] = novo
         return corrigidos
 
+    def _ruff_fix_reexport(
+        self, rel: str, conteudo: str, timeout: int | None = None,
+    ) -> str:
+        """
+        Segunda passada de F401 para o ponto de entrada do addon.
+
+        A recusa do ruff em remover import nao usado de `__init__.py` e amarrada
+        ao NOME do arquivo, nao ao conteudo -- verificado: `--unsafe-fixes` e
+        `ignore-init-module-imports` (deprecado) nao mudam nada. Lintar o MESMO
+        conteudo sob outro nome remove os imports normalmente.
+
+        Isso e legitimo aqui e so aqui: a excecao do ruff existe porque
+        `__init__.py` de pacote costuma re-exportar. O
+        globalPlugins/<Addon>/__init__.py de um addon NVDA nao re-exporta nada --
+        e o modulo do plugin, o arquivo que o NVDA carrega e executa.
+        Subpacote (`<Addon>/<sub>/__init__.py`) NAO entra aqui, porque ali o
+        re-export e legitimo.
+
+        A guarda de nome indefinido continua valendo por cima: se a remocao
+        quebrar algo, o arquivo volta ao original.
+        """
+        apelido = rel.rsplit("/", 1)[0] + "/_entrada_para_lint.py"
+        with tempfile.TemporaryDirectory(prefix="nvdastudio_reexp_") as tmpdir:
+            cfg = os.path.join(tmpdir, "ruff.toml")
+            with open(cfg, "w", encoding="utf-8") as f:
+                f.write(_GENERATED_RUFF_CONFIG)
+            try:
+                proc = subprocess.run(
+                    [sys.executable, "-m", "ruff", "check", "--fix", "--no-cache",
+                     "--select", "F401", "--config", cfg,
+                     "--stdin-filename", apelido, "-"],
+                    input=conteudo, capture_output=True, text=True,
+                    timeout=timeout or _LINT_TIMEOUT,
+                )
+            except (subprocess.TimeoutExpired, OSError):
+                return ""
+        return proc.stdout if proc.stdout.strip() else ""
+
     def _nomes_indefinidos(
         self, rel: str, conteudo: str, timeout: int | None = None,
     ) -> int:
@@ -727,6 +782,22 @@ class CodeSandbox:
                 return None
 
         saida = proc.stdout
+
+        # O ruff NAO remove import nao usado em __init__.py: assume que pode
+        # ser re-export de pacote, e marca a correcao como insegura. Mas o
+        # globalPlugins/<Addon>/__init__.py de um addon NVDA nao e pacote de
+        # re-export -- e o modulo do plugin, o arquivo que o NVDA carrega e
+        # executa. A excecao do ruff nao se aplica a ele.
+        #
+        # Medido na rodada 8: cg_core reprovado por "F401 `os` imported but
+        # unused" no __init__.py, 336.994 tokens, enquanto o mesmo defeito era
+        # corrigido sem drama nos outros arquivos do mesmo addon.
+        #
+        # A guarda de nome indefinido (_nomes_indefinidos) continua valendo por
+        # cima disto: se a remocao quebrar algo, o arquivo volta ao original.
+        if saida.strip() and _e_ponto_de_entrada_de_addon(rel):
+            saida = self._ruff_fix_reexport(rel, saida, timeout) or saida
+
         if not saida.strip():
             # ruff ausente, ou erro antes de escrever o arquivo corrigido.
             return None

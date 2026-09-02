@@ -34,7 +34,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.18.0"
+MODULE_VERSION = "4.19.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -197,6 +197,71 @@ def substituir_codigo_dos_blocos(output: str, correcoes: dict) -> str:
 			)
 			break
 	return resultado
+
+
+def renomear_descarte_que_sombreia_traducao(code: str) -> str:
+	"""
+	Renomeia `_` usado como variavel de DESCARTE quando o mesmo escopo traduz.
+
+	Em addon NVDA, `_` e a funcao de traducao. Usar `_` tambem como descarte
+	-- `_, ext = os.path.splitext(caminho)` -- torna o nome LOCAL a funcao, e
+	toda chamada `_("texto")` anterior naquela funcao passa a referenciar uma
+	variavel ainda nao atribuida. O resultado e UnboundLocalError em execucao,
+	na hora em que o usuario cego abre o painel.
+
+	Medido na rodada 8: quatro reprovacoes de "F823 Local variable `_`
+	referenced before assignment" em settings_panel.py, nos dois addons, a
+	~270 mil tokens cada. E defeito real -- o ruff esta certo em apontar -- mas
+	a correcao e mecanica: o descarte vira `_descartado`.
+
+	So age quando as DUAS coisas acontecem na MESMA funcao: `_` atribuido e
+	`_()` chamado. Renomear descarte em funcao que nao traduz seria mexer em
+	codigo correto sem motivo.
+	"""
+	if "_" not in code or not chama_gettext(code):
+		return code
+	try:
+		arvore = ast.parse(code)
+	except SyntaxError:
+		return code
+
+	linhas_alvo: set = set()
+	for no in ast.walk(arvore):
+		if not isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef)):
+			continue
+		traduz = any(
+			isinstance(x, ast.Call) and isinstance(x.func, ast.Name) and x.func.id == "_"
+			for x in ast.walk(no)
+		)
+		if not traduz:
+			continue
+		for x in ast.walk(no):
+			alvos = []
+			if isinstance(x, ast.Assign):
+				alvos = list(x.targets)
+			elif isinstance(x, ast.For):
+				alvos = [x.target]
+			for alvo in alvos:
+				nomes = alvo.elts if isinstance(alvo, (ast.Tuple, ast.List)) else [alvo]
+				for n in nomes:
+					if isinstance(n, ast.Name) and n.id == "_":
+						linhas_alvo.add(n.lineno)
+
+	if not linhas_alvo:
+		return code
+
+	linhas = code.split(chr(10))
+	for numero in linhas_alvo:
+		if 1 <= numero <= len(linhas):
+			linhas[numero - 1] = re.sub(
+				r"(?<![A-Za-z0-9_])_(?![A-Za-z0-9_(])", "_descartado", linhas[numero - 1],
+			)
+	novo = chr(10).join(linhas)
+	try:
+		ast.parse(novo)
+	except SyntaxError:
+		return code
+	return novo
 
 
 def garantir_init_translation(code: str) -> str:
@@ -714,6 +779,7 @@ def extract_code_blocks(text: str) -> list[dict]:
 		if (bloco.get("language") or "").lower() == "python" and bloco.get("code"):
 			bloco["code"] = normalizar_indentacao(bloco["code"])
 			bloco["code"] = garantir_init_translation(bloco["code"])
+			bloco["code"] = renomear_descarte_que_sombreia_traducao(bloco["code"])
 
 	return blocks
 
