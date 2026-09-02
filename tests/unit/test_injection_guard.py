@@ -138,4 +138,4 @@ class TestWebResearcherSanitizaConteudoWeb:
 	def test_web_researcher_versao_4_3_0(self):
 		from nvdastudio.sub_agents.web_researcher import MODULE_VERSION
 
-		assert MODULE_VERSION == "4.12.0"
+		assert MODULE_VERSION == "4.13.0"

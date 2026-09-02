@@ -1,0 +1,195 @@
+{
+  "addon_name": "ResumoGemini",
+  "query": "Crie um addon NVDA chamado ResumoGemini que usa a API do Google Gemini para resumir o texto selecionado. Funcionalidades: (1) um atalho NVDA+shift+r que pega o texto selecionado e fala o resumo; (2) u",
+  "timestamp": "2026-09-02T02:54:29.120746",
+  "plan_id": "f643bd61",
+  "complexity": "",
+  "duration_seconds": 1081.52,
+  "total_tokens": 136993,
+  "total_tokens_medidor": 795368,
+  "total_retries": 6,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação parou por limite de recursos (Budget excedido — pipeline parado) antes de concluir o código do addon. 6 etapa(s) não chegaram a ser executadas. O que foi aprovado até aqui está preservado no relatório desta execução.",
+  "steps": [
+    {
+      "step_id": "manifest",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 30265,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ResumoGemini\nsummary = ResumoGemini\ndescription = Addon que usa a API do Google Gemini para resumir o texto selecionado no NVDA.\nauthor = Autor <autor@exemplo.com>\nurl = https://github.com/usuario/ResumoGemini\ndocFileName = userGuide.html\nversion = 1.0.0\nminimumNVDAVersion"
+    },
+    {
+      "step_id": "research_gemini",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Não documenta as exceções, códigos ou respostas esperadas para chave inválida/autenticação, limites de uso e falhas de rede, embora isso seja explicitamente exigido.",
+        "Não registra recomendações de tratamento desses erros.",
+        "As afirmações sobre a versão estável 0.10.0 e os modelos gemini-3.5-flash/gemini-3.6-flash não estão confirmadas nem acompanhadas de fonte oficial e podem estar desatualizadas ou incorretas."
+      ],
+      "output_preview": "[WEB_SEARCH] **Pacote:** google-genai\n**Versão estável:** 0.10.0\n**Instalação:** `pip install google-genai`\n**API principal:**\n- Autenticação: `client = genai.Client(api_key=\"YOUR_API_KEY\")` (ou definir a variável de ambiente `GOOGLE_API_KEY`).\n- Geração de conteúdo (modelo de texto): `response = cl"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "opencode_go/gpt-5.6-luna",
+      "approved": true,
+      "score": 96,
+      "retries_used": 3,
+      "tokens_used": 106728,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ResumoGemini/__init__.py\n\"\"\"Plugin global para resumir o texto selecionado usando o Google Gemini.\n\nContrato do módulo de serviço:\n1. Módulo: globalPlugins.ResumoGemini.gemini_service\n2. Função obrigatória: summarize(text: str, api_key: str) -> str\n3. A função summarize deve "
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "[ERRO] OpenCode Go API falhou: Client error '401 Unauthorized' for url 'https://opencode.ai/zen/go/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401"
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 59.2,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code",
+    "opencode_go/gpt-5.6-luna"
+  ]
+}

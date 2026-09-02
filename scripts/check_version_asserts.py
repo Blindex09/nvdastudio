@@ -21,7 +21,15 @@ _NOMES_DE_VERSAO = ("MODULE_VERSION", "PROMPT_VERSION")
 MODULE_VERSION_IMPORT_RE = re.compile(
     r"\b(MODULE_VERSION|PROMPT_VERSION)\b(?:\s+as\s+(\w+))?"
 )
-ASSERT_RE = re.compile(r'assert\s+(\w+)\s*==\s*"([^"]+)"')
+# Aceita tanto `assert MODULE_VERSION == "x"` quanto
+# `assert modulo.MODULE_VERSION == "x"` -- a segunda forma escapava da
+# checagem, e o assert so quebrava na suite completa depois do commit.
+# Aceita tanto `assert MODULE_VERSION == ...` quanto
+# `assert modulo.MODULE_VERSION == ...` -- a segunda forma escapava da
+# checagem, e o assert so quebrava na suite completa depois do commit.
+ASSERT_RE = re.compile(
+    r'assert\s+(?:\w+\.)?(\w+)\s*==\s*"([^"]+)"'
+)
 
 _ADDON_PKG_PATH = str(REPO_ROOT / "addon" / "globalPlugins")
 if _ADDON_PKG_PATH not in sys.path:
@@ -60,12 +68,23 @@ def _check_file(path: Path, aplicar: bool = False) -> list[str]:
 
     imports: list[tuple[int, str, str]] = []
     for m in IMPORT_RE.finditer(text):
-        mv_match = MODULE_VERSION_IMPORT_RE.search(m.group(2))
-        if not mv_match:
-            continue
-        alias = mv_match.group(2) or mv_match.group(1)
         lineno = text.count("\n", 0, m.start()) + 1
-        imports.append((lineno, m.group(1), alias))
+        mv_match = MODULE_VERSION_IMPORT_RE.search(m.group(2))
+        if mv_match:
+            alias = mv_match.group(2) or mv_match.group(1)
+            imports.append((lineno, m.group(1), alias))
+            continue
+        # `from pacote import modulo` + `assert modulo.MODULE_VERSION == ...`:
+        # o nome da versao nao aparece na linha de import, so no assert. Sem
+        # isto, esses asserts escapavam da checagem e so quebravam na suite
+        # completa, depois do commit.
+        for importado in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", m.group(2)):
+            # So nomes que PARECEM modulo. Constante em MAIUSCULAS e classe em
+            # CamelCase nao sao pacote, e tentar importa-las so gera ruido de
+            # aviso sem achar versao nenhuma.
+            if importado == "as" or not importado.islower():
+                continue
+            imports.append((lineno, m.group(1) + "." + importado, importado))
 
     problems = []
     correcoes: list[tuple[int, str, str]] = []
@@ -75,7 +94,14 @@ def _check_file(path: Path, aplicar: bool = False) -> list[str]:
             continue
         name, expected = m.group(1), m.group(2)
 
-        candidates = [(mod, alias) for iln, mod, alias in imports if iln <= lineno and alias == name]
+        prefixo = ""
+        m_dot = re.search(r"assert\s+(\w+)\.\w+\s*==", line)
+        if m_dot:
+            prefixo = m_dot.group(1)
+        candidates = [
+            (mod, alias) for iln, mod, alias in imports
+            if iln <= lineno and alias == (prefixo or name)
+        ]
         if not candidates:
             continue
         module_path, _alias = candidates[-1]

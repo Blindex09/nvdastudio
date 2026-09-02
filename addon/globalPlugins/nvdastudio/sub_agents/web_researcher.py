@@ -18,7 +18,7 @@ from ._base import (
 )
 
 _logger = get_logger("web_researcher")
-MODULE_VERSION = "4.12.0"
+MODULE_VERSION = "4.13.0"
 
 # Cache: registros com menos de N dias sao considerados frescos.
 # Opt-in explicito para busca real sob pytest. Ver o comentario em run().
@@ -331,6 +331,17 @@ def _synthesize_web_results(query: str, web_results: str, model_id: str = "alto"
 			tools=[_final_tool_schema(final_tool)],
 			on_chunk=live.feed,
 		)
+		# Contabiliza o custo da sintese.
+		#
+		# Este caminho NAO registrava tokens -- so `_knowledge_only_call` fazia.
+		# Enquanto a busca real estava desligada sob teste, o gasto aqui era zero
+		# e ninguem notou; ligada (4.12.0), ele virou consumo REAL e INVISIVEL:
+		# fora do relatorio e, pior, fora do medidor que decide parar o pipeline.
+		#
+		# Sintoma medido: web_research aparecia com tokens=0 mesmo com 3
+		# retentativas, e o custo por step usado para dimensionar o orcamento
+		# ficou subestimado por causa disso.
+		_tl.last_tokens = getattr(_tl, "last_tokens", 0) + resp.tokens_used
 		return _extract_final_tool_result(resp, final_tool) or ""
 	except LLMClientError as exc:
 		_logger.warning("[WEB_SEARCH] sintese falhou: %s", exc)
@@ -380,7 +391,9 @@ def _knowledge_only_call(prompt: str, model_id: str) -> str:
 			on_chunk=live.feed,
 		)
 		log_llm_response(_logger, f"web_researcher_v{MODULE_VERSION}", resp.content)
-		_tl.last_tokens = resp.tokens_used
+		# Soma, nao substitui: a sintese pode ter gasto e devolvido vazio antes
+		# de cair aqui -- atribuir apagaria aquele custo do orcamento.
+		_tl.last_tokens = getattr(_tl, "last_tokens", 0) + resp.tokens_used
 		return _extract_final_tool_result(resp, final_tool) or ""
 	finally:
 		live.flush()
@@ -491,6 +504,9 @@ def run(
 		except Exception:
 			_memory = None
 
+	# Zera antes de acumular: sem isto, uma chamada que nao gera custo herdaria
+	# o total da anterior e o orcamento contaria o mesmo gasto duas vezes.
+	_tl.last_tokens = 0
 	topic = _extract_topic(prompt)
 
 	# 1. Verifica cache -- NUNCA num retry (ver 4.9.0). _extract_topic() pega

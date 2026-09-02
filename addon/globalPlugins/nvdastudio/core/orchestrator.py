@@ -48,7 +48,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.75.0"
+MODULE_VERSION = "5.76.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -287,6 +287,52 @@ def _scope_output_to_step(step_type: str, output: str) -> str:
 		f"{block.get('code', '').rstrip()}\n```"
 		for block in owned
 	)
+
+
+# Erro de AUTENTICACAO do provedor: chave invalida, expirada, revogada ou sem
+# cota. Trocar de MODELO nao ajuda -- o problema e a conta, nao o modelo.
+_ERRO_DE_AUTENTICACAO_RE = re.compile(
+	r"401|403|unauthorized|forbidden|invalid.{0,12}(api.?key|token)|api.?key.{0,20}invalid",
+	re.IGNORECASE,
+)
+
+
+def _modelo_de_outro_provedor(provedor_atual: str) -> str:
+	"""
+	Modelo de um provedor DIFERENTE, que tenha chave configurada.
+
+	O fallback de infraestrutura existente troca de modelo dentro do MESMO
+	provedor -- util para timeout ou 503, inutil para 401: se a conta esta
+	rejeitando, nenhum modelo dela vai responder.
+
+	Medido em 2026-09-02: duas execucoes perderam um step inteiro para
+	"OpenCode Go API falhou: 401 Unauthorized", com retries=0 e tokens=0,
+	enquanto o Ollama estava configurado e funcionando na mesma maquina. Um
+	addon nao pode morrer porque UMA das contas expirou.
+
+	Devolve string vazia quando nao ha outro provedor com chave -- ai nao ha o
+	que tentar, e o erro segue como estava.
+	"""
+	try:
+		from ..ai.model_registry import get_provider_step_models
+		from ..gui.settings_panel import get_api_key
+	except Exception:  # pragma: no cover - defesa
+		return ""
+
+	# Ordem deliberada: o provedor local/proprio do usuario primeiro.
+	for provedor in ("ollama", "opencode_go", "anthropic", "openai", "gemini", "xai"):
+		if provedor == provedor_atual:
+			continue
+		try:
+			if not get_api_key(provedor):
+				continue
+			modelos = get_provider_step_models(provedor)
+		except Exception:
+			continue
+		escolhido = modelos.get("heavy") or modelos.get("light") or ""
+		if escolhido:
+			return escolhido
+	return ""
 
 
 def _get_resilience_model(step_type: str = "", complexity: str = "medium") -> str:
@@ -1953,6 +1999,15 @@ class Orchestrator:
 	# Escalacao de modelo (handoff)
 	# ------------------------------------------------------------------
 
+	def _provedor_atual(self) -> str:
+		"""Provedor configurado, ou "" quando nao da para saber."""
+		try:
+			from ..gui.settings_panel import get_llm_provider
+
+			return get_llm_provider()
+		except Exception:  # pragma: no cover - defesa
+			return ""
+
 	def _current_complexity(self) -> str:
 		"""5.36.0: complexidade do plano atual, pra alimentar
 		_get_resilience_model()/ai/model_router.py na escalacao -- sem
@@ -2483,14 +2538,38 @@ class Orchestrator:
 			# Antes, _INFRA_ERROR_RE causava falsos positivos em codigo que
 			# continha "timeout=30", "status == 503" — descartando output valido.
 			# Regra 5: decisao deterministica por regex — nao usa LLM.
-			if _IS_SUBAGENT_ERROR_RE.search(last_output) and step.model_id != resilience_model:
+			_alvo_fallback = resilience_model
+			if _IS_SUBAGENT_ERROR_RE.search(last_output) and _ERRO_DE_AUTENTICACAO_RE.search(
+				last_output
+			):
+				# 5.76.0 -- 401/403 e problema de CONTA, nao de modelo.
+				#
+				# O fallback abaixo troca de modelo dentro do MESMO provedor, o que
+				# resolve timeout e 503 e nao resolve nada numa chave rejeitada.
+				# Medido em 2026-09-02: duas execucoes perderam um step inteiro para
+				# "OpenCode Go API falhou: 401 Unauthorized", com retries=0 e
+				# tokens=0, enquanto o Ollama estava configurado e funcionando na
+				# mesma maquina.
+				#
+				# A deteccao so roda DENTRO do ramo de erro de infraestrutura: o
+				# projeto ja se queimou com regex de infra batendo em codigo gerado
+				# que continha "status == 503" (nota do fix v4.1.1 logo acima).
+				_outro = _modelo_de_outro_provedor(self._provedor_atual())
+				if _outro:
+					_logger.warning(
+						"[FALLBACK] Step %s: provedor rejeitou a autenticacao. "
+						"Trocando de PROVEDOR para %s.", step.step_id, _outro,
+					)
+					_alvo_fallback = _outro
+
+			if _IS_SUBAGENT_ERROR_RE.search(last_output) and step.model_id != _alvo_fallback:
 				_logger.warning(
 					"[FALLBACK] Step %s: erro de infra detectado com modelo %s. "
 					"Tentando fallback %s...",
-					step.step_id, step.model_id, resilience_model,
+					step.step_id, step.model_id, _alvo_fallback,
 				)
 				fallback_step = copy.copy(step)
-				fallback_step.model_id = resilience_model
+				fallback_step.model_id = _alvo_fallback
 				fallback_step.reasoning_params = _FALLBACK_REASONING
 				last_output, step_tokens = self._dispatch_with_heartbeat(
 					step_type=fallback_step.step_type,
