@@ -71,7 +71,7 @@ class TestSaveAddonFilesLFLineEndings:
         from nvdastudio.builder.addon_builder import save_addon_files
         code = "import globalPluginHandler\r\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\r\n    pass\r\n"
         blocks = [{"filename": "globalPlugins/testAddon/__init__.py", "code": code, "language": "python"}]
-        folder, saved = save_addon_files(blocks, str(tmp_path), "testAddon")
+        folder, saved = save_addon_files(blocks, str(tmp_path), "testAddon", garantir_doc=False)
         py_file = saved[0]
         # Lê em modo binário para verificar line endings
         raw = open(py_file, "rb").read()
@@ -82,7 +82,7 @@ class TestSaveAddonFilesLFLineEndings:
         """manifest.ini nao precisa de LF forcado — apenas .py e afetado."""
         from nvdastudio.builder.addon_builder import save_addon_files
         blocks = [{"filename": "manifest.ini", "code": "name = test\nversion = 1.0.0\n", "language": "ini"}]
-        folder, saved = save_addon_files(blocks, str(tmp_path), "testAddon")
+        folder, saved = save_addon_files(blocks, str(tmp_path), "testAddon", garantir_doc=False)
         # Deve salvar sem erro — o importante e que nao crasha
         assert len(saved) == 1
         assert os.path.isfile(saved[0])
@@ -205,7 +205,10 @@ class TestDegradacaoSistemica:
         step_results = [
             StepResult("s1", "code_generation", "ok", True, 95, retries_used=1),
             StepResult("s2", "manifest_builder", "ok", True, 90, retries_used=1),
-            StepResult("s3", "documentation", "ok", True, 92, retries_used=1),
+            # documentation virou NAO-bloqueante (orchestrator 5.81.0), entao
+            # nao conta mais para este ratio. Trocado por agent_runner, que e
+            # bloqueante, para preservar a INTENCAO do teste (>=40% retentaram).
+            StepResult("s3", "agent_runner", "ok", True, 92, retries_used=1),
             StepResult("s4", "test_generation", "ok", True, 88, retries_used=0),
             StepResult("s5", "assembly", "ok", True, 91, retries_used=0),
         ]
@@ -233,7 +236,8 @@ class TestDegradacaoSistemica:
         step_results = [
             StepResult("s1", "code_generation", "ok", True, 95, retries_used=1),
             StepResult("s2", "manifest_builder", "ok", True, 90, retries_used=0),
-            StepResult("s3", "documentation", "ok", True, 92, retries_used=0),
+            # ver nota acima: documentation nao e mais bloqueante.
+            StepResult("s3", "agent_runner", "ok", True, 92, retries_used=0),
             StepResult("s4", "test_generation", "ok", True, 88, retries_used=0),
         ]
         done_blocking = [r for r in step_results if r.step_type not in _NON_BLOCKING_STEP_TYPES]

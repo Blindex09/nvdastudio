@@ -49,7 +49,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.79.0"
+MODULE_VERSION = "5.81.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -91,7 +91,35 @@ def _get_step_timeout(step_type: str) -> int:
 _NON_BLOCKING_STEP_TYPES = {
 	"accessibility_audit", "design_review", "syntax_validation", "web_research",
 	"agent_template", "manifest_builder",
+	# 5.80.0 -- engineering_review estava declarado CONSULTIVO no planner
+	# (_STEPS_CONSULTIVOS, 2.42.0: o assembly nao depende dele) e ao mesmo
+	# tempo BLOQUEANTE aqui. Duas listas descrevendo o mesmo conceito e
+	# discordando -- a duplicacao de regra que a Regra 5 proibe. Introduzida
+	# por mim em ef8a97b; ele julga engenharia e nao produz arquivo nenhum.
+	"engineering_review",
+	# 5.81.0 -- documentation deixa de bloquear a entrega.
+	#
+	# REVERSAO DELIBERADA de uma decisao anterior do usuario ("Q8.3: falha
+	# em documentation agora BLOQUEIA o pipeline"), aprovada por ele em
+	# 2026-09-02 depois da evidencia abaixo. Nao mexer sem falar com ele.
+	#
+	# Medido na rodada AssistenteEscrita: doc1 reprovado 3x deixou o assembly
+	# eternamente nao-pronto (ele depende de documentation), e o codigo do
+	# addon inteiro -- ja gerado e aprovado -- foi descartado por causa do
+	# guia do usuario.
+	#
+	# So e seguro afrouxar porque agora existe rede deterministica:
+	# addon_builder 4.22.0 injeta um guia minimo quando nenhum HTML chega aos
+	# blocos -- mesmo criterio que ja tornava manifest_builder nao-bloqueante
+	# (_generate_minimal_manifest). Quando o usuario decidiu pelo bloqueio,
+	# essa rede NAO existia, e afrouxar teria trocado "nao entrega" por
+	# "entrega sem ajuda nenhuma". Agora a troca e por "entrega com ajuda
+	# simples", que e estritamente melhor que nao entregar.
+	"documentation",
 }
+
+# Steps que PRODUZEM a entrega -- so eles enxergam a reserva de orcamento.
+_STEP_TYPES_DE_ENTREGA = {"assembly"}
 
 # Steps criticos: falha dispara replanejamento e escalacao.
 _CRITICAL_STEP_TYPES = {"code_generation", "agent_runner"}
@@ -1138,7 +1166,9 @@ class Orchestrator:
 				# Parar aqui e o que o documento de metodologia do projeto chama de
 				# graceful degradation: entregar o que funcionou e dizer por que
 				# parou, em vez de descartar tudo.
-				_orcamento_ok, _orcamento_motivo = iteration_budget.can_continue()
+				_orcamento_ok, _orcamento_motivo = self._saldo_permite_seguir(
+					remaining, failed_step_ids,
+				)
 				if not _orcamento_ok:
 					_nao_rodados = [s.step_id for s in remaining]
 					_logger.warning(
@@ -1625,7 +1655,9 @@ class Orchestrator:
 				# Parar aqui e o que o documento de metodologia do projeto chama de
 				# graceful degradation: entregar o que funcionou e dizer por que
 				# parou, em vez de descartar tudo.
-				_orcamento_ok, _orcamento_motivo = iteration_budget.can_continue()
+				_orcamento_ok, _orcamento_motivo = self._saldo_permite_seguir(
+					remaining, failed_step_ids,
+				)
 				if not _orcamento_ok:
 					_nao_rodados = [s.step_id for s in remaining]
 					_logger.warning(
@@ -3264,6 +3296,49 @@ class Orchestrator:
 
 	def _deps_ready(self, step: ExecutionStep, outputs: dict) -> bool:
 		return all(dep in outputs for dep in step.depends_on)
+
+	def _saldo_permite_seguir(
+		self, remaining: list, failed_step_ids: set,
+	) -> tuple[bool, str]:
+		"""Reserva de orcamento para a entrega (padrao 'budget backstop').
+
+		Nas duas rodadas complexas de 2026-09-02 a UNICA etapa que ficou de fora
+		foi o assembly: ResumoGemini estourou o teto por 2% (853.455/836.850) e
+		AssistenteEscrita por 5% (1.272.721/1.209.750) -- as duas com TODO o
+		codigo do addon ja gerado e aprovado. Steps que nao produzem arquivo
+		gastaram o saldo que faltava para empacotar.
+
+		Quando o saldo entra na reserva o pipeline NAO para: descarta o que nao
+		entrega e segue direto para a entrega. Os descartados entram em
+		failed_step_ids porque _deps_partially_ready() exige dependencia em
+		failed_step_ids para liberar execucao com contexto parcial -- sem isso o
+		assembly ficaria eternamente nao-pronto e o laco giraria em falso.
+
+		Metodo unico de proposito: o portao de orcamento existe em DOIS pontos
+		(execucao normal e retomada). Duplicar esta logica repetiria o defeito
+		em um dos dois (Regra 5).
+		"""
+		ok, motivo = iteration_budget.can_continue()
+		if ok:
+			return True, ""
+		entregaveis = [
+			s for s in remaining if s.step_type in _STEP_TYPES_DE_ENTREGA
+		]
+		if not entregaveis or not iteration_budget.can_continue(para_entrega=True)[0]:
+			return False, motivo
+		descartados = [
+			s for s in remaining if s.step_type not in _STEP_TYPES_DE_ENTREGA
+		]
+		_logger.warning(
+			"[BUDGET] Saldo entrou na reserva de entrega (%s). Descartando %d "
+			"step(s) que nao produzem arquivo e seguindo para a entrega: %s",
+			motivo, len(descartados),
+			", ".join(s.step_id for s in descartados[:8]) or "nenhum",
+		)
+		for d in descartados:
+			failed_step_ids.add(d.step_id)
+			remaining.remove(d)
+		return True, ""
 
 	def _deps_partially_ready(self, step: ExecutionStep, outputs: dict, failed_step_ids: set) -> bool:
 		"""Verifica se pelo menos um dependente falhou mas outros estao disponiveis.

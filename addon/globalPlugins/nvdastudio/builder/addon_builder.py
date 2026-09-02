@@ -3,6 +3,7 @@ import io
 import configparser
 import hashlib
 import json
+import html as html_lib
 import os
 import re
 import token as _token
@@ -34,7 +35,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.20.0"
+MODULE_VERSION = "4.22.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -1148,6 +1149,40 @@ def _deduplicate_blocks(blocks: list[dict]) -> list[dict]:
 	return filtered
 
 
+def _generate_minimal_user_guide(addon_name: str) -> str:
+	"""Guia do usuario minimo quando o step documentation nao entregou HTML.
+
+	Mesmo papel de _generate_minimal_manifest() abaixo: rede deterministica
+	para um artefato OBRIGATORIO. Sem doc/, o NVDA nao mostra ajuda nenhuma
+	do addon.
+
+	Medido em 2026-09-02 (AssistenteEscrita): documentation reprovado 3x, e
+	como ele e bloqueante o assembly ficou eternamente nao-pronto -- todo o
+	codigo do addon, ja gerado e aprovado, foi descartado por causa do guia.
+	Com esta rede, `documentation` pode falhar sem custar a entrega: o addon
+	sai com ajuda simples em vez de nao sair.
+
+	Regra 5: geracao deterministica, nao usa LLM.
+	Regra 9: nao executa codigo -- apenas gera texto HTML.
+	"""
+	seguro = html_lib.escape(addon_name or "Add-on")
+	return (
+		"<!DOCTYPE html>\n"
+		'<html lang="pt-BR"><head><meta charset="UTF-8">\n'
+		f"<title>{seguro}</title></head>\n"
+		f"<body><h1>{seguro}</h1>\n"
+		"<p>Este add-on foi gerado pelo NVDAStudio.</p>\n"
+		"<h2>Como usar</h2>\n"
+		"<p>Os comandos deste add-on aparecem em Preferencias, Gestos de "
+		f"entrada, na categoria {seguro}. As opcoes, quando existirem, ficam "
+		"em Preferencias, Configuracoes.</p>\n"
+		"<h2>Observacao</h2>\n"
+		"<p>Este guia foi gerado automaticamente porque a etapa de "
+		"documentacao nao pode ser concluida. O add-on funciona "
+		"normalmente.</p>\n"
+		"</body></html>\n"
+	)
+
 def _generate_minimal_manifest(addon_name: str) -> str:
 	"""Gera manifest.ini minimo quando manifest_builder falhou.
 
@@ -1162,7 +1197,16 @@ def _generate_minimal_manifest(addon_name: str) -> str:
 	"""
 	from ..utils.project_policy import PROJECT_MIN_NVDA, PROJECT_LAST_TESTED_NVDA
 	return (
-		f"[add-on]\n"
+		# 4.21.0 -- a secao [add-on] foi REMOVIDA daqui.
+		#
+		# Tres pontos do projeto a proibem: manifest_builder.py ('Never
+		# include the [add-on] section header'), nvda_validator.py (reprova
+		# se a string aparece) e critic.py ('NUNCA deve ter secao [add-on]
+		# ... ERRO grave'). O manifest do NVDA e ConfigObj sem secoes.
+		#
+		# Este fallback so roda quando o manifest_builder JA falhou, entao o
+		# defeito ficava escondido no caminho de excecao: a rede de seguranca
+		# produzia exatamente o erro grave que o resto do projeto rejeita.
 		f"name = {addon_name}\n"
 		f"summary = Add-on gerado pelo NVDAStudio\n"
 		f"author = NVDAStudio\n"
@@ -1179,6 +1223,7 @@ def save_addon_files(
 	addon_name: str,
 	use_timestamp: bool = True,
 	require_manifest: bool = True,
+	garantir_doc: bool = True,
 ) -> tuple[str, list[str]]:
 	"""
 	Salva os arquivos do addon no diretorio de saida, preservando a estrutura
@@ -1228,6 +1273,29 @@ def save_addon_files(
 			"[MANIFEST-FALLBACK] Nenhum bloco manifest.ini encontrado. "
 			"Gerado manifest minimo deterministico para %s.",
 			addon_name,
+		)
+
+	# Guia do usuario: mesma rede de seguranca do manifest acima.
+	#
+	# garantir_doc espelha require_manifest: ligado por padrao (o caminho de
+	# producao nao pode depender de alguem lembrar de passar a flag -- peca
+	# certa desligada de quem decide e o defeito mais comum deste projeto) e
+	# desligavel por quem testa o VALIDADOR e precisa de um addon sem doc/.
+	_tem_guia = any(
+		(b.get("filename") or "").replace("\\", "/").lower().endswith(".html")
+		for b in blocks
+	)
+	if garantir_doc and require_manifest and not _tem_guia:
+		_guia = _generate_minimal_user_guide(addon_name)
+		for _idioma in ("pt_BR", "en"):
+			blocks.append({
+				"filename": f"doc/{_idioma}/userGuide.html",
+				"code": _guia,
+				"language": "html",
+			})
+		_logger.warning(
+			"[DOC-FALLBACK] Nenhum guia do usuario nos blocos. Gerado guia "
+			"minimo deterministico para %s.", addon_name,
 		)
 
 	# Exclui blocos de testes — nunca devem ir para o addon instalado (v2.1.0)

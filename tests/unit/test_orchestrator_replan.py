@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 class TestOrchestratorVersaoV2:
     def test_versao_e_2_6_0(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.79.0"
+        assert MODULE_VERSION == "5.81.0"
 
     def test_max_replans_positivo(self):
         from nvdastudio.core.orchestrator import _MAX_REPLANS
@@ -797,11 +797,16 @@ class TestDesignReviewNonBlocking:
 
     def test_non_blocking_inclui_tipos_esperados(self):
         from nvdastudio.core.orchestrator import _NON_BLOCKING_STEP_TYPES
-        # Q8.3/Q10.3: documentation e test_generation agora BLOQUEIAM (usuario decidiu).
-        # web_research adicionado como nao-bloqueante (offline nao impede o pipeline).
-        for tipo in ("accessibility_audit", "design_review", "web_research"):
+        # Q10.3: test_generation BLOQUEIA (decisao do usuario, mantida).
+        # web_research nao bloqueia (offline nao impede o pipeline).
+        # documentation passou a NAO bloquear em 2026-09-02, aprovado pelo
+        # Felipe: um documentation reprovado 3x descartou o addon complexo
+        # inteiro, ja gerado e aprovado. So foi seguro afrouxar porque
+        # addon_builder 4.22.0 passou a injetar um guia minimo -- mesma rede
+        # que ja tornava manifest_builder nao-bloqueante.
+        for tipo in ("accessibility_audit", "design_review", "web_research", "documentation"):
             assert tipo in _NON_BLOCKING_STEP_TYPES, f"{tipo} ausente de _NON_BLOCKING_STEP_TYPES"
-        for tipo_bloqueante in ("test_generation", "documentation"):
+        for tipo_bloqueante in ("test_generation",):
             assert tipo_bloqueante not in _NON_BLOCKING_STEP_TYPES, (
                 f"{tipo_bloqueante} deveria ser bloqueante agora")
 

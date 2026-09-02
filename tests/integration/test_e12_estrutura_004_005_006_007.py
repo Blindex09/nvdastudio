@@ -177,7 +177,13 @@ class TestE12Estrutura006:
 			{"language": "python", "filename": "globalPlugins/AddonE12/__init__.py",       "code": _INIT_COMPLETO},
 			# Intencionalmente sem bloco doc/
 		]
-		addon_folder, _ = save_addon_files(blocks, str(tmp_path), "AddonE12", use_timestamp=False)
+		# garantir_doc=False: este teste verifica o VALIDADOR, nao a rede de
+		# seguranca. Com o fallback ligado (padrao desde addon_builder 4.22.0)
+		# um addon sem doc/ deixa de existir, e ESTRUTURA-006 nao teria como
+		# disparar -- o que testaria o fallback, nao a regra.
+		addon_folder, _ = save_addon_files(
+			blocks, str(tmp_path), "AddonE12", use_timestamp=False, garantir_doc=False,
+		)
 
 		problems = validate_addon_structure(addon_folder)
 		assert any("ESTRUTURA-006" in p for p in problems), (

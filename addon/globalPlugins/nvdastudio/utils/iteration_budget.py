@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .logger import get_logger
 
-MODULE_VERSION = "1.7.0"
+MODULE_VERSION = "1.8.0"
 _logger = get_logger("iteration_budget")
 
 # Custos por 1M tokens (USD) — atualizar conforme provider
@@ -72,6 +72,13 @@ _CUSTO_MEDIDO_POR_STEP: dict[str, int] = {
 	"syntax_validation":        0,
 }
 _CUSTO_PADRAO_POR_STEP = 25_000
+
+# Tokens reservados para a etapa que EMPACOTA o addon. Medido: o assembly
+# aprovado custou 30.558 e 43.109 tokens nas duas rodadas complexas de
+# 2026-09-02; 120.000 cobre o pior caso com folga para uma retentativa e
+# para o Critic em dois estagios. Reservar de menos reproduz o defeito;
+# reservar demais faz o pipeline parar cedo com saldo ocioso.
+_RESERVA_DE_ENTREGA = 120_000
 
 # Tentativas esperadas por step. Medido: code_generation e agent_runner sao os
 # unicos que retentam com frequencia (produzem codigo que o Critic reprova); os
@@ -372,7 +379,7 @@ class IterationBudget:
                 ", ".join(exceeded)
             )
 
-    def can_continue(self) -> tuple[bool, str]:
+    def can_continue(self, para_entrega: bool = False) -> tuple[bool, str]:
         """
         Verifica se pode continuar.
 
@@ -389,8 +396,28 @@ class IterationBudget:
             if self._state.iterations_used >= self._limits.max_iterations:
                 return False, f"Max iterações atingido ({self._state.iterations_used})"
 
-            if self._state.tokens_used >= self._limits.max_tokens:
-                return False, f"Budget de tokens excedido ({self._state.tokens_used})"
+            # 1.8.0 -- RESERVA DE ENTREGA (padrao 'token reserve' / 'budget
+            # backstop'): nunca comecar uma etapa que nao se pode pagar para
+            # terminar. O teto efetivo de quem NAO entrega artefato e o teto
+            # menos a reserva; so a etapa de entrega enxerga o teto inteiro.
+            #
+            # Medido em duas rodadas complexas de 2026-09-02 e a UNICA etapa
+            # que ficou de fora nas duas foi o assembly -- em ResumoGemini por
+            # 2% (853.455/836.850) e em AssistenteEscrita por 5%
+            # (1.272.721/1.209.750). Nas duas, TODO o codigo do addon ja estava
+            # gerado e aprovado, e foi descartado por falta de empacotamento.
+            # Steps consultivos, que nao produzem arquivo, gastaram o saldo que
+            # faltou para a entrega.
+            teto = self._limits.max_tokens
+            if not para_entrega:
+                teto = max(1, teto - _RESERVA_DE_ENTREGA)
+            if self._state.tokens_used >= teto:
+                if para_entrega:
+                    return False, f"Budget de tokens excedido ({self._state.tokens_used})"
+                return False, (
+                    f"Saldo reservado para a entrega ({self._state.tokens_used}/{teto}; "
+                    f"reserva de {_RESERVA_DE_ENTREGA})"
+                )
 
             if self._state.cost_usd >= self._limits.max_cost_usd:
                 return False, f"Budget de custo excedido (${self._state.cost_usd:.2f})"

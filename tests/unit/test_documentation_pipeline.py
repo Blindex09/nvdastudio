@@ -18,9 +18,25 @@ class TestStepDocumentationConstante:
         assert STEP_DOCUMENTATION in STEP_REASONING_MAP
 
     def test_nao_bloqueante_no_orchestrator(self):
-        # Q8.3: falha em documentation agora BLOQUEIA o pipeline (usuario decidiu).
-        # documentation foi removida de _NON_BLOCKING_STEP_TYPES.
-        assert STEP_DOCUMENTATION not in _NON_BLOCKING_STEP_TYPES
+        """MUDANCA DELIBERADA, aprovada pelo Felipe em 2026-09-02.
+
+        Este teste travava o oposto: "Q8.3: falha em documentation agora
+        BLOQUEIA o pipeline (usuario decidiu)". A decisao fazia sentido
+        quando foi tomada -- addon sem guia nao mostra ajuda nenhuma no NVDA
+        -- mas naquele momento nao existia rede deterministica para o guia.
+
+        Medido na rodada AssistenteEscrita (2026-09-02): documentation
+        reprovado 3x deixou o assembly eternamente nao-pronto, e o addon
+        complexo inteiro, ja gerado e aprovado, foi descartado por causa do
+        guia do usuario.
+
+        Agora addon_builder 4.22.0 injeta um guia minimo quando nenhum HTML
+        chega aos blocos -- mesmo criterio que ja tornava manifest_builder
+        nao-bloqueante. A troca deixou de ser "nao entrega" contra "entrega
+        sem ajuda" e passou a ser "entrega com ajuda simples", que e
+        estritamente melhor que nao entregar.
+        """
+        assert STEP_DOCUMENTATION in _NON_BLOCKING_STEP_TYPES
 
 
 class TestExtractCodeBlocksHtml:

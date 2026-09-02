@@ -1,0 +1,406 @@
+{
+  "addon_name": "AssistenteEscrita",
+  "query": "Crie um addon NVDA chamado AssistenteEscrita que usa a API do ChatGPT da OpenAI para ajudar a revisar textos. Funcionalidades: (1) um atalho NVDA+shift+g que pega o texto selecionado, corrige a gramat",
+  "timestamp": "2026-09-02T11:40:27.821218",
+  "plan_id": "cf1a86b4",
+  "complexity": "",
+  "duration_seconds": 7905.06,
+  "total_tokens": 728443,
+  "total_tokens_medidor": 1272721,
+  "total_retries": 17,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação parou por limite de recursos (Budget excedido — pipeline parado) antes de concluir o código do addon. 1 etapa(s) não chegaram a ser executadas. O que foi aprovado até aqui está preservado no relatório desta execução.",
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 30269,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteEscrita\nsummary = Assistente de Escrita\ndescription = Ajuda a revisar textos usando a API do ChatGPT da OpenAI, corrigindo gramática, ortografia e simplificando linguagem.\nauthor = Seu Nome <seu@email.com>\nurl = https://github.com/usuario/AssistenteEscrita\ndocFil"
+    },
+    {
+      "step_id": "wr1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 16433,
+      "issues": [
+        "Versão do pacote 'openai' (1.5.0) está desatualizada; o objetivo pede a versão estável mais recente documentada.",
+        "Lista de modelos não inclui 'o1' (família o1), 'o3-mini' e respectivos snapshots válidos conforme solicitado no FIXME tentativa 2.",
+        "A lista de modelos ainda contém apenas o1-mini/o1-preview, deixando de fora modelos atualizados da documentação oficial."
+      ],
+      "output_preview": "[WEB_SEARCH] **Pacote:** openai\n**Versão estavel:** 1.5.0\n**Instalacao:** `pip install openai`\n**API principal:**\n- `client.chat.completions.create(model, messages, temperature=1.0, max_tokens=None, top_p=1.0, frequency_penalty=0.0, presence_penalty=0.0, stream=False, response_format=None, **kwargs)"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 92,
+      "retries_used": 3,
+      "tokens_used": 106255,
+      "issues": [
+        "Se o módulo configSpec estiver ausente ou falhar ao aplicar a configspec, os scripts ainda tentam acessar config.conf['AssistenteEscrita']['apiKey'] e podem lançar KeyError em tempo de execução. A importação tolerante evita o crash no carregamento, mas não protege o fluxo de execução dos scripts."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\nimport threading\nimport wx\nimport addonHandler\nimport api\nimport config\nimport globalPluginHandler\nimport gui\nimport textInfos\nimport ui\nfrom logHandler import log\nfrom scriptHandler import script\nfrom gui.settingsDialogs import NVDASettingsDialo"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 136060,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/openai_service.py\nimport threading\nfrom typing import Callable\nfrom logHandler import log\n\n\nclass OpenAIError(Exception):\n\t\"\"\"Base para erros do servico OpenAI.\"\"\"\n\tpass\n\n\nclass OpenAIAuthError(OpenAIError):\n\t\"\"\"API key invalida ou ausente.\"\"\"\n\tpass\n\n\nclass "
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 75,
+      "retries_used": 3,
+      "tokens_used": 84588,
+      "issues": [
+        "settings_panel.py: o wx.StaticText do modelo e o wx.Choice sao criados, mas nunca adicionados ao sizer do helper. Sem isso os controles nao aparecem no dialogo e o usuario nao consegue selecionar o modelo.",
+        "WX-A11Y-001/WX-A11Y-010: o rotulo do modelo nao esta associado ao controle nem inserido na ordem de tabulacao, prejudicando navegacao por teclado e leitores de tela.",
+        "NVDA-UX-003: como o controle de modelo nao e renderizado, o fluxo principal de configuracao nao e completavel apenas com teclado e voz."
+      ],
+      "output_preview": "Aqui está o código completo com as correções dos comentários `# Translators:` posicionados imediatamente antes das chamadas `_()` indicadas:\n\n```python:globalPlugins/AssistenteEscrita/configSpec.py\nimport config\n\n\ndef apply_config_spec() -> None:\n\t\"\"\"Registra a especificação de configuração persiste"
+    },
+    {
+      "step_id": "sv_service",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_settings_fix",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 3,
+      "tokens_used": 87819,
+      "issues": [
+        "NVDA-019: os comentários # Translators: antes de self._api_key.SetName e self._model_choice.SetName estão vazios; adicione descrição significativa para orientar os tradutores.",
+        "NVDA-025: a seção config.conf['AssistenteEscrita'] deve coincidir exatamente com o addonId do manifest.ini; confirme que não há divergência."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/settings_panel.py\nimport wx\nimport config\nfrom gui.settingsDialogs import SettingsPanel\nfrom gui import guiHelper\nfrom addonHandler import initTranslation\n\ninitTranslation()\n\nclass AssistenteEscritaSettingsPanel(SettingsPanel):\n\t# Translators: Title of the s"
+    },
+    {
+      "step_id": "sv_settings",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 120065,
+      "issues": [
+        "Author/repository values are placeholder/generic ('João Silva' + github.com/joaosilva/AssistenteEscrita) and do not reflect actual addon metadata.",
+        "English user guide references the settings category as 'Assistente de Escrita' (Portuguese) instead of a localized English name, creating inconsistency for English users.",
+        "Both guides use 'Add‑in Store' / 'Adicionar‑in Store' terminology; NVDA's official term is 'Add-on Store' / 'Loja de Complementos'."
+      ],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AssistenteEscrita – Guia do Usuário</title>\n<style>\nbody{font-family:sans-serif;max-width:800px;margin:auto;padding:1em;}\nkbd{background:#eee;border:1px solid #ccc;padding:2px 6px;border-radius:"
+    },
+    {
+      "step_id": "aa1",
+      "step_type": "accessibility_audit",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 91290,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "REGRA: [NVDA-015]  SEVERIDADE: Moderado  LOCAL: AssistenteEscritaSettingsPanel (linha 9)\nPROBLEMA: O arquivo de configuração não define config.conf.spec para a seção AssistenteEscrita, o que impede a validação e a inicialização correta das configurações.\nCORRECAO: Adicionar a definição de config.con"
+    },
+    {
+      "step_id": "er1",
+      "step_type": "engineering_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 55664,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "DEFEITOS DE ENGENHARIA:\nO código não define um spec para a seção AssistenteEscrita em config.conf, o que pode levar a erros de validação e a perda de dados de configuração. A classe SettingsPanel salva a chave e o modelo sem verificar se o addon está em modo seguro, o que pode expor dados sensíveis."
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "ESCALANDO",
+      "Analisando a lógica principal de forma mais profunda..."
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Revisando a configuração com mais cuidado..."
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Revisando com mais cuidado a estrutura acessível do painel..."
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "engineering_review"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "AVALIANDO",
+      "engineering_review"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 63.1,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}

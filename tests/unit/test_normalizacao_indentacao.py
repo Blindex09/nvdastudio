@@ -28,7 +28,7 @@ def _ast_igual(antes: str, depois: str) -> bool:
 
 
 def test_versao():
-	assert MODULE_VERSION == "4.20.0"
+	assert MODULE_VERSION == "4.22.0"
 
 
 def test_converte_indentacao_de_codigo():

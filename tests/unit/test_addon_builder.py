@@ -161,7 +161,7 @@ class TestSaveAddonFiles:
     def test_salva_arquivos_corretamente(self, ai_response_with_code_blocks):
         blocks = extract_code_blocks(ai_response_with_code_blocks)
         with tempfile.TemporaryDirectory() as tmpdir:
-            folder, saved = save_addon_files(blocks, tmpdir, "testAddon")
+            folder, saved = save_addon_files(blocks, tmpdir, "testAddon", garantir_doc=False)
             assert os.path.isdir(folder)
             assert len(saved) == len(blocks)
             for path in saved:
@@ -188,10 +188,12 @@ class TestSaveAddonFiles:
                 assert path.startswith(folder)
 
     def test_manifest_ini_salvo_na_raiz(self):
+        # garantir_doc=False: este teste verifica ONDE o manifest cai, nao a
+        # rede de doc (addon_builder 4.22.0), que somaria 2 arquivos.
         # manifest.ini deve ficar na raiz do addon_folder, nao em subpasta.
         blocks = [{"filename": "manifest.ini", "code": "name=x\n", "language": "ini"}]
         with tempfile.TemporaryDirectory() as tmpdir:
-            folder, saved = save_addon_files(blocks, tmpdir, "testAddon")
+            folder, saved = save_addon_files(blocks, tmpdir, "testAddon", garantir_doc=False)
             assert len(saved) == 1
             expected = os.path.join(folder, "manifest.ini")
             assert saved[0] == expected, (
@@ -203,7 +205,7 @@ class TestSaveAddonFiles:
         # v4.1.0+: manifest.ini minimo deterministico e gerado quando ausente.
         blocks = [{"filename": "__init__.py", "code": "import globalPluginHandler\n", "language": "python"}]
         with tempfile.TemporaryDirectory() as tmpdir:
-            folder, saved = save_addon_files(blocks, tmpdir, "meuAddon")
+            folder, saved = save_addon_files(blocks, tmpdir, "meuAddon", garantir_doc=False)
             assert len(saved) >= 1  # pelo menos o __init__.py + possivel manifest fallback
             assert "globalPlugins" in saved[-1]  # ultimo salvo e o plugin dir
 
