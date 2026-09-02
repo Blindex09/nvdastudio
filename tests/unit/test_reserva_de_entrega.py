@@ -211,3 +211,75 @@ class TestFallbacksDeterministicos:
         import pathlib as _p
         real = (_p.Path(pasta) / "doc" / "pt_BR" / "userGuide.html").read_text(encoding="utf-8")
         assert "guia de verdade" in real
+
+
+class TestTodosOsPortoesConhecemAEntrega:
+    """Fitness function: um portao de orcamento novo nao pode nascer cego.
+
+    Erro real cometido na 5.81.0: instrumentei DOIS portoes (os do laco de
+    escalonamento) e existia um TERCEIRO, por tentativa, dentro da execucao do
+    step. A rodada de 2026-09-02 17:20 mostrou o estrago -- o escalonamento fez
+    a parte dele, descartou os consultivos e CHEGOU no assembly, e entao o
+    portao esquecido o barrou com o teto reduzido:
+
+        "Step asm: orcamento excedido (Saldo reservado para a entrega
+         (1378286/1278750; reserva de 120000))"
+
+    O medidor estava ABAIXO do teto real (1.398.750). A reserva existia e foi
+    negada justamente a quem ela protege.
+
+    Meus testes passaram com o defeito porque exercitavam o metodo isolado, nao
+    os pontos de chamada -- mesma armadilha de contar ">= 2" em vez do numero
+    exato. Este teste conta os pontos de chamada.
+    """
+
+    def _fonte(self) -> str:
+        import inspect
+        import nvdastudio.core.orchestrator as mod
+        return inspect.getsource(mod)
+
+    def test_portao_por_tentativa_sabe_o_que_e_entrega(self):
+        fonte = self._fonte()
+        i = fonte.index("_can_continue, _budget_reason = iteration_budget.can_continue(")
+        trecho = fonte[max(0, i - 900):i + 200]
+        assert "_STEP_TYPES_DE_ENTREGA" in trecho, (
+            "o portao por tentativa voltou a usar o teto reduzido para a entrega"
+        )
+        assert "para_entrega=" in fonte[i:i + 200]
+
+    def test_nenhum_portao_ficou_cego(self):
+        """Conta por AST as CHAMADAS a can_continue() sem para_entrega.
+
+        Contar por texto nao serve: a string aparece em docstrings e
+        comentarios que explicam o mecanismo, e o teste passa a medir prosa.
+        Descobri isso escrevendo este proprio teste -- a primeira versao acusou
+        6 portoes cegos onde existem 3.
+
+        Os 3 legitimos governam trabalho que NAO entrega: dois de
+        replanejamento e o de dentro de _saldo_permite_seguir(), que trata a
+        entrega por dentro. Um numero maior significa portao novo nascido cego
+        -- releia esta classe antes de so ajustar o numero.
+        """
+        import ast
+        import inspect
+        import nvdastudio.core.orchestrator as mod
+
+        arvore = ast.parse(inspect.getsource(mod))
+        cegos = 0
+        for no in ast.walk(arvore):
+            if not isinstance(no, ast.Call):
+                continue
+            f = no.func
+            if not (isinstance(f, ast.Attribute) and f.attr == "can_continue"):
+                continue
+            alvo = f.value
+            if not (isinstance(alvo, ast.Name) and alvo.id == "iteration_budget"):
+                continue
+            if not any(k.arg == "para_entrega" for k in no.keywords):
+                cegos += 1
+
+        assert cegos == 3, (
+            f"{cegos} chamadas a can_continue() ignoram a reserva de entrega "
+            "(esperado 3: dois replans e _saldo_permite_seguir). Cada portao "
+            "novo precisa decidir explicitamente se governa entrega."
+        )

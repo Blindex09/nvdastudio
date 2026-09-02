@@ -49,7 +49,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.81.0"
+MODULE_VERSION = "5.82.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -2579,7 +2579,22 @@ class Orchestrator:
 			# ate 278 iteracoes / $20.25 contra um teto configurado de
 			# 50 iteracoes / $5.00 -- 4x-5x acima do orcamento, dinheiro real
 			# gasto sem qualquer enforcement.
-			_can_continue, _budget_reason = iteration_budget.can_continue()
+			# 5.82.0 -- este portao tambem precisa saber o que e ENTREGA.
+			#
+			# Erro meu na 5.81.0: instrumentei os dois portoes do laco de
+			# escalonamento e nao este, que roda por TENTATIVA dentro do step.
+			# Medido na rodada de 2026-09-02 17:20: o escalonamento fez a parte
+			# dele -- descartou os consultivos e CHEGOU no assembly -- e entao
+			# este portao o barrou com o teto reduzido, exatamente o teto que a
+			# entrega nao deveria enxergar:
+			#   "Step asm: orcamento excedido (Saldo reservado para a entrega
+			#    (1378286/1278750; reserva de 120000))"
+			# O medidor estava ABAIXO do teto real (1.398.750) e acima do
+			# reduzido. A reserva existia e foi negada a quem ela protegia.
+			_para_entrega = step.step_type in _STEP_TYPES_DE_ENTREGA
+			_can_continue, _budget_reason = iteration_budget.can_continue(
+				para_entrega=_para_entrega,
+			)
 			if not _can_continue:
 				_logger.warning(
 					"[BUDGET] Step %s: orcamento excedido (%s). Abortando "

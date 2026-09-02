@@ -13,7 +13,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.43.0"
+MODULE_VERSION = "2.44.0"
 _logger = get_logger("planner")
 
 
@@ -1031,6 +1031,89 @@ _STEPS_CONSULTIVOS: frozenset = frozenset({
 })
 
 
+# Teto de steps por plano -- ORQUESTRACAO ADAPTATIVA (2.44.0).
+#
+# Medido em 415 relatorios E2E, entre as rodadas que chegaram a gerar codigo
+# aprovado (exclui abortos precoces, que se disfarcavam de 'planos curtos' --
+# 123 dos 132 casos de 1-5 steps eram execucao truncada, nao plano curto):
+#
+#    6-8  steps: 110/117 entregaram   94%   <- 117 rodadas
+#    9-11 steps:   3/11               27%
+#   12-14 steps:   3/9                33%
+#
+# O penhasco e em 9. As duas rodadas complexas que falharam em 2026-09-02
+# tinham 12 e 14 steps.
+#
+# Causa provavel: sem prompt caching (Ollama Cloud nao tem -- auditoria de
+# 2026-08-26, medida ao vivo), CADA step paga o contexto NVDA do zero. Mais
+# steps nao dividem o custo, multiplicam. A decomposicao por arquivo (2.33.0)
+# ja precisou do remendo de nvda_topics (2.35.0) exatamente por isso.
+#
+# O projeto so tinha pressao numa direcao: oversized_code_generation_steps()
+# DECOMPOE (alonga) e nada encurtava. Este teto e a pressao contraria.
+_TETO_DE_STEPS = 8
+
+# Ordem de poda por valor MEDIDO (conversao apos retentar nos 415 relatorios)
+# e por produzir ou nao arquivo. Sai primeiro quem custa e nao converte.
+_PRIORIDADE_DE_PODA: tuple = (
+	STEP_ENGINEERING_REVIEW,    # 0% de conversao, nao produz arquivo
+	STEP_DESIGN_REVIEW,         # 0% apos retentar; 5,9M de tokens perdidos
+	STEP_WEB_RESEARCH,          # 16% de conversao
+	STEP_ACCESSIBILITY_AUDIT,   # consultivo: nao produz arquivo do addon
+	STEP_TEST_GENERATION,       # testes nao vao para o addon instalado
+)
+
+
+def _aplicar_teto_de_steps(steps: list[ExecutionStep]) -> list[ExecutionStep]:
+	"""Encurta o plano ate _TETO_DE_STEPS podando steps CONSULTIVOS.
+
+	Poda DETERMINISTICA (Regra 7): a ordem vem de taxa de conversao medida,
+	nao de julgamento de LLM em tempo de execucao. O classificador de
+	complexidade por LLM de C:/agentic foi recusado por esse motivo na
+	auditoria de 2026-08-26 -- aqui a decisao e uma tabela, nao um modelo.
+
+	Nunca poda quem produz arquivo do addon (code_generation, manifest,
+	documentation, assembly, agent_runner): encurtar o plano jogando fora o
+	produto trocaria 'entrega improvavel' por 'entrega vazia'. Se apos podar
+	todo o consultivo ainda exceder o teto, aceita e registra -- o que sobrou
+	e o addon.
+
+	Limpa depends_on/context_from_steps de quem sobrou: referencia a step
+	removido deixaria o orchestrator esperando por algo que nunca vem.
+	"""
+	if len(steps) <= _TETO_DE_STEPS:
+		return steps
+	restantes = list(steps)
+	podados: list = []
+	for tipo in _PRIORIDADE_DE_PODA:
+		if len(restantes) <= _TETO_DE_STEPS:
+			break
+		for step in [x for x in restantes if x.step_type == tipo]:
+			if len(restantes) <= _TETO_DE_STEPS:
+				break
+			restantes.remove(step)
+			podados.append(step)
+	if not podados:
+		return steps
+	ids_podados = {x.step_id for x in podados}
+	for step in restantes:
+		step.depends_on = [d for d in step.depends_on if d not in ids_podados]
+		step.context_from_steps = [
+			c for c in step.context_from_steps if c not in ids_podados
+		]
+	_logger.info(
+		"[DECISION] plano_encurtado context=de=%d para=%d teto=%d podados=%s",
+		len(steps), len(restantes), _TETO_DE_STEPS,
+		",".join(f"{x.step_id}({x.step_type})" for x in podados),
+	)
+	if len(restantes) > _TETO_DE_STEPS:
+		_logger.warning(
+			"[PLAN] Plano com %d steps acima do teto de %d mesmo apos podar todo o "
+			"consultivo -- o que sobrou produz arquivo. Entrega medida nessa faixa: "
+			"~30%%.", len(restantes), _TETO_DE_STEPS,
+		)
+	return restantes
+
 def _desatrelar_assembly_de_consultivos(
 	steps: list[ExecutionStep],
 ) -> list[ExecutionStep]:
@@ -1163,6 +1246,7 @@ class Planner:
 			steps = self._inject_engineering_review(steps, complexity)
 
 		steps = self._inject_assembly(steps, complexity)
+		steps = _aplicar_teto_de_steps(steps)
 
 		# Normaliza modelos de todos os steps:
 		# - modelo concreto escolhido pelo usuario sobrescreve os defaults;
@@ -2433,6 +2517,7 @@ class Planner:
 			if project_type == "addon":
 				steps = self._inject_engineering_review(steps, complexity)
 			steps = self._inject_assembly(steps, complexity)
+			steps = _aplicar_teto_de_steps(steps)
 
 			from ..gui.settings_panel import get_llm_provider, get_llm_model
 			provider = get_llm_provider()

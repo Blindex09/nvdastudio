@@ -37,7 +37,7 @@ _NAO_CONSUMIDOS_JUSTIFICADOS: dict[str, str] = {}
 
 
 def test_versao():
-	assert MODULE_VERSION == "2.43.0"
+	assert MODULE_VERSION == "2.44.0"
 
 
 def _schema_do_step() -> dict:

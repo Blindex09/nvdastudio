@@ -26,7 +26,7 @@ from nvdastudio.core.planner import (
 )
 from nvdastudio.sub_agents.ast_validator import validate_internal_imports
 
-assert PLANNER_VERSION == "2.43.0"
+assert PLANNER_VERSION == "2.44.0"
 
 
 class TestLayoutDeclarado:
