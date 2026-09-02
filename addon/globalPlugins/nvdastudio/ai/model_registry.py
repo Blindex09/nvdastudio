@@ -5,7 +5,7 @@ from typing import Optional
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.18.0"
+MODULE_VERSION = "1.19.0"
 _logger = get_logger("model_registry")
 
 ALTO_MODEL = "alto"
@@ -648,6 +648,48 @@ STRUCTURED_OUTPUT_MODEL_CHAIN: tuple[str, ...] = (
 )
 
 
+# Disjuntor de sessao para o provedor de saida estruturada.
+#
+# get_structured_output_model() forca OpenCode Go porque so ele honra
+# json_schema estrito e prompt caching (auditoria ao vivo 2026-08-26). Mas
+# forcar UM provedor cria ponto unico de falha: se a conta fica sem saldo,
+# TUDO que precisa de JSON garantido cai junto -- Clarifier, Critic e o
+# caminho estrito do Planner.
+#
+# Confirmado ao vivo em 2026-09-02: a chave estava VALIDA (GET /models = 200)
+# e /chat/completions devolvia 401 CreditsError "Insufficient balance" em
+# todos os 33 modelos da conta. Nao adianta trocar de modelo dentro da cadeia:
+# ela tem 5 modelos e todos no mesmo provedor.
+#
+# Marcado o provedor como indisponivel, as chamadas seguintes caem no provedor
+# ATIVO do usuario. Perde-se a garantia de JSON estrito -- o Ollama Cloud nao
+# a oferece em nenhum modelo -- e isso e uma degradacao REAL, nao equivalencia:
+# os consumidores ja toleram JSON imperfeito (o Critic tem caminho para
+# "sem JSON reconhecivel", o Planner tem _parse_plan), mas a taxa de acerto
+# cai. E melhor que a alternativa, que e o pipeline inteiro parar.
+_estruturado_indisponivel = False
+
+
+def marcar_saida_estruturada_indisponivel(motivo: str = "") -> None:
+	"""Registra que o provedor de saida estruturada nao esta atendendo."""
+	global _estruturado_indisponivel
+	if not _estruturado_indisponivel:
+		_logger.warning(
+			"[ESTRUTURADO] Provedor de saida estruturada indisponivel (%s). "
+			"As proximas chamadas usam o provedor ativo, SEM garantia de "
+			"json_schema estrito -- a qualidade do JSON cai.", motivo or "sem detalhe",
+		)
+	_estruturado_indisponivel = True
+
+
+def resetar_saida_estruturada() -> None:
+	"""Volta ao provedor preferido. Chamado no inicio de cada execucao: o
+	limite de uso do OpenCode Go e por JANELA DE TEMPO (5 horas / semana /
+	mes), entao a indisponibilidade e temporaria e nao pode virar permanente."""
+	global _estruturado_indisponivel
+	_estruturado_indisponivel = False
+
+
 def get_structured_output_model(fallback_index: int = 0) -> str:
     """Modelo do OpenCode Go com json_schema estrito + prompt caching
     confirmados ao vivo (ver STRUCTURED_OUTPUT_MODEL_CHAIN acima).
@@ -663,6 +705,17 @@ def get_structured_output_model(fallback_index: int = 0) -> str:
     fallback_index: indice na cadeia (0 = preferido). Fora do intervalo
     satura no ultimo item -- nunca levanta excecao nem retorna vazio.
     """
+    if _estruturado_indisponivel:
+        # Degradacao anunciada: sem o provedor preferido, o provedor ATIVO
+        # do usuario continua respondendo -- so que sem json_schema estrito.
+        try:
+            from ..gui.settings_panel import get_llm_model, get_llm_provider
+
+            return resolve_provider_tier_model(
+                get_llm_provider(), "heavy", get_llm_model(),
+            )
+        except Exception:  # pragma: no cover - defesa
+            pass
     chain = STRUCTURED_OUTPUT_MODEL_CHAIN
     idx = min(max(fallback_index, 0), len(chain) - 1)
     return f"opencode_go::{chain[idx]}"

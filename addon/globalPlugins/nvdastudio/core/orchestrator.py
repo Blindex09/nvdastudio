@@ -17,6 +17,7 @@ from .planner import (
 	# 5.54.0: agora USADO de verdade (bypass deterministico do critic, ver
 	# _evaluate_syntax_validation_deterministically) -- noqa removido.
 )
+from ..ai.model_registry import resetar_saida_estruturada
 from ..ai.critic import Critic, CriticResult, Verdict
 from ..utils.logger import get_logger, log_decision
 from ..sub_agents.dispatcher import dispatch_step_with_tokens
@@ -768,6 +769,11 @@ class Orchestrator:
 		self._running = True
 		# Ver comentario equivalente em run_conversational_async() -- mesmo motivo.
 		iteration_budget.reset()
+		# O limite do provedor de saida estruturada e por JANELA DE TEMPO
+		# (5h / semana / mes), entao a indisponibilidade e temporaria: cada
+		# execucao volta a tentar o provedor preferido em vez de ficar
+		# degradada para sempre por uma falha de horas atras.
+		resetar_saida_estruturada()
 		self._budget_recorded_in_flight = False
 		self._parou_por_orcamento = None
 		thread = threading.Thread(
@@ -895,6 +901,11 @@ class Orchestrator:
 		# sessoes anteriores ficava acumulado pra sempre e uma query nova, sem
 		# relacao nenhuma, podia nascer com o orcamento ja estourado.
 		iteration_budget.reset()
+		# O limite do provedor de saida estruturada e por JANELA DE TEMPO
+		# (5h / semana / mes), entao a indisponibilidade e temporaria: cada
+		# execucao volta a tentar o provedor preferido em vez de ficar
+		# degradada para sempre por uma falha de horas atras.
+		resetar_saida_estruturada()
 		self._budget_recorded_in_flight = False
 		self._parou_por_orcamento = None
 		thread = threading.Thread(

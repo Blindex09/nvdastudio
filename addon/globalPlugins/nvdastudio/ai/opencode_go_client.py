@@ -6,7 +6,7 @@ from . import reliability
 from .llm_client import LLMClientError, LLMResponse
 from ..utils.logger import get_logger, log_llm_call, log_llm_response
 
-MODULE_VERSION = "1.3.0"
+MODULE_VERSION = "1.4.0"
 _logger = get_logger("opencode_go_client")
 
 _OPENCODE_GO_URL = "https://opencode.ai/zen/go/v1/chat/completions"
@@ -39,6 +39,38 @@ try:
 	import httpx as _httpx  # type: ignore[import]
 except Exception:
 	_httpx = None  # type: ignore[assignment]
+
+
+def _sinalizar_conta_indisponivel(resp) -> None:
+	"""
+	Avisa o registro quando a CONTA nao esta atendendo, nao o modelo.
+
+	get_structured_output_model() forca este provedor porque so ele honra
+	json_schema estrito e prompt caching. Isso cria um ponto unico de falha:
+	sem saldo, tudo que precisa de JSON garantido cai junto -- Clarifier,
+	Critic e o caminho estrito do Planner.
+
+	Confirmado ao vivo em 2026-09-02: chave VALIDA (GET /models = 200) e
+	/chat/completions devolvendo 401 CreditsError "Insufficient balance" nos 33
+	modelos da conta. A cadeia de fallback tem 5 modelos, todos aqui dentro --
+	trocar de modelo nao resolve nada.
+
+	Sinalizado, o registro passa a devolver o provedor ATIVO do usuario, sem a
+	garantia de json_schema. E degradacao real, nao equivalencia -- mas a
+	alternativa e o pipeline inteiro parar.
+	"""
+	if resp.status_code not in (401, 402, 403, 429):
+		return
+	try:
+		corpo = resp.text[:400]
+	except Exception:  # pragma: no cover - defesa
+		corpo = ""
+	try:
+		from .model_registry import marcar_saida_estruturada_indisponivel
+
+		marcar_saida_estruturada_indisponivel(f"HTTP {resp.status_code}: {corpo[:160]}")
+	except Exception:  # pragma: no cover - defesa
+		pass
 
 
 class OpenCodeGoClientError(LLMClientError):
@@ -183,6 +215,7 @@ class OpenCodeGoClient:
 		def do_request():
 			with _httpx.Client(timeout=_HTTP_TIMEOUT) as client:
 				resp = client.post(_OPENCODE_GO_URL, headers=headers, json=payload)
+				_sinalizar_conta_indisponivel(resp)
 				resp.raise_for_status()
 				result = resp.json()
 				if result.get("error"):

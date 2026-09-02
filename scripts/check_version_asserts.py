@@ -78,11 +78,17 @@ def _check_file(path: Path, aplicar: bool = False) -> list[str]:
         # o nome da versao nao aparece na linha de import, so no assert. Sem
         # isto, esses asserts escapavam da checagem e so quebravam na suite
         # completa, depois do commit.
-        for importado in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", m.group(2)):
+        nomes = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", m.group(2))
+        apelidos = {
+            nomes[i + 1] for i, n in enumerate(nomes[:-1]) if n == "as"
+        }
+        for importado in nomes:
             # So nomes que PARECEM modulo. Constante em MAIUSCULAS e classe em
             # CamelCase nao sao pacote, e tentar importa-las so gera ruido de
-            # aviso sem achar versao nenhuma.
-            if importado == "as" or not importado.islower():
+            # aviso sem achar versao nenhuma. Apelido de `as` tambem nao e
+            # caminho de modulo -- `import model_registry as mr` nao cria
+            # `pacote.mr`.
+            if importado == "as" or importado in apelidos or not importado.islower():
                 continue
             imports.append((lineno, m.group(1) + "." + importado, importado))
 
