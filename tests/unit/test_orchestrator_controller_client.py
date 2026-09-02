@@ -100,13 +100,44 @@ class TestValidateMinimumArtifactsControllerClient:
 		erro = Orchestrator._validate_minimum_addon_artifacts(plan, results, outputs)
 		assert erro == ""
 
-	def test_addon_continua_exigindo_manifest(self):
-		"""Regressao: o guard novo nao pode afrouxar a exigencia pra addons."""
+	def test_addon_sem_manifest_aprovado_nao_perde_a_entrega(self):
+		"""MUDANCA DELIBERADA em orchestrator 5.75.0.
+
+		Este teste travava o oposto: "o guard novo nao pode afrouxar a exigencia
+		pra addons". A exigencia fazia sentido quando foi escrita, mas descartava
+		a entrega inteira num caso em que o proprio projeto ja sabia se virar --
+		`addon_builder._generate_minimal_manifest()` e deterministica e existe
+		exatamente para "manifest_builder falhou". Ela e chamada no assembly, e
+		esta validacao roda ANTES do assembly: a execucao morria antes de o
+		fallback ter chance.
+
+		Medido na rodada 7: 4 steps aprovados, 1.466.531 tokens, entrega
+		descartada porque o step de manifest nao foi aprovado -- com o Critic
+		tendo escrito, no primeiro achado, que "o manifest.ini atende aos campos
+		obrigatorios".
+
+		O que a intencao ORIGINAL deste teste protegia -- a excecao de
+		controller_client nao vazar para addons -- continua coberto pelos outros
+		testes desta classe e pela exigencia de codigo Python abaixo.
+		"""
 		plan = _plan(project_type="addon", steps=[_step()])
 		results = [StepResult(step_id="s1", step_type="code_generation", output="", approved=True, score=100)]
-		outputs = self._outputs_com_python_sem_manifest()
+		# Caminho de ADDON de verdade: o fixture de controller_client poe o .py
+		# na raiz, que o NVDA nao carrega -- outro portao, outro assunto.
+		outputs = {"s1": chr(96) * 3 + "python:globalPlugins/A/__init__.py" + chr(10)
+				   + "import globalPluginHandler" + chr(10) + chr(96) * 3}
 		erro = Orchestrator._validate_minimum_addon_artifacts(plan, results, outputs)
-		assert "manifest.ini" in erro
+		assert erro == "", f"entrega descartada por falta de manifest: {erro}"
+
+	def test_addon_sem_python_continua_fatal(self):
+		"""O afrouxamento e SO do manifest: manifest sem addon nao e addon."""
+		plan = _plan(project_type="addon", steps=[_step()])
+		results = [StepResult(step_id="s1", step_type="code_generation", output="", approved=True, score=100)]
+		erro = Orchestrator._validate_minimum_addon_artifacts(
+			plan, results,
+			{"s1": chr(96) * 3 + "ini:manifest.ini" + chr(10) + "name = A" + chr(10) + chr(96) * 3},
+		)
+		assert "Python" in erro
 
 	def test_controller_client_ainda_exige_algum_python(self):
 		plan = _plan(project_type="controller_client", steps=[_step()])

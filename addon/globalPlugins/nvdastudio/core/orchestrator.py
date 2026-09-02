@@ -48,7 +48,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.74.0"
+MODULE_VERSION = "5.75.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -3396,8 +3396,33 @@ class Orchestrator:
 		# 5.50.0: manifest.ini nunca existe num projeto controller_client
 		# (programa externo, sem addonHandler) -- exigi-lo aqui rejeitaria
 		# TODA criacao bem-sucedida desse tipo.
+		# 5.75.0 -- MANIFEST AUSENTE NAO E MAIS FATAL AQUI.
+		#
+		# addon_builder._generate_minimal_manifest() existe, e deterministica, e
+		# foi escrita EXATAMENTE para este caso -- a docstring dela diz "gera
+		# manifest.ini minimo quando manifest_builder falhou". Mas ela e chamada
+		# dentro de save_addon_files(), no assembly, e esta validacao roda ANTES
+		# do assembly: a execucao morria antes de o fallback ter chance de agir.
+		#
+		# E o proprio projeto ja declarava a intencao contraria: manifest_builder
+		# esta em _NON_BLOCKING_STEP_TYPES com o comentario "assembly pode
+		# regenerar manifest se necessario". A regra e o comentario discordavam, e
+		# quem vencia era a regra.
+		#
+		# Medido na rodada 7 (AssistenteLeituraGemini): 4 steps aprovados,
+		# 1.466.531 tokens, e a entrega descartada porque o step de manifest nao
+		# foi aprovado -- sendo que o Critic tinha escrito, no primeiro achado,
+		# "o manifest.ini atende aos campos obrigatorios". Um addon com manifest
+		# minimo deterministico e codigo que funciona serve ao usuario; nenhum
+		# addon nao serve.
+		#
+		# O que continua fatal e a ausencia de codigo Python, verificada acima:
+		# manifest sem addon nao e addon.
 		if plan.project_type != "controller_client" and not manifest_found:
-			return "A criação não foi concluída porque o arquivo manifest.ini não foi gerado e aprovado."
+			_logger.warning(
+				"[MANIFEST] Nenhum manifest.ini aprovado. O assembly vai gerar o "
+				"minimo deterministico (addon_builder._generate_minimal_manifest)."
+			)
 
 		# 5.57.0 -- PONTO DE ENTRADA CARREGAVEL.
 		#
