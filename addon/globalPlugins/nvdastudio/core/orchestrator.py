@@ -49,7 +49,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.78.0"
+MODULE_VERSION = "5.79.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -2125,6 +2125,36 @@ class Orchestrator:
 			model_used=f"{rescue_provider}/{rescue_model}",
 		)
 
+	def _infra_failure_result(
+		self,
+		step: ExecutionStep,
+		output: str,
+		tokens_used: int,
+		retries_used: int,
+	) -> StepResult:
+		"""Step que morreu por falha de INFRAESTRUTURA, nao por qualidade.
+
+		Reprovado, mas com a causa REAL registrada em issues. O Critic nao e
+		consultado: julgar uma mensagem de erro custa uma passada de dois
+		estagios a preco de modelo e devolve um veredito que culpa o conteudo
+		por uma falha de conta ou de rede.
+
+		Importa para o retry tambem: fix_instructions derivadas de um veredito
+		desses mandariam o modelo consertar um problema que nao existe.
+		"""
+		motivo = (output or "").strip()[:300] or "provedor nao retornou resposta"
+		return StepResult(
+			step_id=step.step_id, step_type=step.step_type,
+			output="", approved=False, score=0,
+			issues=[
+				"Falha de infraestrutura, nao de conteudo: o provedor nao devolveu "
+				f"resposta para este step. {motivo}"
+			],
+			retries_used=retries_used,
+			tokens_used=tokens_used,
+			model_used=step.model_id,
+		)
+
 	def _try_escalation(
 		self,
 		step: ExecutionStep,
@@ -2944,6 +2974,51 @@ class Orchestrator:
 					last_issues.append("Execução isolada indisponível: " + str(e))
 					retries += 1
 					continue
+
+			# 5.79.0 -- falha de INFRAESTRUTURA nao vai a julgamento.
+			#
+			# Quando a chamada de LLM falha, _base.py::_run_sub_agent devolve
+			# "[ERRO] Sub-agente nao conseguiu gerar resposta: ..." COMO SE fosse
+			# a resposta. O fallback acima tenta outro modelo/provedor e, quando
+			# ele tambem falha, apenas registra "fallback tambem falhou" e segue
+			# em frente -- sem nenhuma guarda ate aqui. A string de erro chegava
+			# ao Critic e era pontuada como se fosse conteudo.
+			#
+			# Medido em 2026-09-02 (rodada AssistenteEscrita): o step web_research
+			# escalou para opencode_go, que esta sem saldo, e o Critic reprovou com
+			# score=0 escrevendo "o output e apenas uma mensagem de erro de API
+			# (401 Unauthorized), sem nenhuma informacao factual pesquisada". A
+			# BUSCA tinha funcionado (paralelo: 1/3 fontes, exa); quem morreu foi a
+			# sintese, no provedor derrubado. O veredito culpava a pesquisa por uma
+			# falha de conta.
+			#
+			# Custo de deixar passar: uma passada inteira do Critic (dois estagios)
+			# paga a preco de modelo para julgar uma mensagem de erro, mais um
+			# veredito que aponta a causa errada -- para o usuario e para o retry,
+			# que recebe fix_instructions sobre um problema que nao existe.
+			#
+			# Vale para os 11 sub-agentes, nao so a pesquisa. Deterministico por
+			# regex (Regra 7): _IS_SUBAGENT_ERROR_RE ja existia e so era consultada
+			# no ramo de fallback.
+			if _IS_SUBAGENT_ERROR_RE.search(last_output or ""):
+				_logger.warning(
+					"[INFRA] Step %s: output e falha de infraestrutura, nao conteudo. "
+					"Nao vai ao Critic. %s", step.step_id, (last_output or "")[:200],
+				)
+				# Consome uma retentativa em vez de abortar o step: o fallback de
+				# modelo/provedor ja rodou logo acima, mas uma indisponibilidade
+				# passageira ainda pode passar na tentativa seguinte. Abortar aqui
+				# tornaria o pipeline MENOS resiliente do que era antes deste fix --
+				# o objetivo e nao pagar o Critic por uma mensagem de erro, nao
+				# desistir mais cedo.
+				retries += 1
+				last_issues = [
+					"Falha de infraestrutura na tentativa anterior (provedor nao "
+					"respondeu). Nao ha correcao de conteudo a fazer."
+				]
+				if attempt < step.max_retries - 1:
+					continue
+				return self._infra_failure_result(step, last_output, total_step_tokens, retries)
 
 			# Critic em dois estagios — sem mensagem de status (evita spam).
 			self._emit("AVALIANDO", step.step_type)

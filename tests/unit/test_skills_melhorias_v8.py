@@ -28,7 +28,7 @@ class TestQueryComplexityClassifier:
 
     def test_versao_orchestrator(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.78.0"
+        assert MODULE_VERSION == "5.79.0"
 
     def test_low_vira_simple(self):
         from nvdastudio.core.orchestrator import classify_query_complexity
