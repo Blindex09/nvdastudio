@@ -1,0 +1,118 @@
+{
+  "addon_name": "AssistenteEscrita",
+  "query": "Crie um addon NVDA chamado AssistenteEscrita que usa a API do ChatGPT da OpenAI para ajudar a revisar textos. Funcionalidades: (1) um atalho NVDA+shift+g que pega o texto selecionado, corrige a gramat",
+  "timestamp": "2026-09-02T17:44:53.432137",
+  "plan_id": "e1d2afe2",
+  "complexity": "",
+  "duration_seconds": 214.65,
+  "total_tokens": 31266,
+  "total_tokens_medidor": 31266,
+  "total_retries": 3,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque nenhum arquivo Python válido do addon foi gerado e aprovado. O manifesto e a documentação isolados não formam um addon.",
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 31266,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteEscrita\nsummary = Assistente de escrita com ChatGPT\ndescription = Ajuda a revisar textos, corrigindo gramática e ortografia, e simplificando textos usando a API do ChatGPT da OpenAI.\nauthor = Autor <autor@exemplo.com>\nurl = https://github.com/usuario/AssistenteEs"
+    },
+    {
+      "step_id": "cg3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [
+        "[ERRO] Ollama Cloud API falhou: Loop detectado: a mesma falha se repetiu 3x seguidas (HTTPStatusError:429:Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429)"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Falha de infraestrutura, nao de conteudo: o provedor nao devolveu resposta para este step. [ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Loop detectado: a mesma falha se repetiu 3x seguidas (HTTPStatusError:429:Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/We"
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 33.3,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}
