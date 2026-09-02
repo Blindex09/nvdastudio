@@ -1,0 +1,253 @@
+{
+  "addon_name": "ResumoGemini",
+  "query": "Crie um addon NVDA chamado ResumoGemini que usa a API do Google Gemini para resumir o texto selecionado. Funcionalidades: (1) um atalho NVDA+shift+r que pega o texto selecionado e fala o resumo; (2) u",
+  "timestamp": "2026-09-02T02:27:05.001813",
+  "plan_id": "27aea459",
+  "complexity": "",
+  "duration_seconds": 753.49,
+  "total_tokens": 615488,
+  "total_tokens_medidor": 786979,
+  "total_retries": 14,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação parou por limite de recursos (Budget excedido — pipeline parado) antes de concluir o código do addon. 9 etapa(s) não chegaram a ser executadas. O que foi aprovado até aqui está preservado no relatório desta execução.",
+  "steps": [
+    {
+      "step_id": "manifest",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 96,
+      "retries_used": 1,
+      "tokens_used": 60024,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ResumoGemini\nsummary = ResumoGemini: Resumo de textos com Gemini\ndescription = Addon que usa a API do Google Gemini para resumir o texto selecionado. Atalho NVDA+Shift+R fala o resumo. Configurações permitem inserir a chave da API. Trata erros de rede e chave inválida com "
+    },
+    {
+      "step_id": "research_gemini",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Não informa o endpoint REST generateContent nem o método HTTP.",
+        "Não descreve a autenticação preferencial via cabeçalho x-goog-api-key.",
+        "Não apresenta o payload JSON nem a estrutura atual da resposta REST."
+      ],
+      "output_preview": "[WEB_SEARCH] **Pacote:** google-genai\n**Versão estável:** 0.5.0 (última versão publicada no PyPI em 2024)\n**Instalação:** `pip install google-genai`\n**API principal:**\n- `genai.Client()` – cria um cliente autenticado usando a chave de API.\n- `client.interactions.create(model=\"gemini-3.6-flash\", inpu"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 329924,
+      "issues": [
+        "NVDA-062 [Critico]: o script acessa a configuracao, le a chave de API e inicia uma operacao externa sem verificar globalVars.appArgs.secure em cada ponto de entrada perigoso. Em secure mode, o script deve ser bloqueado antes de ler credenciais ou realizar a requisicao.",
+        "O item de menu e o callback agendado por wx.CallLater nao sao controlados no ciclo de vida. Quando o menu ainda nao esta disponivel, _ensure_menu_item agenda novas tentativas indefinidamente, inclusive depois de terminate(), podendo recriar recursos apos o addon ser descarregado.",
+        "A remocao do menu depende de wx.FindWindowById(self._menu_item.GetId()), mas wx.MenuItem nao e uma wx.Window e essa busca pode retornar None; nesse caso o item permanece no menu. O menu efetivamente usado deve ser armazenado e o item removido diretamente, com cancelamento ou invalidacao do callback pendente."
+      ],
+      "output_preview": "```python:globalPlugins/ResumoGemini/__init__.py\n# -*- coding: UTF-8 -*-\n# Ponto de entrada do addon ResumoGemini para o NVDA.\n# Responsabilidade deste arquivo: orquestrar scripts, menu, ciclo de vida\n# e delegar toda a lógica de API Gemini para o serviço especializado.\n\nimport threading\nimport wx\ni"
+    },
+    {
+      "step_id": "research_gemini_retry",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Inclui conteúdo fora do escopo solicitado: instalação, compatibilidade NVDA/wxPython, confiança, pacote e versão estável.",
+        "Contém texto de processo e dois blocos FIXME, explicitamente proibidos pelo objetivo do step.",
+        "Afirma que gemini-1.5-pro é o modelo recomendado e atual sem comprovação apresentada; esse modelo pode estar legado ou desatualizado."
+      ],
+      "output_preview": "[WEB_SEARCH] Estou revisando a documentação oficial do Google Gemini para extrair apenas os detalhes relevantes da API REST `generateContent`, focando no modelo recomendado, autenticação, payload, resposta e códigos de erro, e descartando qualquer referência a SDKs ou versões legadas.  \n\n```json\n{\n "
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "glm-5.2",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 140884,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "```python:globalPlugins/ResumoGemini/gemini_service.py\n\"\"\"Servico para resumir texto via API REST generateContent do Google Gemini.\n\nEste modulo contem apenas a logica de chamada HTTP e tratamento de erros.\nNao importa wx, api, ui nem implementa scripts NVDA — essa responsabilidade\nfica com o plugin"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 78,
+      "retries_used": 3,
+      "tokens_used": 84656,
+      "issues": [
+        "NVDA-062/NVDA-016: makeSettings() lê config.conf[\"ResumoGemini\"][\"apiKey\"] antes de verificar o modo seguro, carregando uma credencial em secure mode. Desabilitar o controle depois da leitura não evita a exposição do segredo.",
+        "NVDA-UX-002: quando a gravação é bloqueada em modo seguro ou por shouldWriteToDisk(), o código apenas registra um warning; a ação do usuário falha sem feedback auditivo."
+      ],
+      "output_preview": "```python:globalPlugins/ResumoGemini/configSpec.py\nimport config\n\n\ndef apply_config_spec() -> None:\n\t\"\"\"Define a especificação da seção ResumoGemini em config.conf de forma idempotente.\"\"\"\n\t_spec = {\n\t\t\"apiKey\": \"string(default='')\",\n\t}\n\tsection_name = \"ResumoGemini\"\n\tif section_name not in config.c"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Aplicando uma análise mais aprofundada ao painel de configurações..."
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 29.0,
+  "models_used": [
+    "glm-5.2",
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}

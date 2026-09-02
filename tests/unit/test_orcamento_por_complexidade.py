@@ -34,7 +34,7 @@ from nvdastudio.utils.iteration_budget import (
 	budget,
 )
 
-assert BUDGET_VERSION == "1.5.0"
+assert BUDGET_VERSION == "1.6.0"
 assert ORCH_VERSION == "5.75.0"
 
 

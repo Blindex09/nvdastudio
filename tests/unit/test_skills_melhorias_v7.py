@@ -114,7 +114,7 @@ class TestNvdaContextArquiteturaPatterns:
         sair.
         """
         from nvdastudio.builder.nvda_context import PROMPT_VERSION
-        assert PROMPT_VERSION == "3.34.0"
+        assert PROMPT_VERSION == "3.35.0"
 
     def test_sistema_prompt_tem_arch_separacao(self):
         """NVDA_SYSTEM_PROMPT deve ter o padrao de separacao de camadas (ARCH-004)."""

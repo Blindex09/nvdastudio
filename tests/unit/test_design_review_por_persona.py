@@ -25,7 +25,7 @@ from nvdastudio.sub_agents import design_review_agent
 
 
 def test_versao_do_contexto():
-	assert PROMPT_VERSION == "3.34.0"
+	assert PROMPT_VERSION == "3.35.0"
 
 
 def test_guardian_recebe_tudo():

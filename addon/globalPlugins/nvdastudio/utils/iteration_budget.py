@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .logger import get_logger
 
-MODULE_VERSION = "1.5.0"
+MODULE_VERSION = "1.6.0"
 _logger = get_logger("iteration_budget")
 
 # Custos por 1M tokens (USD) — atualizar conforme provider
@@ -88,6 +88,9 @@ _TENTATIVAS_PADRAO = 1.4
 # Cortar loop continua sendo feito com mais precisao pela deteccao de repeticao
 # (_same_as_previous_attempt) e pelos tetos de retentativa; este numero e a
 # ultima linha, nao a primeira.
+# Razao medidor/relatorio observada, no extremo (12 execucoes: 1,00 a 1,51).
+_MARGEM_MEDIDOR = 1.5
+
 _TETO_ABSOLUTO = 2_500_000
 
 _DEFAULT_COST_BUDGET_USD = 5.00
@@ -260,7 +263,22 @@ class IterationBudget:
             # reprovado (_CRITICAL_STEP_TYPES), entao a folga e uma passada a
             # mais nesses steps -- mecanismo, nao numero magico.
             estimado += custo_codigo
-            teto = min(_TETO_ABSOLUTO, max(piso, int(estimado)))
+            # MARGEM DE SEGURANCA sobre a estimativa.
+            #
+            # Os custos de _CUSTO_MEDIDO_POR_STEP vem do `tokens_used` do
+            # relatorio, mas quem CORTA a execucao e o medidor -- e os dois nao
+            # batem. Medido em 12 execucoes que registram os dois numeros: a
+            # razao medidor/relatorio vai de 1,00 a 1,51, mediana 1,14. A
+            # diferenca e o gasto de steps descartados por replanejamento, que
+            # some da soma final mas nao do consumo.
+            #
+            # Caso concreto (ResumoGemini, 2026-09-02): estimativa 557.900,
+            # consumo real 786.979. A execucao morreu com 9 steps sem rodar.
+            #
+            # O erro aqui e assimetrico: subestimar MATA uma execucao que ia dar
+            # certo; superestimar so gasta tokens numa que ja estava falhando.
+            # Por isso a margem usa o EXTREMO observado, nao a mediana.
+            teto = min(_TETO_ABSOLUTO, max(piso, int(estimado * _MARGEM_MEDIDOR)))
             self._limits.max_tokens = teto
             _logger.info(
                 "[BUDGET] Teto pelo plano: %d steps, complexity=%s, "

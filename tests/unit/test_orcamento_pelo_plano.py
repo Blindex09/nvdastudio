@@ -39,7 +39,7 @@ _PLANO_COMPLEXO_REAL = (
 
 
 def test_versao():
-	assert MODULE_VERSION == "1.5.0"
+	assert MODULE_VERSION == "1.6.0"
 
 
 def test_plano_complexo_real_cabe_no_teto():
@@ -132,10 +132,16 @@ class TestFolgaDeReplanejamento:
 			_TENTATIVAS_ESPERADAS,
 		)
 
-		plano = ["code_generation"] * 20
+		from nvdastudio.utils.iteration_budget import _MARGEM_MEDIDOR
+
+		# Plano pequeno de proposito: com muitos steps o teto ABSOLUTO entra e
+		# mascara a formula que este teste verifica.
+		plano = ["code_generation"] * 6
 		custo_un = _CUSTO_MEDIDO_POR_STEP["code_generation"]
-		esperado = 20 * custo_un * _TENTATIVAS_ESPERADAS["code_generation"] + 20 * custo_un
-		assert b.apply_plan(plano, "high") == int(esperado)
+		base = 6 * custo_un * _TENTATIVAS_ESPERADAS["code_generation"] + 6 * custo_un
+		# A margem do medidor (1.6.0) entra por cima da estimativa: os custos por
+		# step vem do relatorio, e quem CORTA a execucao e o medidor.
+		assert b.apply_plan(plano, "high") == int(base * _MARGEM_MEDIDOR)
 
 	def test_o_plano_real_que_morreu_agora_cabe(self):
 		"""GeminiMultimodal, 2026-09-01: teto de 1.093.400 e medidor em

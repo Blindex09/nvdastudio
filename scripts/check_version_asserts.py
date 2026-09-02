@@ -14,7 +14,13 @@ IMPORT_RE = re.compile(
 # -- sem isso, um alias (ex: `MODULE_VERSION as CODE_VER`) faz o assert
 # correspondente escapar da checagem silenciosamente (achado real: CODE_VER
 # em test_auditoria_2026.py ficou 1 versao atrasado sem o script acusar).
-MODULE_VERSION_IMPORT_RE = re.compile(r"\bMODULE_VERSION\b(?:\s+as\s+(\w+))?")
+# PROMPT_VERSION entra junto: builder/nvda_context.py usa esse nome em vez de
+# MODULE_VERSION, e por isso ficava fora da checagem -- os asserts dele so
+# quebravam na suite completa, depois do commit. Aconteceu duas vezes.
+_NOMES_DE_VERSAO = ("MODULE_VERSION", "PROMPT_VERSION")
+MODULE_VERSION_IMPORT_RE = re.compile(
+    r"\b(MODULE_VERSION|PROMPT_VERSION)\b(?:\s+as\s+(\w+))?"
+)
 ASSERT_RE = re.compile(r'assert\s+(\w+)\s*==\s*"([^"]+)"')
 
 _ADDON_PKG_PATH = str(REPO_ROOT / "addon" / "globalPlugins")
@@ -38,7 +44,11 @@ def _resolve_module_path(dotted: str) -> str:
 def _actual_version(dotted: str) -> str | None:
     try:
         mod = importlib.import_module(_resolve_module_path(dotted))
-        return getattr(mod, "MODULE_VERSION", None)
+        for nome in _NOMES_DE_VERSAO:
+            valor = getattr(mod, nome, None)
+            if valor:
+                return valor
+        return None
     except Exception as exc:  # noqa: BLE001 - reportamos qualquer falha de import ao usuario
         print(f"[AVISO] Nao foi possivel importar {dotted}: {exc}", file=sys.stderr)
         return None
@@ -53,7 +63,7 @@ def _check_file(path: Path, aplicar: bool = False) -> list[str]:
         mv_match = MODULE_VERSION_IMPORT_RE.search(m.group(2))
         if not mv_match:
             continue
-        alias = mv_match.group(1) or "MODULE_VERSION"
+        alias = mv_match.group(2) or mv_match.group(1)
         lineno = text.count("\n", 0, m.start()) + 1
         imports.append((lineno, m.group(1), alias))
 

@@ -8,7 +8,7 @@ from ..utils.project_policy import (
 	PROJECT_SUPPORTED_RANGE,
 )
 
-PROMPT_VERSION = "3.34.0"
+PROMPT_VERSION = "3.35.0"
 
 # ------------------------------------------------------------------
 # Tabela de versoes do projeto.
@@ -411,6 +411,57 @@ NVDA-019 Serio: # Translators: comment ausente imediatamente antes de chamada _(
 NVDA-020 Moderado: Import de re-export transitivo (API instavel entre versoes).
   Correto: from NVDAObjects.IAccessible import IAccessible
   Errado:  from NVDAObjects import IAccessible
+NVDA-062 Critico: SECURE MODE em CADA ponto de entrada perigoso.
+  Em secure mode (tela de login, UAC, tela segura) os scripts do addon CONTINUAM
+  executaveis: eles sao definidos a nivel de classe, entao checar o flag so no
+  __init__ e sair cedo NAO impede o script de rodar. Cada entrada que le
+  credencial, abre arquivo, salva config ou faz requisicao externa precisa da
+  propria checagem, ANTES de tocar no dado sensivel.
+  Errado (checa so no __init__ -- o script roda mesmo assim):
+    class GlobalPlugin(globalPluginHandler.GlobalPlugin):
+      def __init__(self):
+        super().__init__()
+        if globalVars.appArgs.secure:
+          return
+      @script(gesture="kb:NVDA+shift+r")
+      def script_resumir(self, gesture):
+        chave = config.conf["MeuAddon"]["apiKey"]   # roda em secure mode!
+  Correto (cada ponto de entrada se protege, e AVISA o usuario):
+    import globalVars
+    import ui
+
+    def _bloqueado_em_modo_seguro():
+      if globalVars.appArgs.secure:
+        # Translators: mensagem quando a funcao esta indisponivel na tela segura
+        ui.message(_("Indisponivel no modo seguro do NVDA."))
+        return True
+      return False
+
+    @script(gesture="kb:NVDA+shift+r")
+    def script_resumir(self, gesture):
+      if _bloqueado_em_modo_seguro():
+        return
+      chave = config.conf["MeuAddon"]["apiKey"]
+  O MESMO vale para makeSettings()/onSave() de um SettingsPanel: NAO leia a
+  chave de API para depois desabilitar o controle -- desabilitar depois nao
+  desfaz a leitura. Cheque antes de ler.
+  E NUNCA logue senha, token ou chave de API, em modo nenhum.
+
+NVDA-UX-002 / NVDA-016: falha bloqueada tem que ser FALADA.
+  Quando a gravacao e barrada por modo seguro ou por
+  NVDAState.shouldWriteToDisk(), registrar um warning no log nao basta: o
+  usuario cego apertou salvar e nao ouviu nada, entao para ele a acao funcionou.
+  Sempre ui.message() explicando que a alteracao nao foi salva.
+
+WX-A11Y-004 Serio: dialogo precisa de botoes padrao e de Escape.
+  Errado (sem sizer padrao -- Escape nao fecha, e a ordem de foco fica errada):
+    sizer.Add(wx.Button(self, label=_("OK")))
+  Correto:
+    botoes = self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+    sizer.Add(botoes, flag=wx.EXPAND | wx.ALL, border=5)
+  wx.OK/wx.CANCEL dao rotulo traduzido pelo sistema, ordem de tabulacao correta
+  e fechamento por Escape sem codigo extra.
+
 NVDA-021 Moderado: Indentacao com espacos em vez de TABS. NAO penalize
   isto ao avaliar codigo: o pipeline converte a indentacao para TAB
   deterministicamente na extracao dos blocos (addon_builder.
