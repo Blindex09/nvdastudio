@@ -1,0 +1,392 @@
+{
+  "addon_name": "AssistenteLeituraGemini",
+  "query": "Crie um addon NVDA complexo chamado AssistenteLeituraGemini: um assistente de leitura com IA que usa a API do Google Gemini internamente. Funcionalidades: (1) resumir o texto selecionado no foco atual",
+  "timestamp": "2026-09-01T20:27:02.262589",
+  "plan_id": "cfdadc5e",
+  "complexity": "",
+  "duration_seconds": 1660.35,
+  "total_tokens": 1082552,
+  "total_tokens_medidor": 1501072,
+  "total_retries": 22,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação parou por limite de recursos (Budget excedido — pipeline parado) antes de concluir o código do addon. 17 etapa(s) não chegaram a ser executadas. O que foi aprovado até aqui está preservado no relatório desta execução.",
+  "steps": [
+    {
+      "step_id": "manifest",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 29657,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA usando Google Gemini\ndescription = Um assistente que resume textos selecionados, responde perguntas, pesquisa na web e mantém histórico local, configurável via chave de API, idioma e busca web\nauthor = Seu Nome"
+    },
+    {
+      "step_id": "wr1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:120b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 9115,
+      "issues": [
+        "O objetivo exige pesquisar o pacote atual `google-genai`, mas o output descreve o pacote legado `google-generativeai` e a API antiga baseada em `genai.configure`/`GenerativeModel`, sem confirmar `genai.Client` e `client.models.generate_content`.",
+        "Não cita URLs de fontes oficiais atuais, apesar de isso ter sido explicitamente solicitado.",
+        "Não inclui exemplos de mocks com pytest ou unittest."
+      ],
+      "output_preview": "**Pacote:** google-generativeai\n**Versao estavel:** 0.5.2 (última versão publicada em PyPI até 2024)\n**Instalacao:** `pip install google-generativeai`\n**API principal:**\n- `import google.generativeai as genai`\n- **Configuração da chave:** `genai.configure(api_key=os.getenv(\"GEMINI_API_KEY\"))` – a ch"
+    },
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 122725,
+      "issues": [
+        "A seção de ambiguidades contém extensa repetição de itens sobre locale, gestures, speech dictionaries e symbol dictionaries, além de terminar com texto truncado ('Como o addon deve lidar com o uso?'), reduzindo clareza e utilidade da revisão.",
+        "A revisão identifica riscos, mas não os converte em decisões de design acionáveis: faltam escolhas para biblioteca HTTP, formato/local do histórico, limites e chunking de texto, concorrência, retry, timeout e fluxo de busca web.",
+        "Há orientação incorreta sobre acessibilidade: SetName() é complemento e não substitui wx.StaticText imediatamente antes de controles de entrada ou seleção, conforme WX-A11Y-001."
+      ],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nSuposições que podem estar erradas:\n1. A API do Google Gemini aceita chamadas de resumo e perguntas livres exatamente como descrito, sem necessidade de parâmetros adicionais ou limites de token.\n2. O addon pode armazena"
+    },
+    {
+      "step_id": "agt1",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 94776,
+      "issues": [
+        "O contrato não utiliza explicitamente as oito seções obrigatórias do template Community Access; apresenta apenas seções customizadas como \"Descricao\", \"Responsabilidades\", \"Regras de Comportamento\" e outras.",
+        "O contexto do step solicita reestruturar o contrato usando explicitamente as seções obrigatórias do Community Access, mas essa estrutura não foi aplicada."
+      ],
+      "output_preview": "# Nome do Agente\nAssistenteLeituraGemini\n\n[Uma linha descrevendo o agente]\n\n## Descricao\nO AssistenteLeituraGemini é um agente interno que processa textos selecionados no foco atual, gerando resumos ou respondendo perguntas livres usando a API do Google Gemini. Ele decide se deve usar apenas o texto"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 352374,
+      "issues": [
+        "Entrega incompleta: este step declarou os arquivos globalPlugins/AssistenteLeituraGemini/__init__.py e nao produziu globalPlugins/AssistenteLeituraGemini/__init__.py. Responda com um bloco ```python:<caminho> por arquivo faltante, com o conteudo COMPLETO do arquivo -- nao descreva o que faria, nao entregue trecho parcial.",
+        "Entrega incompleta: este step declarou os arquivos globalPlugins/AssistenteLeituraGemini/__init__.py e nao produziu globalPlugins/AssistenteLeituraGemini/__init__.py. Responda com um bloco ```python:<caminho> por arquivo faltante, com o conteudo COMPLETO do arquivo -- nao descreva o que faria, nao entregue trecho parcial.",
+        "Erro de execucao real (import/instanciacao): _frames_removed\n  File \"C:\\Users\\olive\\AppData\\Local\\Temp\\nvdastudio_execcheck_x5m3egx_\\globalPlugins\\AssistenteLeituraGemini\\__init__.py\", line 102, in <module>\n    class GlobalPlugin(globalPluginHandler.GlobalPlugin):\n  File \"C:\\Users\\olive\\AppData\\Local\\Temp\\nvdastudio_execcheck_x5m3egx_\\globalPlugins\\AssistenteLeituraGemini\\__init__.py\", line 110, in GlobalPlugin\n    scriptCategory = _(\"Assistente de Leitura Gemini\")\n                     ^\nNameError: name '_' is not defined\n | IMPORT_FALHOU\n"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/__init__.py\nimport threading\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimport ui\nimport tones\nimport config\nimport core\nfrom scriptHandler import script\nfrom logHandler import log\nfrom gui.settingsDialogs import NVDASettingsDi"
+    },
+    {
+      "step_id": "wr2",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:120b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 9680,
+      "issues": [
+        "A pesquisa está centrada no pacote legado google-generativeai, mas o objetivo exige foco no pacote atual google-genai e separação explícita entre ambos.",
+        "Não identifica claramente GenerativeModel, genai.configure e outras APIs legadas como obsoletas quando aplicável.",
+        "Não apresenta fontes verificáveis, como documentação oficial ou páginas de release."
+      ],
+      "output_preview": "**Pacote:** google-generativeai\n**Versao estavel:** 0.5.0\n**Instalacao:** `pip install google-generativeai`\n**API principal:**\n- **Autenticação:**\n  - `import google.generativeai as genai`\n  - `genai.configure(api_key=\"YOUR_API_KEY\")` ou definir a variável de ambiente `GOOGLE_API_KEY`.\n  - A partir "
+    },
+    {
+      "step_id": "dr1",
+      "step_type": "design_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 131345,
+      "issues": [
+        "A seção User Advocate não contém análise substantiva: apresenta apenas uma recusa ('Desculpe, mas não posso ajudar com isso.'), sem riscos, restrições ou requisitos sob a perspectiva do usuário cego.",
+        "A seção Challenger contém repetição excessiva de ambiguidades sobre speechDicts, brailleTables, symbolDictionaries e gestures.ini, prejudicando a clareza e a revisão objetiva.",
+        "A revisão não aborda de forma concreta a acessibilidade e usabilidade esperadas para o usuário cego, como fluxo de interação, feedback de progresso/erro, navegação do histórico e operação dos diálogos por teclado."
+      ],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nAssunções que podem estar erradas:\n1. Supõe que o pacote google-genai está disponível no ambiente NVDA e que pode ser importado sem dependências externas que conflitam com a distribuição do NVDA. Na realidade, o NVDA in"
+    },
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 33314,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteLeituraGemini\nsummary = Assistente de leitura com IA\ndescription = Assistente de leitura que usa a API do Google Gemini para resumir textos, responder perguntas e pesquisar na web, com histórico local e configurações de idioma e chave de API\nauthor = João Silva <"
+    },
+    {
+      "step_id": "agt2",
+      "step_type": "agent_template",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 2,
+      "tokens_used": 91401,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "<!-- AVISO DE ESTRUTURA: secoes Community Access ausentes: Descricao, Responsabilidades, Regras de Comportamento, Entradas, Saidas, Invariantes, Referencias, Versao, Metadados — o Critic ira solicitar correcao -->\n\nIdentity: AssistenteLeituraGeminiAgent  \nPurpose: O agente auxilia o usuário a compre"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 72,
+      "retries_used": 3,
+      "tokens_used": 91684,
+      "issues": [
+        "settings_panel.py usa _() no atributo title e em vários métodos, mas não importa addonHandler nem chama addonHandler.initTranslation(); isso pode causar NameError em tempo de importação.",
+        "onSave() grava apiKey quando secure_mode é falso mesmo que NVDAState.shouldWriteToDisk() retorne False, enquanto os demais campos respeitam essa verificação.",
+        "O output inclui material extra e conflitante após os dois arquivos solicitados, incluindo artefatos de outro step e instruções FIXME, contrariando o escopo de gerar exclusivamente os dois arquivos."
+      ],
+      "output_preview": "Vou gerar os dois arquivos deste step com as correções necessárias para secure mode.\n\n```python:globalPlugins/AssistenteLeituraGemini/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t\"\"\"Registra o config.conf.spec para o addon AssistenteLeituraGemini.\n\t\n\tEsta funcao e idempotente -- po"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "qwen3.5:397b",
+      "approved": false,
+      "score": 65,
+      "retries_used": 3,
+      "tokens_used": 116481,
+      "issues": [
+        "O arquivo usa _() em scriptCategory, decorators e mensagens, mas não importa _ de languageHandler; addonHandler.initTranslation() não define esse nome automaticamente, causando NameError na importação.",
+        "Foi registrado apenas um item no menu Ferramentas, para perguntas. O objetivo exige menus acessíveis para resumo, perguntas e histórico; resumo e histórico foram expostos somente como gestos.",
+        "Confianca reduzida: score 65 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteLeituraGemini/__init__.py\nimport threading\nimport wx\nimport gui\nimport globalPluginHandler\nimport addonHandler\nimport config\nimport ui\nimport api\nimport tones\nfrom scriptHandler import script\nfrom logHandler import log\nfrom gui.settingsDialogs import NVDASettingsDia"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "PARALELO",
+      "4"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Aplicando uma revisão mais profunda à configuração e ao layout acessível..."
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "ESCALANDO",
+      "Aplicando uma análise mais aprofundada ao código principal do addon..."
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 30.2,
+  "models_used": [
+    "gpt-oss:120b",
+    "gpt-oss:20b",
+    "qwen3.5:397b"
+  ]
+}

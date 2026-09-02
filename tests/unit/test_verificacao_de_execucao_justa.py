@@ -43,7 +43,7 @@ _ADDON_CORRETO = (
 
 
 def test_versao():
-	assert MODULE_VERSION == "5.73.0"
+	assert MODULE_VERSION == "5.74.0"
 
 
 class TestStubDeTraducao:
@@ -138,3 +138,76 @@ class TestArquivosPendentesDoPlano:
 		trecho = src[i:i + 700]
 		assert "validate_addon_execution(" in trecho
 		assert "_arquivos_exec" in trecho
+
+
+class TestSubmodulosNVDA:
+	"""
+	Cada submodulo NVDA precisava estar listado a mao no stub, e um que faltasse
+	derrubava a verificacao com ModuleNotFoundError.
+
+	Medido na rodada 7: `from gui.message import MessageDialog` reprovou o
+	cg_core. E `gui/message.py` e um dos arquivos que o PROPRIO projeto injeta
+	nos prompts (_DOCS_CORE em nvda_context.py) -- ensinavamos o modelo a usar
+	uma API e reprovavamos quem usasse.
+	"""
+
+	def test_submodulo_nvda_nao_listado_resolve(self):
+		codigo = (
+			"import addonHandler" + NL
+			+ "import globalPluginHandler" + NL
+			+ "from gui.message import MessageDialog" + NL
+			+ "addonHandler.initTranslation()" + NL + NL + NL
+			+ "class GlobalPlugin(globalPluginHandler.GlobalPlugin):" + NL
+			+ TAB + 'scriptCategory = _("X")' + NL
+		)
+		r = CodeSandbox().validate_addon_execution(
+			{"globalPlugins/T/__init__.py": codigo},
+		)
+		assert r.success, (r.stdout or r.stderr or r.error)[:300]
+
+	def test_biblioteca_de_terceiros_inexistente_continua_falhando(self):
+		"""O stub cobre so submodulo de pacote NVDA. Import de dependencia que
+		nao existe e defeito real -- e o que esta verificacao existe para pegar."""
+		codigo = (
+			"import globalPluginHandler" + NL
+			+ "import biblioteca_que_nao_existe" + NL + NL + NL
+			+ "class GlobalPlugin(globalPluginHandler.GlobalPlugin): pass" + NL
+		)
+		r = CodeSandbox().validate_addon_execution(
+			{"globalPlugins/T/__init__.py": codigo},
+		)
+		assert not r.success
+
+
+class TestPlaceholderAceitaOContrato:
+	"""
+	Modulo VAZIO nao bastava: `from .configSpec import apply_config_spec` falha
+	com "cannot import name" em vez de "no module named". Medido na rodada 7 --
+	o cg_core foi reprovado assim mesmo com o placeholder ja no lugar.
+	"""
+
+	def test_import_de_nome_no_contrato_pendente_resolve(self):
+		from nvdastudio.core.orchestrator import _MODULO_PENDENTE
+
+		nucleo = (
+			"import addonHandler" + NL
+			+ "import globalPluginHandler" + NL
+			+ "from .configSpec import apply_config_spec" + NL
+			+ "from .servico import Servico" + NL
+			+ "addonHandler.initTranslation()" + NL + NL + NL
+			+ "class GlobalPlugin(globalPluginHandler.GlobalPlugin):" + NL
+			+ TAB + 'scriptCategory = _("X")' + NL
+		)
+		r = CodeSandbox().validate_addon_execution({
+			"globalPlugins/T/__init__.py": nucleo,
+			"globalPlugins/T/configSpec.py": _MODULO_PENDENTE,
+			"globalPlugins/T/servico.py": _MODULO_PENDENTE,
+		})
+		assert r.success, (r.stdout or r.stderr or r.error)[:300]
+
+	def test_placeholder_e_python_valido(self):
+		import ast
+
+		from nvdastudio.core.orchestrator import _MODULO_PENDENTE
+
+		ast.parse(_MODULO_PENDENTE)

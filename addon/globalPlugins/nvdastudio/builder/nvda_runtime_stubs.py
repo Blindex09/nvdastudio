@@ -130,6 +130,37 @@ def _make_module(name: str, **attrs) -> types.ModuleType:
 	return mod
 
 
+# Pacotes do NVDA cujos submodulos podem ser resolvidos com stub permissivo.
+_PACOTES_NVDA = (
+	"gui", "config", "speech", "NVDAObjects", "addonHandler", "braille",
+	"synthDriverHandler", "brailleDisplayDrivers", "textInfos", "documentBase",
+	"appModules", "globalCommands", "eventHandler", "inputCore",
+)
+
+
+class _NVDASubmoduleFinder:
+	"""Resolve `pacoteNVDA.qualquercoisa` com um modulo permissivo."""
+
+	def find_module(self, fullname, path=None):  # pragma: no cover - API antiga
+		return None
+
+	def find_spec(self, fullname, path=None, target=None):
+		topo = fullname.split(".")[0]
+		if "." not in fullname or topo not in _PACOTES_NVDA:
+			return None
+		import importlib.machinery
+
+		return importlib.machinery.ModuleSpec(fullname, _CarregadorPermissivo())
+
+
+class _CarregadorPermissivo:
+	def create_module(self, spec):
+		return _make_module(spec.name)
+
+	def exec_module(self, module):
+		return None
+
+
 def install() -> None:
 	"""Registra os stubs em sys.modules -- idempotente, chamar antes de
 	importar qualquer codigo de addon gerado."""
@@ -176,3 +207,17 @@ def install() -> None:
 	# stub permissivo como fallback pra qualquer coisa nao explicitamente
 	# listada acima (nunca unittest.mock -- ver nota de MODULE_VERSION 1.0.0).
 	sys.modules.setdefault("addonHandler.addonVersionCheck", _make_module("addonHandler.addonVersionCheck"))
+
+	# Qualquer SUBMODULO de um pacote NVDA conhecido resolve sozinho.
+	#
+	# Antes, cada submodulo precisava estar listado a mao, e um que faltasse
+	# derrubava a verificacao de execucao com ModuleNotFoundError. Medido na
+	# rodada 7: `from gui.message import MessageDialog` reprovou o cg_core --
+	# e gui/message.py e um dos arquivos que o proprio projeto injeta nos
+	# prompts (_DOCS_CORE em nvda_context.py). Ou seja: ensinavamos o modelo a
+	# usar uma API e reprovavamos quem usasse.
+	#
+	# So cobre submodulos de pacotes NVDA. Import de biblioteca de terceiros
+	# continua falhando, que e o que a verificacao existe para pegar.
+	if not any(isinstance(f, _NVDASubmoduleFinder) for f in sys.meta_path):
+		sys.meta_path.append(_NVDASubmoduleFinder())

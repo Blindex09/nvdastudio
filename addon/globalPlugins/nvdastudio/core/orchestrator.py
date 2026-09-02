@@ -48,7 +48,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.73.0"
+MODULE_VERSION = "5.74.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -469,6 +469,32 @@ def _alvos_nao_entregues(step: object, py_files: dict) -> list[str]:
 		alvo for alvo in alvos
 		if alvo.replace("\\", "/").rsplit("/", 1)[-1].lower() not in entregues
 	]
+
+
+# Conteudo do modulo que representa um arquivo que OUTRO step do plano ainda vai
+# gerar, usado so na verificacao de execucao.
+#
+# Modulo VAZIO nao basta: `from .configSpec import apply_config_spec` falha com
+# "cannot import name" em vez de "no module named" -- medido na rodada 7, o
+# cg_core foi reprovado assim mesmo com o placeholder ja no lugar. O
+# `__getattr__` de modulo (PEP 562) faz qualquer nome importar, que e o que se
+# espera de um contrato ainda nao implementado.
+_MODULO_PENDENTE = chr(10).join((
+	"# Placeholder: outro step do plano ainda vai gerar este arquivo.",
+	"# Aceita qualquer nome para que o import do contrato resolva.",
+	"",
+	"",
+	"class _Pendente:",
+	"	def __call__(self, *a, **k): return self",
+	"	def __getattr__(self, _n): return self",
+	"	def __iter__(self): return iter(())",
+	"	def __bool__(self): return False",
+	"",
+	"",
+	"def __getattr__(_nome):",
+	"	return _Pendente()",
+	"",
+))
 
 
 def _output_com_ressalva(resultado: "StepResult", step_type: str) -> str:
@@ -2626,10 +2652,7 @@ class Orchestrator:
 						# terminate() roda.
 						_arquivos_exec = dict(py_files)
 						for _pendente in self._arquivos_de_outros_steps(step, py_files):
-							_arquivos_exec[_pendente] = (
-								"# Placeholder: outro step do plano ainda vai gerar este "
-								"arquivo." + chr(10)
-							)
+							_arquivos_exec[_pendente] = _MODULO_PENDENTE
 						exec_check = _CodeSandboxExec(timeout_sec=15).validate_addon_execution(
 							_arquivos_exec
 						)
