@@ -1,4 +1,5 @@
 import sys
+import inspect
 import types
 
 
@@ -86,6 +87,41 @@ class _WxDialog:
 		return _Permissive()
 
 
+def _init_translation_stub() -> None:
+	"""
+	Imita `addonHandler.initTranslation()` do NVDA de verdade.
+
+	O NVDA injeta `_` (e as variantes de gettext) nos GLOBAIS DO MODULO QUE
+	CHAMOU -- e por isso que todo addon correto faz `import addonHandler` +
+	`addonHandler.initTranslation()` e depois usa `_("texto")` livremente.
+
+	O stub antigo era um no-op. Consequencia medida: um addon MINIMAMENTE
+	CORRETO pela propria regra NVDA-019 deste projeto --
+
+	    import addonHandler
+	    addonHandler.initTranslation()
+	    class GlobalPlugin(globalPluginHandler.GlobalPlugin):
+	        scriptCategory = _("Meu Addon")
+
+	-- falhava a verificacao de execucao com NameError. Nos relatorios E2E: 6
+	steps reprovados por "Erro de execucao real", 1.757.209 tokens gastos
+	recusando codigo certo. A verificacao estava errada, nao o addon.
+
+	Injetar nos globais do CHAMADOR, e nao em builtins, preserva a semantica
+	real: um modulo que usa gettext SEM inicializar continua quebrando, que e
+	exatamente o defeito que a regra NVDA-003 existe para pegar.
+	"""
+	quadro = inspect.currentframe()
+	chamador = quadro.f_back if quadro is not None else None
+	if chamador is None:  # pragma: no cover - CPython sempre da o frame
+		return
+	globais = chamador.f_globals
+	globais.setdefault("_", lambda texto: texto)
+	globais.setdefault("ngettext", lambda s, p, n: s if n == 1 else p)
+	globais.setdefault("pgettext", lambda _ctx, texto: texto)
+	globais.setdefault("npgettext", lambda _ctx, s, p, n: s if n == 1 else p)
+
+
 def _make_module(name: str, **attrs) -> types.ModuleType:
 	mod = types.ModuleType(name)
 	for k, v in attrs.items():
@@ -110,7 +146,7 @@ def install() -> None:
 			"synthDriverHandler", SynthDriver=SynthDriver, VoiceInfo=_Permissive(),
 		),
 		"brailleDisplayDriver": _make_module("brailleDisplayDriver", BrailleDisplayDriver=SynthDriver),
-		"addonHandler": _make_module("addonHandler", initTranslation=_Permissive()),
+		"addonHandler": _make_module("addonHandler", initTranslation=_init_translation_stub),
 		"scriptHandler": _make_module("scriptHandler", script=_Permissive()),
 		"logHandler": _make_module("logHandler", log=_Permissive()),
 		"config": _make_module("config", conf=_Permissive()),

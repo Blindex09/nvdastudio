@@ -48,7 +48,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.72.0"
+MODULE_VERSION = "5.73.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -2607,7 +2607,32 @@ class Orchestrator:
 						continue
 
 					if py_files:
-						exec_check = _CodeSandboxExec(timeout_sec=15).validate_addon_execution(py_files)
+						# 5.73.0 -- MODULOS QUE OUTRO STEP AINDA VAI PRODUZIR.
+						#
+						# Desde que o nucleo passou a ser gerado PRIMEIRO (planner
+						# 2.40.0), o __init__.py legitimamente importa modulos de
+						# feature que ainda nao existem -- e essa e a ordem correta,
+						# porque e ele que declara o contrato que os outros
+						# implementam. Medido na rodada 6: cg_core reprovado com
+						# "Erro de execucao real" em `from .configSpec import ...`,
+						# 344.333 tokens, por importar um arquivo que o plano ainda
+						# ia gerar.
+						#
+						# Cobrar de um step a existencia de arquivo que NAO e dele e
+						# testar uma condicao impossivel. Os arquivos que o plano
+						# declara e ninguem produziu ainda entram como modulo vazio,
+						# so para o import resolver -- o que continua sendo testado e
+						# o arquivo DESTE step: ele importa, a classe instancia,
+						# terminate() roda.
+						_arquivos_exec = dict(py_files)
+						for _pendente in self._arquivos_de_outros_steps(step, py_files):
+							_arquivos_exec[_pendente] = (
+								"# Placeholder: outro step do plano ainda vai gerar este "
+								"arquivo." + chr(10)
+							)
+						exec_check = _CodeSandboxExec(timeout_sec=15).validate_addon_execution(
+							_arquivos_exec
+						)
 						if not exec_check.success:
 							# Falhas de subprocesso nem sempre aparecem em stderr:
 							# timeout, Python indisponivel e falhas de infraestrutura
@@ -3004,6 +3029,29 @@ class Orchestrator:
 	# ------------------------------------------------------------------
 	# Helpers
 	# ------------------------------------------------------------------
+
+	def _arquivos_de_outros_steps(
+		self, step: ExecutionStep, ja_produzidos: dict,
+	) -> list[str]:
+		"""
+		Arquivos .py que o PLANO declara, outro step produz, e ainda nao existem.
+
+		Serve para a verificacao de execucao nao reprovar um step por importar
+		algo que, por desenho do plano, so vai existir depois. Sem plano em maos,
+		devolve lista vazia -- e o comportamento anterior, e o seguro.
+		"""
+		plano = getattr(self, "_current_plan", None)
+		if plano is None:
+			return []
+		declarados = [
+			c for c in (getattr(plano, "expected_files", []) or [])
+			if isinstance(c, str) and c.endswith(".py")
+		]
+		meus = set(getattr(step, "target_files", []) or [])
+		return [
+			c for c in declarados
+			if c not in ja_produzidos and c not in meus
+		]
 
 	def _deps_ready(self, step: ExecutionStep, outputs: dict) -> bool:
 		return all(dep in outputs for dep in step.depends_on)
