@@ -51,7 +51,7 @@ from ..core.orch_types import (
 )
 from ..core.planner import ExecutionPlan, STEP_TEST_GENERATION
 
-MODULE_VERSION = "5.48.0"
+MODULE_VERSION = "5.49.0"
 _logger = get_logger("studio_dialog")
 
 
@@ -175,6 +175,7 @@ class NVDAStudioDialog(wx.Dialog):
 		from ..core.orchestrator import Orchestrator
 		self._orchestrator = Orchestrator()
 		self._last_result: OrchestrationResult | None = None
+		self._deps_ja_tratadas = False
 		self._current_phase: PipelinePhase | None = None
 		self._last_blocks: list[dict] = []
 		self._last_addon_folder: str = ""
@@ -1935,6 +1936,66 @@ class NVDAStudioDialog(wx.Dialog):
 	# _display_result/_process_packaging_decision -- unico caminho real).
 	# ------------------------------------------------------------------
 
+	def _instalar_dependencias_se_preciso(self, addon_folder: str, addon_name: str) -> bool:
+		"""Pergunta e instala as dependencias externas em lib/ antes de empacotar.
+
+		Retorna True se a instalacao FOI INICIADA -- nesse caso o empacotamento e
+		adiado e _on_package e reentrado quando ela terminar. Retorna False quando
+		nao ha o que instalar ou o usuario recusou: segue empacotando na hora.
+
+		Reentrar em _on_package e seguro: ele reutiliza self._last_addon_folder.
+		A flag _deps_ja_tratadas evita a segunda pergunta (e o laco infinito).
+		"""
+		if getattr(self, '_deps_ja_tratadas', False):
+			return False
+		deps = deps_pendentes(
+			getattr(self._last_result, 'dependencies', None),
+			os.path.join(addon_folder, 'lib'),
+		)
+		if not deps:
+			self._deps_ja_tratadas = True
+			return False
+		lista = ', '.join(deps)
+		resposta = gui.messageBox(
+			f"O addon '{addon_name}' usa {len(deps)} biblioteca(s) externa(s):\n"
+			f"{lista}\n\n"
+			"Incluir no pacote deixa o addon autossuficiente: funciona em qualquer "
+			"computador onde for instalado, sem depender do NVDAStudio. Em troca, o "
+			"arquivo fica maior.\n\n"
+			"Sem as bibliotecas o addon instala e carrega, mas avisa que a "
+			"funcionalidade esta indisponivel.\n\n"
+			"Deseja incluir as bibliotecas no pacote?",
+			"NVDAStudio: dependencias do addon",
+			wx.YES_NO | wx.ICON_QUESTION,
+		)
+		if resposta != wx.YES:
+			self._deps_ja_tratadas = True
+			ui.message(
+				"NVDAStudio: empacotando sem as bibliotecas. O addon vai avisar que "
+				"a funcionalidade esta indisponivel."
+			)
+			_logger.info('[OK] dependencias recusadas pelo usuario: %s', lista)
+			return False
+
+		def _pronto(sucesso: bool, instalados: list, falhas: dict) -> None:
+			self._deps_ja_tratadas = True
+			if falhas:
+				detalhe = ', '.join(sorted(falhas))
+				self._chat_append(
+					f"Assistente:\nNao consegui instalar {len(falhas)} biblioteca(s): "
+					f"{detalhe}. O addon sera empacotado assim mesmo e vai avisar que a "
+					f"funcionalidade esta indisponivel."
+				)
+			else:
+				self._chat_append(
+					f"Assistente:\n{len(instalados)} biblioteca(s) incluida(s) no pacote."
+				)
+			# Segue o empacotamento que foi adiado.
+			self._on_package(None)
+
+		self._bundle_async(addon_folder, deps, addon_name, _pronto)
+		return True
+
 	def _on_package(self, _event):
 		"""
 		Botao Empacotar: empacota .nvda-addon a partir dos arquivos ja salvos.
@@ -1987,6 +2048,20 @@ class NVDAStudioDialog(wx.Dialog):
 				_logger.info("[OK] _on_package (controller_client): %s", nvda_addon_path)
 				return
 
+			# 6.x -- as dependencias detectadas viravam nada.
+			#
+			# O orchestrator ja detecta os imports externos e os envia em
+			# OrchestrationResult.dependencies; esta tela ja tinha o instalador
+			# pronto (_bundle_async -> bundle_addon_dependencies, com a ABI do
+			# Python embarcado do NVDA fixada). Os dois lados existiam e estavam
+			# corretos -- faltava a chamada: _bundle_async() nao tinha NENHUM
+			# chamador, e esta tela nunca lia result.dependencies.
+			#
+			# Consequencia medida na entrega ResumoGemini (2026-09-02): o addon
+			# saiu sem lib/, e sem google-generativeai ele carrega no NVDA e
+			# avisa por voz, mas nao resume nada.
+			if self._instalar_dependencias_se_preciso(addon_folder, addon_name):
+				return  # instalacao em andamento; reentra por _on_package ao terminar
 			fix_addon_structure(addon_folder)
 			_fix_actions, _remaining_problems = self._auto_fix_structural_issues(addon_folder, addon_name)
 
@@ -2323,6 +2398,28 @@ def _get_nvda_locale() -> str:
 	except Exception:
 		return "pt_BR"
 
+
+def deps_pendentes(declaradas, lib_dir: str) -> list[str]:
+	"""Dependencias que ainda precisam ser instaladas em lib/.
+
+	Funcao de modulo -- testavel sem instancia de dialog (mesmo padrao de
+	_save_instrucoes_txt): wx.Dialog e mockado na suite, entao metodo de
+	instancia nao da para exercitar diretamente.
+
+	Compara pelo nome do pacote normalizado: pip grava `google_generativeai`
+	em lib/ para a dependencia declarada `google-generativeai`, e extras como
+	`pacote[extra]` nao fazem parte do nome da pasta.
+	"""
+	pendentes = [d for d in (declaradas or []) if d and d.strip()]
+	if not pendentes or not os.path.isdir(lib_dir):
+		return pendentes
+	try:
+		presentes = {n.lower() for n in os.listdir(lib_dir)}
+	except OSError:
+		return pendentes
+	def _raiz(nome: str) -> str:
+		return nome.split('[')[0].strip().replace('-', '_').lower()
+	return [d for d in pendentes if _raiz(d) not in presentes]
 
 def _save_instrucoes_txt(addon_name: str, output_dir: str, nvda_addon_path: str) -> str:
 	"""

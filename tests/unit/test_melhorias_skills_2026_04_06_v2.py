@@ -165,7 +165,7 @@ class TestScreenReaderTestingCritic:
 
     def test_critic_versao_3_2_0(self):
         from nvdastudio.ai.critic import MODULE_VERSION
-        assert MODULE_VERSION == "3.21.0"
+        assert MODULE_VERSION == "3.22.0"
 
     def test_nvda_ux_002_presente(self):
         """NVDA-UX-002: scripts sem feedback auditivo."""
@@ -227,7 +227,7 @@ class TestPlannerSchemaDescriptions:
 
     def test_planner_versao_2_1_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.41.0"
+        assert MODULE_VERSION == "2.43.0"
 
     def test_campos_principais_tem_description(self):
         """Campos do schema de nivel raiz devem ter description."""

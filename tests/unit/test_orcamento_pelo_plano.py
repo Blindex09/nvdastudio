@@ -39,7 +39,7 @@ _PLANO_COMPLEXO_REAL = (
 
 
 def test_versao():
-	assert MODULE_VERSION == "1.6.0"
+	assert MODULE_VERSION == "1.7.0"
 
 
 def test_plano_complexo_real_cabe_no_teto():

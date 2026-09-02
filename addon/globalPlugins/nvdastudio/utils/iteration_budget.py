@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .logger import get_logger
 
-MODULE_VERSION = "1.6.0"
+MODULE_VERSION = "1.7.0"
 _logger = get_logger("iteration_budget")
 
 # Custos por 1M tokens (USD) — atualizar conforme provider
@@ -51,7 +51,16 @@ _TOKEN_BUDGET_BY_COMPLEXITY: dict[str, int] = {
 _CUSTO_MEDIDO_POR_STEP: dict[str, int] = {
 	"design_review":       90_000,
 	"code_generation":     35_000,
-	"accessibility_audit": 35_000,
+	# 1.7.0 -- medido 176.041 tokens com rt=2 (~88k/tentativa) na rodada
+	# ResumoGemini de 2026-09-02. AMOSTRA DE UMA RODADA: e a unica medicao
+	# real que existe deste step ate agora. O valor antigo (35k) subestimava
+	# em 5x, e como o teto sai desta tabela, ele derrubou o pipeline por 2%
+	# com o addon inteiro ja gerado e aprovado. Preferir o numero medido, mesmo
+	# com n=1, a um numero inventado que ja provou destruir entrega pronta.
+	"accessibility_audit": 88_000,
+	# medido 40.883 e 56.904 em duas rodadas; ficava fora da tabela caindo no
+	# padrao de 25.000.
+	"engineering_review":  49_000,
 	"agent_template":      29_000,
 	"agent_runner":        35_000,
 	"documentation":       27_000,
@@ -70,6 +79,8 @@ _CUSTO_PADRAO_POR_STEP = 25_000
 _TENTATIVAS_ESPERADAS: dict[str, float] = {
 	"code_generation": 2.5,
 	"agent_runner":    2.5,
+	# reprovou e retentou nas duas rodadas em que apareceu.
+	"accessibility_audit": 2.0,
 }
 _TENTATIVAS_PADRAO = 1.4
 

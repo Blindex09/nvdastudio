@@ -40,7 +40,7 @@ def _method_src(class_name: str, method_name: str) -> str:
 class TestStudioDialogVersao:
     def test_versao_e_5_2_0(self):
         from nvdastudio.gui.studio_dialog import MODULE_VERSION
-        assert MODULE_VERSION == "5.48.0"
+        assert MODULE_VERSION == "5.49.0"
 
 
 class TestChatQuickConfig:
@@ -236,7 +236,7 @@ class TestAddonLoaderIntegracao:
 class TestPlannerVersaoAtualizada:
     def test_versao_e_1_7_0(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.41.0"
+        assert MODULE_VERSION == "2.43.0"
 
     def test_step_user_clarification_no_model_map(self):
         from nvdastudio.core.planner import STEP_USER_CLARIFICATION, STEP_MODEL_MAP

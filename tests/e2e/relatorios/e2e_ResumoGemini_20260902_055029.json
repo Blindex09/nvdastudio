@@ -1,0 +1,336 @@
+{
+  "addon_name": "ResumoGemini",
+  "query": "Crie um addon NVDA chamado ResumoGemini que usa a API do Google Gemini para resumir o texto selecionado. Funcionalidades: (1) um atalho NVDA+shift+r que pega o texto selecionado e fala o resumo; (2) u",
+  "timestamp": "2026-09-02T04:48:10.764656",
+  "plan_id": "330ba8f9",
+  "complexity": "",
+  "duration_seconds": 3738.44,
+  "total_tokens": 638057,
+  "total_tokens_medidor": 853455,
+  "total_retries": 9,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação parou por limite de recursos (Budget excedido — pipeline parado) antes de concluir o código do addon. 1 etapa(s) não chegaram a ser executadas. O que foi aprovado até aqui está preservado no relatório desta execução.",
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 30558,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ResumoGemini\nsummary = ResumoGemini - Resumo de texto com Gemini | Gemini text summarizer\ndescription = Resumo de texto selecionado usando Gemini para gerar um resumo curto | Summary of selected text using Gemini to generate a short summary\nauthor = Nome <email@exemplo.com"
+    },
+    {
+      "step_id": "wr1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 13258,
+      "issues": [
+        "O nome do pacote PyPI está incorreto: o output diz 'google-genai', mas o objetivo pede explicitamente o SDK 'google-generativeai' (pacote PyPI google-generativeai, import google.generativeai).",
+        "Inclui seções não solicitadas (versão estável, comando de instalação, compatibilidade NVDA/wxPython), contrariando o critério 'nem mais nem menos'.",
+        "A mistura de 'google-genai' com o import 'google.generativeai' gera inconsistência factual que pode confundir o desenvolvedor."
+      ],
+      "output_preview": "[WEB_SEARCH] Pacote: google-genai\nVersão estável: 2.13.0\nInstalação: pip install google-genai\nAPI principal: genai.configure(api_key='YOUR_API_KEY'); model = genai.GenerativeModel('gemini-1.5-pro-latest'); response = model.generate_content('texto a resumir'); summary = response.text\nExemplo mínimo:\n"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 3,
+      "tokens_used": 102810,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ResumoGemini/__init__.py\nimport threading\nimport wx\nimport api\nimport ui\nimport tones\nimport config\nimport globalPluginHandler\nimport addonHandler\nimport globalVars\nfrom logHandler import log\nfrom scriptHandler import script\nfrom gui.settingsDialogs import NVDASettingsDialog\n"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 80775,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ResumoGemini/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t_spec = {\n\t\t\"apiKey\": \"string(default='')\",\n\t}\n\tif \"ResumoGemini\" not in config.conf.spec:\n\t\tconfig.conf.spec[\"ResumoGemini\"] = _spec\n```\n\n```python:globalPlugins/ResumoGemini/settings_panel.py\nimport"
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 92,
+      "retries_used": 0,
+      "tokens_used": 134602,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ResumoGemini/gemini_service.py\n# Servico sincrono para chamadas a API Google Gemini.\n# Nao realiza UI nem fala — apenas levanta excecoes especificas com mensagens claras.\n\nclass GeminiError(Exception):\n\t\"\"\"Base para falhas do servico Gemini.\"\"\"\n\tpass\n\n\nclass GeminiAuthError(G"
+    },
+    {
+      "step_id": "sv_3",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "sv_2",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "er_inj",
+      "step_type": "engineering_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 56904,
+      "issues": [
+        "Não aborda explicitamente o critério 'recurso criado sem fim de vida' (ciclo de vida/join de threads, sessões HTTP ou sockets).",
+        "Inclui observação sobre validação de formato da chave no painel de configurações, que foge do escopo estrito de engenharia solicitado (nem mais nem menos).",
+        "Usa termos como 'presumivelmente' em vez de se apoiar nos artefatos fornecidos, reduzindo a precisão técnica da revisão."
+      ],
+      "output_preview": "Estou revisando o código do addon ResumoGemini.  \nPrimeiro verifico a estrutura geral: há um módulo de serviço que faz a chamada à API Gemini, um arquivo de especificação de configuração, um painel de configurações e, presumivelmente, um plugin global que liga o atalho NVDA+Shift+R ao serviço.  \n\nO "
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 43109,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ResumGemini - Resumo de texto com Gemini</title>\n</head>\n<body style=\"font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em\">\n<main>\n<h1>ResumGemini</h1>\n<h2>Introdução</h2>\n<p>O"
+    },
+    {
+      "step_id": "audit1",
+      "step_type": "accessibility_audit",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 2,
+      "tokens_used": 176041,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "Nenhuma violação encontrada nas regras NVDA-001..038, NVDA-040, NVDA-042..050, WX-A11Y-001..014 e DTK-A11Y-001..012."
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Analisando a fundo o fluxo de resumo e fala..."
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "5"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "engineering_review"
+    ],
+    [
+      "AVALIANDO",
+      "engineering_review"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 70.2,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}

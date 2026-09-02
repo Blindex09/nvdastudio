@@ -13,7 +13,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.41.0"
+MODULE_VERSION = "2.43.0"
 _logger = get_logger("planner")
 
 
@@ -959,8 +959,17 @@ Regras de composicao:
   O NVDA nao mostra ajuda ao usuario sem esse arquivo. documentation deve depender de
   code_generation e manifest_builder, e deve vir ANTES do assembly.
   assembly deve depender de documentation (nao apenas de code_generation e manifest_builder).
-- OBRIGATORIO: sempre termine com assembly — e o step que monta e empacota todos os artefatos.
-  Sem assembly o pipeline nao conclui. assembly deve ser SEMPRE o ultimo step da lista.
+- OBRIGATORIO: sempre termine com assembly — e o step que CONSOLIDA a estrutura de
+  arquivos do addon (globalPlugins/, manifest.ini, doc/). Sem assembly o pipeline nao
+  conclui. assembly deve ser SEMPRE o ultimo step da lista.
+  NAO peca ao assembly, na description nem no expected_output, para:
+    * gerar o arquivo .nvda-addon (zip): quem empacota e CODIGO DETERMINISTICO,
+      depois que os steps terminam. Um step de IA nao produz binario.
+    * baixar, vendorizar ou incluir pacotes pip em lib/: o addon gerado resolve
+      dependencia externa em tempo de execucao, nao dentro do pacote.
+    * escrever buildVars.py ou script de build.
+  Pedir isso cria um objetivo que o step nao tem como cumprir, e o Critic reprova o
+  step por nao fazer algo que ja e feito depois dele.
 - OBRIGATORIO sobre code_generation: gera APENAS arquivos Python (.py).
   NUNCA gera HTML, nunca gera manifest.ini — isso e responsabilidade de outros steps.
   HTML de documentacao e responsabilidade EXCLUSIVA do step documentation.
@@ -1011,6 +1020,55 @@ def _plan_json_from_tool_call(resp) -> str:
 	if isinstance(args, dict):
 		return json.dumps(args)
 	return args or resp.content or ""
+
+
+# Steps que JULGAM o codigo e nao produzem arquivo do addon. O assembly nao
+# precisa da saida deles para empacotar, e depender deles significa que uma
+# auditoria cara pode consumir o orcamento antes da entrega acontecer.
+_STEPS_CONSULTIVOS: frozenset = frozenset({
+	STEP_ACCESSIBILITY_AUDIT, STEP_ENGINEERING_REVIEW, STEP_DESIGN_REVIEW,
+	STEP_WEB_RESEARCH, STEP_SYNTAX_VALIDATION,
+})
+
+
+def _desatrelar_assembly_de_consultivos(
+	steps: list[ExecutionStep],
+) -> list[ExecutionStep]:
+	"""Tira os steps CONSULTIVOS das dependencias do assembly.
+
+	Mesmo racional do filtro em `_inject_assembly` (2.42.0), aplicado ao plano
+	que o LLM devolve -- la o assembly e nosso e nasce certo; aqui ele vem do
+	modelo e costuma listar "depende de tudo". Um step que so JULGA o codigo
+	nao entrega arquivo nenhum, entao segurar a entrega atras dele so cria a
+	chance de o orcamento acabar com o addon pronto e nao empacotado.
+
+	Sem dependencia consultiva o assembly fica PRONTO junto com a auditoria, e
+	o orchestrator roda steps prontos em paralelo -- a auditoria continua
+	acontecendo e reportando, so nao decide mais se a entrega existe.
+	"""
+	ids_consultivos = {
+		s.step_id for s in steps if s.step_type in _STEPS_CONSULTIVOS
+	}
+	if not ids_consultivos:
+		return steps
+	for step in steps:
+		if step.step_type != STEP_ASSEMBLY:
+			continue
+		restantes = [d for d in step.depends_on if d not in ids_consultivos]
+		# Se o assembly SO dependia de consultivos, deixa como estava: sem
+		# dependencia nenhuma ele ficaria pronto na primeira volta, antes de
+		# qualquer codigo existir, e empacotaria o vazio.
+		if restantes and len(restantes) != len(step.depends_on):
+			_logger.info(
+				"[DECISION] assembly_desatrelado context=%s soltou=%s",
+				step.step_id,
+				",".join(d for d in step.depends_on if d in ids_consultivos),
+			)
+			step.depends_on = restantes
+			step.context_from_steps = [
+				c for c in step.context_from_steps if c not in ids_consultivos
+			] or step.context_from_steps
+	return steps
 
 
 class Planner:
@@ -1095,6 +1153,7 @@ class Planner:
 			steps = self._inject_manifest(steps, user_query, complexity)
 			steps = self._inject_core_step(steps, user_query, complexity)
 			steps = self._priorizar_ponto_de_entrada(steps)
+			steps = _desatrelar_assembly_de_consultivos(steps)
 
 		steps = self._inject_documentation(steps, complexity)
 
@@ -1792,7 +1851,28 @@ class Planner:
 			_logger.info("[PLAN] assembly ja presente no plano. Sem injecao.")
 			return steps
 
-		all_ids = [s.step_id for s in steps]
+		# 2.42.0 -- O assembly depende do que PRODUZ ARQUIVO, nao de todo mundo.
+		#
+		# Antes ele dependia de `all_ids`, o que o punha atras dos steps
+		# CONSULTIVOS -- auditoria de acessibilidade, revisao de engenharia,
+		# revisao de design. Esses steps julgam o codigo e nao produzem arquivo
+		# nenhum; o assembly nao precisa da saida deles para empacotar.
+		#
+		# Medido na rodada de 2026-09-02 05:20 (ResumoGemini, complexo minimo):
+		# os TRES code_generation aprovados (95/95/92), manifest 95, doc 95 --
+		# o addon inteiro pronto. O accessibility_audit rodou antes do assembly,
+		# consumiu 176.041 tokens (21% do orcamento), e o pipeline estourou o
+		# teto por 2% com UMA etapa faltando: justamente o assembly. O addon
+		# estava pronto e foi descartado por uma auditoria que nao entrega nada.
+		#
+		# A troca e deliberada: entregar e depois auditar, em vez de auditar e
+		# talvez nunca entregar. A auditoria continua rodando e seus achados
+		# continuam chegando ao usuario -- so deixam de poder impedir a entrega
+		# do que ja foi aprovado.
+		all_ids = [
+			s.step_id for s in steps
+			if s.step_type not in _STEPS_CONSULTIVOS
+		] or [s.step_id for s in steps]
 		reasoning_params: dict = {}
 		re_effort = _effort_for_complexity(STEP_ASSEMBLY, complexity)
 		if re_effort:
@@ -2347,6 +2427,7 @@ class Planner:
 				steps = self._inject_manifest(steps, original_query, complexity)
 				steps = self._inject_core_step(steps, original_query, complexity)
 				steps = self._priorizar_ponto_de_entrada(steps)
+				steps = _desatrelar_assembly_de_consultivos(steps)
 			steps = self._inject_documentation(steps, complexity)
 			steps = self._inject_syntax_validation(steps, complexity)
 			if project_type == "addon":

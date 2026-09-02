@@ -8,7 +8,7 @@ from nvdastudio.builder.addon_builder import (
 
 class TestAddonBuilderVersao:
     def test_versao_e_1_4_0(self):
-        assert MODULE_VERSION == "4.19.0"
+        assert MODULE_VERSION == "4.20.0"
 
 
 # ---------- Helpers ----------

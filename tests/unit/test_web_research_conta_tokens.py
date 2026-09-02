@@ -54,7 +54,7 @@ def _busca_falsa(retorno="resultado bruto da busca"):
 
 
 def test_versao():
-	assert web_researcher.MODULE_VERSION == "4.13.0"
+	assert web_researcher.MODULE_VERSION == "4.14.0"
 
 
 def test_sintese_registra_o_proprio_custo(monkeypatch):

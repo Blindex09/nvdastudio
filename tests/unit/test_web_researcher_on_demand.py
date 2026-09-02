@@ -67,147 +67,148 @@ class TestOnDemandWebSearch:
         assert "import ddgs" not in src
         assert "DDGS()" not in src
 
-class TestFallbackWebSearch:
+class TestBuscaParalela:
     """
-    v4.4.0: on_demand_web_search() cai em _fallback_web_search() (Tavily
-    primeiro, depois Exa) quando a busca nativa do provedor ativo nao esta
-    disponivel ou falha/retorna vazio. Ambas as chaves sao opcionais.
+    v4.14.0: a cascata (nativa -> Tavily -> Exa) virou disparo SIMULTANEO das
+    tres fontes, com uniao deduplicada por URL.
+
+    A cascata parava na primeira fonte que devolvesse QUALQUER coisa, mesmo
+    errada -- as seguintes nunca eram consultadas. Medido em 2026-09-02
+    (entrega ResumoGemini): web_research reprovado 3x, uma das criticas sendo
+    "nao ha citacao das fontes consultadas"; consultado direto no mesmo dia, o
+    Exa devolvia "google-generativeai v0.8.6", o dado que faltava.
     """
 
-    def test_fallback_sem_nenhuma_chave_retorna_vazio(self):
-        from nvdastudio.sub_agents.web_researcher import _fallback_web_search
+    def _client(self, resultado=""):
+        c = MagicMock()
+        del c.native_web_search
+        c.web_search = MagicMock(return_value=resultado)
+        return c
+
+    def _chaves(self, **mapa):
+        return patch(
+            "nvdastudio.gui.settings_panel.get_api_key",
+            side_effect=lambda p: mapa.get(p, ""),
+        )
+
+    def test_sem_chaves_usa_so_a_nativa(self):
+        from nvdastudio.sub_agents.web_researcher import _buscar_em_paralelo
 
         with patch("nvdastudio.gui.settings_panel.get_api_key", return_value=""):
-            result = _fallback_web_search("como usar requests")
+            r = _buscar_em_paralelo("q", self._client("Titulo\nhttps://a.com\ntexto"))
+        assert "https://a.com" in r
 
-        assert result == ""
+    def test_consulta_as_tres_fontes_ao_mesmo_tempo(self):
+        """O ponto do fix: nenhuma fonte fica de fora porque outra respondeu."""
+        from nvdastudio.sub_agents.web_researcher import _buscar_em_paralelo
 
-    def test_fallback_usa_tavily_quando_chave_configurada(self):
-        from nvdastudio.sub_agents.web_researcher import _fallback_web_search
+        with self._chaves(tavily="tk", exa="ek"):
+            with patch("nvdastudio.sub_agents.web_researcher._tavily_search",
+                       return_value="T\nhttps://tavily.com/1\ntexto") as mt:
+                with patch("nvdastudio.sub_agents.web_researcher._exa_search",
+                           return_value="E\nhttps://exa.com/1\ntexto") as me:
+                    r = _buscar_em_paralelo("q", self._client("N\nhttps://nativa.com/1\ntexto"))
 
-        with patch(
-            "nvdastudio.gui.settings_panel.get_api_key",
-            side_effect=lambda p: "tavily-key" if p == "tavily" else "",
-        ):
-            with patch(
-                "nvdastudio.sub_agents.web_researcher._tavily_search",
-                return_value="Tavily: requests e uma lib HTTP",
-            ) as mock_tavily:
-                result = _fallback_web_search("como usar requests")
+        mt.assert_called_once_with("q", "tk")
+        me.assert_called_once_with("q", "ek")
+        assert "https://nativa.com/1" in r
+        assert "https://tavily.com/1" in r
+        assert "https://exa.com/1" in r, "a cascata antiga nunca chegaria no Exa"
 
-        mock_tavily.assert_called_once_with("como usar requests", "tavily-key")
-        assert "Tavily" in result
+    def test_nativa_com_resultado_nao_silencia_as_outras(self):
+        """Regressao direta da cascata: bastava a nativa responder qualquer
+        coisa para Tavily e Exa nunca serem chamados."""
+        from nvdastudio.sub_agents.web_researcher import _buscar_em_paralelo
 
-    def test_fallback_cai_para_exa_se_tavily_sem_chave(self):
-        from nvdastudio.sub_agents.web_researcher import _fallback_web_search
+        with self._chaves(tavily="tk", exa="ek"):
+            with patch("nvdastudio.sub_agents.web_researcher._tavily_search",
+                       return_value="T\nhttps://t.com\nx") as mt:
+                with patch("nvdastudio.sub_agents.web_researcher._exa_search",
+                           return_value="E\nhttps://e.com\nx") as me:
+                    _buscar_em_paralelo("q", self._client("N\nhttps://n.com\nx"))
 
-        with patch(
-            "nvdastudio.gui.settings_panel.get_api_key",
-            side_effect=lambda p: "exa-key" if p == "exa" else "",
-        ):
-            with patch(
-                "nvdastudio.sub_agents.web_researcher._exa_search",
-                return_value="Exa: requests e uma lib HTTP",
-            ) as mock_exa:
-                result = _fallback_web_search("como usar requests")
+        assert mt.called and me.called
 
-        mock_exa.assert_called_once_with("como usar requests", "exa-key")
-        assert "Exa" in result
+    def test_uma_fonte_que_falha_nao_derruba_as_outras(self):
+        from nvdastudio.sub_agents.web_researcher import _buscar_em_paralelo
 
-    def test_fallback_cai_para_exa_se_tavily_falha(self):
-        from nvdastudio.sub_agents.web_researcher import _fallback_web_search
+        with self._chaves(tavily="tk", exa="ek"):
+            with patch("nvdastudio.sub_agents.web_researcher._tavily_search",
+                       side_effect=RuntimeError("timeout")):
+                with patch("nvdastudio.sub_agents.web_researcher._exa_search",
+                           return_value="E\nhttps://exa.com/2\ntexto"):
+                    r = _buscar_em_paralelo("q", self._client(""))
+        assert "https://exa.com/2" in r
 
-        with patch(
-            "nvdastudio.gui.settings_panel.get_api_key",
-            side_effect=lambda p: {"tavily": "tavily-key", "exa": "exa-key"}.get(p, ""),
-        ):
-            with patch(
-                "nvdastudio.sub_agents.web_researcher._tavily_search",
-                side_effect=RuntimeError("timeout"),
-            ):
-                with patch(
-                    "nvdastudio.sub_agents.web_researcher._exa_search",
-                    return_value="Exa: resultado de backup",
-                ) as mock_exa:
-                    result = _fallback_web_search("query")
+    def test_todas_falhando_retorna_vazio(self):
+        from nvdastudio.sub_agents.web_researcher import _buscar_em_paralelo
 
-        mock_exa.assert_called_once()
-        assert "Exa" in result
+        with self._chaves(tavily="tk", exa="ek"):
+            with patch("nvdastudio.sub_agents.web_researcher._tavily_search",
+                       side_effect=RuntimeError("x")):
+                with patch("nvdastudio.sub_agents.web_researcher._exa_search",
+                           side_effect=RuntimeError("y")):
+                    r = _buscar_em_paralelo("q", self._client(""))
+        assert r == ""
 
-    def test_fallback_retorna_vazio_se_ambos_falham(self):
-        from nvdastudio.sub_agents.web_researcher import _fallback_web_search
+    def test_nao_vaza_threads(self):
+        """O pool tem que fechar: uma pesquisa por step, muitos steps."""
+        import threading
+        from nvdastudio.sub_agents.web_researcher import _buscar_em_paralelo
 
-        with patch(
-            "nvdastudio.gui.settings_panel.get_api_key",
-            side_effect=lambda p: {"tavily": "k1", "exa": "k2"}.get(p, ""),
-        ):
-            with patch(
-                "nvdastudio.sub_agents.web_researcher._tavily_search",
-                side_effect=RuntimeError("down"),
-            ):
-                with patch(
-                    "nvdastudio.sub_agents.web_researcher._exa_search",
-                    side_effect=RuntimeError("down"),
-                ):
-                    result = _fallback_web_search("query")
+        antes = threading.active_count()
+        with self._chaves(tavily="tk", exa="ek"):
+            with patch("nvdastudio.sub_agents.web_researcher._tavily_search", return_value=""):
+                with patch("nvdastudio.sub_agents.web_researcher._exa_search", return_value=""):
+                    for _ in range(5):
+                        _buscar_em_paralelo("q", self._client(""))
+        assert threading.active_count() <= antes + 1
 
-        assert result == ""
 
-    def test_on_demand_web_search_usa_fallback_quando_client_nao_suporta(self):
-        from nvdastudio.sub_agents.web_researcher import on_demand_web_search
+class TestMesclagem:
+    def test_url_repetida_entre_fontes_aparece_uma_vez(self):
+        from nvdastudio.sub_agents.web_researcher import _mesclar_resultados
 
-        fake_client = MagicMock(spec=[])
-        with patch("nvdastudio.sub_agents.web_researcher.create_llm_client", return_value=fake_client):
-            with patch(
-                "nvdastudio.sub_agents.web_researcher._fallback_web_search",
-                return_value="Resultado via fallback",
-            ) as mock_fallback:
-                result = on_demand_web_search("como usar requests")
+        bloco = "Titulo\nhttps://mesma.com/a\ntexto"
+        assert _mesclar_resultados([bloco, bloco]).count("https://mesma.com/a") == 1
 
-        mock_fallback.assert_called_once_with("como usar requests")
-        assert "fallback" in result.lower()
+    def test_url_com_barra_final_conta_como_a_mesma(self):
+        from nvdastudio.sub_agents.web_researcher import _mesclar_resultados
 
-    def test_on_demand_web_search_usa_fallback_quando_nativa_lanca_excecao(self):
-        from nvdastudio.sub_agents.web_researcher import on_demand_web_search
+        r = _mesclar_resultados(["T\nhttps://x.com/a/\nt", "T\nhttps://x.com/a\nt"])
+        assert r.count("x.com/a") == 1
 
-        fake_client = MagicMock(spec=["web_search"])
-        fake_client.web_search.side_effect = RuntimeError("timeout")
-        with patch("nvdastudio.sub_agents.web_researcher.create_llm_client", return_value=fake_client):
-            with patch(
-                "nvdastudio.sub_agents.web_researcher._fallback_web_search",
-                return_value="Resultado via fallback",
-            ) as mock_fallback:
-                result = on_demand_web_search("como usar requests")
+    def test_alterna_entre_fontes_para_nenhuma_ficar_de_fora(self):
+        """Concatenar deixaria a 1a fonte encher a cota sozinha."""
+        from nvdastudio.sub_agents.web_researcher import (
+            _mesclar_resultados, _MERGED_MAX_RESULTS,
+        )
 
-        mock_fallback.assert_called_once_with("como usar requests")
-        assert "fallback" in result.lower()
+        a = "\n\n".join(f"A{i}\nhttps://a.com/{i}\nt" for i in range(_MERGED_MAX_RESULTS + 3))
+        b = "\n\n".join(f"B{i}\nhttps://b.com/{i}\nt" for i in range(3))
+        assert "b.com" in _mesclar_resultados([a, b]), "a segunda fonte foi engolida pelo corte"
 
-    def test_on_demand_web_search_usa_fallback_quando_nativa_retorna_vazio(self):
-        from nvdastudio.sub_agents.web_researcher import on_demand_web_search
+    def test_respeita_o_teto_de_resultados(self):
+        from nvdastudio.sub_agents.web_researcher import (
+            _mesclar_resultados, _MERGED_MAX_RESULTS,
+        )
 
-        fake_client = MagicMock(spec=["web_search"])
-        fake_client.web_search.return_value = ""
-        with patch("nvdastudio.sub_agents.web_researcher.create_llm_client", return_value=fake_client):
-            with patch(
-                "nvdastudio.sub_agents.web_researcher._fallback_web_search",
-                return_value="Resultado via fallback",
-            ) as mock_fallback:
-                result = on_demand_web_search("como usar requests")
+        a = "\n\n".join(f"A{i}\nhttps://a.com/{i}\nt" for i in range(30))
+        r = _mesclar_resultados([a])
+        assert len([b for b in r.split("\n\n") if b.strip()]) <= _MERGED_MAX_RESULTS
 
-        mock_fallback.assert_called_once_with("como usar requests")
-        assert "fallback" in result.lower()
+    def test_lista_vazia_nao_quebra(self):
+        from nvdastudio.sub_agents.web_researcher import _mesclar_resultados
+        assert _mesclar_resultados([]) == ""
+        assert _mesclar_resultados(["", ""]) == ""
 
-    def test_on_demand_web_search_nao_chama_fallback_quando_nativa_funciona(self):
-        from nvdastudio.sub_agents.web_researcher import on_demand_web_search
 
-        fake_client = MagicMock(spec=["web_search"])
-        fake_client.web_search.return_value = "Resultado nativo real"
-        with patch("nvdastudio.sub_agents.web_researcher.create_llm_client", return_value=fake_client):
-            with patch("nvdastudio.sub_agents.web_researcher._fallback_web_search") as mock_fallback:
-                result = on_demand_web_search("como usar requests")
-
-        mock_fallback.assert_not_called()
-        assert "nativo" in result
+class TestCascataRemovida:
+    def test_fallback_web_search_nao_existe_mais(self):
+        """Regra 3 (anti-legado) e Regra 5 (zero duplicacao de fluxo): manter a
+        cascata ao lado do paralelo seria uma segunda rota sem consumidor."""
+        import nvdastudio.sub_agents.web_researcher as mod
+        assert not hasattr(mod, "_fallback_web_search")
 
 
 class TestTavilyExaSearchFormatoRequisicao:

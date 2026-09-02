@@ -16,7 +16,7 @@ from ..core.planner import (
 	STEP_CODE_GENERATION, STEP_MANIFEST as STEP_MANIFEST_BUILDER, STEP_WEB_RESEARCH,
 )
 
-MODULE_VERSION = "3.21.0"
+MODULE_VERSION = "3.22.0"
 _logger = get_logger("critic")
 
 # 3.19.0: Critic roteado pra OpenCode Go, independente do provider ativo do
@@ -153,6 +153,15 @@ agent_runner:
 assembly:
   APROVADO se: contem manifest.ini e codigo Python juntos no output.
   CORRIGIR se: falta um dos dois.
+  LIMITES DO ASSEMBLY -- nao cobre nada disto, mesmo que o objetivo do step peca:
+    * o arquivo .nvda-addon (zip) e produzido por CODIGO DETERMINISTICO depois
+      deste step. Um step de IA nao emite binario. Nunca reduza o score por
+      "nao produziu o pacote instalavel" nem por falta de buildVars.py/script de build.
+    * pacotes pip em lib/ nao sao responsabilidade deste step. O addon gerado
+      resolve dependencia externa em tempo de execucao.
+  Medido em 2026-09-02: o Critic reprovou o assembly por 'nao foi produzido o
+  pacote instalavel (.nvda-addon)' no MESMO SEGUNDO em que o builder registrava
+  'Addon empacotado'. Foram 3 tentativas do step, todas cobrando o impossivel.
 
 design_review:
   APROVADO se: contem as tres secoes obrigatorias (Challenger, Guardian, User Advocate)
@@ -250,8 +259,8 @@ NVDA-018 Serio: minimumNVDAVersion abaixo de 2019.3.0 (antes era Python 2).
 REGRAS ARQUITETURAIS (ARCH-001..009) — aplique APENAS em code_generation com codigo Python:
 
 LIMITES DESTA ETAPA:
-- Empacotar dependencias em lib/ pertence ao builder/assembly, depois da geracao.
-  Nao rejeite code_generation apenas porque um pacote externo ainda nao aparece em lib/.
+- Empacotar dependencias NAO e trabalho de nenhum step de IA -- nem deste, nem do
+  assembly. Nao rejeite nenhum step porque um pacote externo nao aparece em lib/.
 - manifest.ini e avaliado por manifest_builder. Ignore nome, URL e outros campos de
   manifesto que tenham aparecido acidentalmente neste output.
 - `scriptCategory` na classe GlobalPlugin e API valida documentada pelo NVDA.

@@ -3,7 +3,7 @@ class TestCriticArquiteturaRules:
 
     def test_versao_Critic(self):
         from nvdastudio.ai.critic import MODULE_VERSION
-        assert MODULE_VERSION == "3.21.0"
+        assert MODULE_VERSION == "3.22.0"
 
     def test_arch001_no_quality_system(self):
         """ARCH-001: addon com API externa sem SettingsPanel deve ser penalizado."""
@@ -54,7 +54,7 @@ class TestPlannerArquiteturaRules:
 
     def test_versao_Planner(self):
         from nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.41.0"
+        assert MODULE_VERSION == "2.43.0"
 
     def test_arch001_no_Planner(self):
         """ARCH-001 deve estar no prompt do Planner como regra de inferencia."""

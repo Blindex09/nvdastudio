@@ -1,3 +1,4 @@
+import concurrent.futures
 import os
 import re
 import threading
@@ -18,7 +19,7 @@ from ._base import (
 )
 
 _logger = get_logger("web_researcher")
-MODULE_VERSION = "4.13.0"
+MODULE_VERSION = "4.14.0"
 
 # Cache: registros com menos de N dias sao considerados frescos.
 # Opt-in explicito para busca real sob pytest. Ver o comentario em run().
@@ -142,23 +143,7 @@ def on_demand_web_search(query: str, model_id: str = "") -> str:
 			return ""
 
 		narrate(f"navegando na web procurando informacao sobre {query}")
-		result = ""
-		try:
-			if hasattr(client, "web_search"):
-				_logger.info("[WEB_SEARCH] pesquisando via Ollama Cloud: '%s'", query[:60])
-				result = client.web_search(query)
-			elif hasattr(client, "native_web_search"):
-				provider = getattr(client, "_provider", "provedor")
-				_logger.info("[WEB_SEARCH] pesquisando via %s: '%s'", provider, query[:60])
-				result = client.native_web_search(query)
-			else:
-				_logger.warning("[WEB_SEARCH] client %s nao suporta pesquisa web nativa.", type(client).__name__)
-		except Exception as exc:
-			_logger.warning("[WEB_SEARCH] falha na busca nativa: %s", exc)
-
-		if not result:
-			_logger.info("[WEB_SEARCH] busca nativa sem resultados para '%s' -- tentando fallback.", query[:60])
-			result = _fallback_web_search(query)
+		result = _buscar_em_paralelo(query, client)
 
 		if not result:
 			_logger.info("[WEB_SEARCH] sem resultados para: '%s'", query[:60])
@@ -177,45 +162,6 @@ _TAVILY_URL = "https://api.tavily.com/search"
 _EXA_URL = "https://api.exa.ai/search"
 _FALLBACK_MAX_RESULTS = 5
 _FALLBACK_TIMEOUT_SECONDS = 20.0
-
-
-def _fallback_web_search(query: str) -> str:
-	"""
-	Fallback de busca web via Tavily/Exa (nesta ordem), usado quando o
-	provedor de IA ativo nao tem web_search()/native_web_search() disponivel
-	OU a chamada nativa falhou/voltou vazia (ex: modelo Ollama sem cobertura
-	de busca nativa pra aquele request). Pedido do Felipe (2026-08-04, teste
-	E2E real): "se algum modelo do ollama nao pesquisar na web, tem tavily e
-	eza search que podemos usar tambem".
-
-	Ambas as chaves sao OPCIONAIS -- sem nenhuma configurada (settings_panel.py
-	6.7.0, get_api_key("tavily")/get_api_key("exa")), retorna "" silenciosamente,
-	mesmo padrao de graceful degradation ja usado no resto deste modulo (o
-	caller trata "" como "sem resultados", nunca quebra o pipeline).
-	"""
-	from ..gui.settings_panel import get_api_key
-
-	tavily_key = get_api_key("tavily")
-	if tavily_key:
-		try:
-			result = _tavily_search(query, tavily_key)
-			if result:
-				_logger.info("[WEB_SEARCH] fallback Tavily OK para '%s'", query[:60])
-				return result
-		except Exception as exc:
-			_logger.warning("[WEB_SEARCH] fallback Tavily falhou: %s", exc)
-
-	exa_key = get_api_key("exa")
-	if exa_key:
-		try:
-			result = _exa_search(query, exa_key)
-			if result:
-				_logger.info("[WEB_SEARCH] fallback Exa OK para '%s'", query[:60])
-				return result
-		except Exception as exc:
-			_logger.warning("[WEB_SEARCH] fallback Exa falhou: %s", exc)
-
-	return ""
 
 
 def _format_fallback_results(items: list[dict], title_key: str, url_key: str, text_key: str) -> str:
@@ -267,6 +213,118 @@ def _exa_search(query: str, api_key: str) -> str:
 	results = (resp.json() or {}).get("results") or []
 	return _format_fallback_results(results, "title", "url", "text")
 
+
+_MERGED_MAX_RESULTS = 8
+_PARALELO_TIMEOUT_SECONDS = 25.0
+
+
+def _url_do_bloco(bloco: str) -> str:
+	"""URL de um bloco formatado por _format_fallback_results (titulo/url/texto)."""
+	for linha in bloco.splitlines():
+		limpa = linha.strip()
+		if limpa.startswith("http://") or limpa.startswith("https://"):
+			return limpa.rstrip("/").lower()
+	return ""
+
+
+def _mesclar_resultados(por_fonte: list[str]) -> str:
+	"""Une os resultados das fontes alternando entre elas, sem URL repetida.
+
+	Alterna (round-robin) em vez de concatenar para que o corte em
+	_MERGED_MAX_RESULTS nao deixe uma fonte de fora: com concatenacao, a
+	primeira fonte encheria a cota sozinha e a segunda -- que pode ser
+	justamente a que tem a resposta certa -- nunca apareceria.
+	"""
+	listas = [[b for b in (r or "").split("\n\n") if b.strip()] for r in por_fonte]
+	vistos: set = set()
+	saida: list = []
+	for i in range(max((len(x) for x in listas), default=0)):
+		for blocos in listas:
+			if i >= len(blocos):
+				continue
+			bloco = blocos[i]
+			url = _url_do_bloco(bloco)
+			if url and url in vistos:
+				continue
+			if url:
+				vistos.add(url)
+			saida.append(bloco)
+			if len(saida) >= _MERGED_MAX_RESULTS:
+				return "\n\n".join(saida)
+	return "\n\n".join(saida)
+
+
+def _busca_nativa(query: str, client) -> str:
+	"""Busca do provedor de IA ativo. Retorna '' em qualquer falha."""
+	try:
+		if hasattr(client, "web_search"):
+			_logger.info("[WEB_SEARCH] pesquisando via Ollama Cloud: '%s'", query[:60])
+			return client.web_search(query) or ""
+		if hasattr(client, "native_web_search"):
+			provider = getattr(client, "_provider", "provedor")
+			_logger.info("[WEB_SEARCH] pesquisando via %s: '%s'", provider, query[:60])
+			return client.native_web_search(query) or ""
+		_logger.warning("[WEB_SEARCH] client %s nao suporta pesquisa web nativa.", type(client).__name__)
+	except Exception as exc:
+		_logger.warning("[WEB_SEARCH] falha na busca nativa: %s", exc)
+	return ""
+
+
+def _buscar_em_paralelo(query: str, client) -> str:
+	"""Consulta TODAS as fontes disponiveis ao mesmo tempo e une o resultado.
+
+	Antes era cascata: busca nativa e, SO se ela voltasse vazia, Tavily e,
+	so se o Tavily falhasse, Exa. O problema nao e latencia -- e qualidade:
+	a cascata para na primeira fonte que devolve QUALQUER coisa, mesmo que
+	essa coisa esteja errada, e as fontes seguintes nunca sao consultadas.
+
+	Medido em 2026-09-02 (entrega ResumoGemini): o step de web_research foi
+	reprovado 3 vezes, uma das criticas sendo 'nao ha citacao das fontes
+	consultadas' -- respondeu de memoria do modelo. Consultado direto no
+	mesmo dia, o Exa devolveu 'google-generativeai v0.8.6', exatamente o
+	dado que faltava. A resposta certa estava a uma chamada de distancia,
+	atras de uma cascata que nunca chegou nela.
+
+	Cada fonte falha de forma isolada (retorna ''), entao uma indisponivel
+	nao derruba as outras -- a degradacao graciosa da cascata e preservada.
+	"""
+	from ..gui.settings_panel import get_api_key
+
+	tarefas = [("nativa", lambda: _busca_nativa(query, client))]
+	tavily_key = get_api_key("tavily")
+	if tavily_key:
+		tarefas.append(("tavily", lambda: _tavily_search(query, tavily_key)))
+	exa_key = get_api_key("exa")
+	if exa_key:
+		tarefas.append(("exa", lambda: _exa_search(query, exa_key)))
+
+	resultados: dict = {}
+	# ThreadPoolExecutor como CONTEXTO: sem o with, o pool fica vivo depois
+	# do retorno e vaza threads a cada pesquisa.
+	with concurrent.futures.ThreadPoolExecutor(max_workers=len(tarefas)) as pool:
+		futuros = {pool.submit(fn): nome for nome, fn in tarefas}
+		try:
+			for fut in concurrent.futures.as_completed(
+				futuros, timeout=_PARALELO_TIMEOUT_SECONDS,
+			):
+				nome = futuros[fut]
+				try:
+					resultados[nome] = fut.result() or ""
+				except Exception as exc:
+					_logger.warning("[WEB_SEARCH] fonte %s falhou: %s", nome, exc)
+					resultados[nome] = ""
+		except concurrent.futures.TimeoutError:
+			_logger.warning(
+				"[WEB_SEARCH] %d fonte(s) nao responderam em %.0fs -- seguindo com o que chegou.",
+				len(tarefas) - len(resultados), _PARALELO_TIMEOUT_SECONDS,
+			)
+
+	usadas = [n for n, r in resultados.items() if r.strip()]
+	_logger.info(
+		"[WEB_SEARCH] paralelo: %d/%d fonte(s) com resultado (%s) para '%s'",
+		len(usadas), len(tarefas), ", ".join(usadas) or "nenhuma", query[:60],
+	)
+	return _mesclar_resultados([resultados.get(n, "") for n, _ in tarefas])
 
 def _synthesize_web_results(query: str, web_results: str, model_id: str = "alto") -> str:
 	"""

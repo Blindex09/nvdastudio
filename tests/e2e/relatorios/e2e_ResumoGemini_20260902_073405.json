@@ -1,0 +1,443 @@
+{
+  "addon_name": "ResumoGemini",
+  "query": "Crie um addon NVDA chamado ResumoGemini que usa a API do Google Gemini para resumir o texto selecionado. Funcionalidades: (1) um atalho NVDA+shift+r que pega o texto selecionado e fala o resumo; (2) u",
+  "timestamp": "2026-09-02T06:29:17.763554",
+  "plan_id": "598853be",
+  "complexity": "",
+  "duration_seconds": 3887.49,
+  "total_tokens": 900904,
+  "total_tokens_medidor": 900904,
+  "total_retries": 12,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "s5",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 30178,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = ResumoGemini\nsummary = ResumoGemini\ndescription = Addon que usa a API do Google Gemini para resumir o texto selecionado no NVDA.\nversion = 1.0.0\nauthor = Seu Nome <seu@email.com>\nurl = https://github.com/seuusuario/ResumoGemini\ndocFileName = userGuide.html\nminimumNVDAVersi"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 13725,
+      "issues": [
+        "O tratamento de erros é genérico (except Exception) e não apresenta a hierarquia de exceções do google-generativeai/google-api-core para chave inválida, rede, cota e conteúdo inválido.",
+        "Não há citação das fontes consultadas (PyPI, GitHub, ai.google.dev) nem confirmação da versão recomendada com referência.",
+        "A seção de compatibilidade NVDA/wxPython é vaga ('sem restrições conhecidas') sem embasamento factual."
+      ],
+      "output_preview": "[WEB_SEARCH] Estou consultando a documentação oficial do pacote `google-generativeai` no PyPI e no repositório GitHub, verificando a versão mais recente, o modelo recomendado para resumir textos, a forma de autenticação com chave de API, as exceções que podem ser levantadas e um exemplo mínimo de ch"
+    },
+    {
+      "step_id": "s4",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 94,
+      "retries_used": 0,
+      "tokens_used": 104829,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ResumoGemini/__init__.py\nimport threading\nimport textInfos\nimport wx\nimport api\nimport config\nimport globalVars\nimport globalPluginHandler\nimport addonHandler\nimport ui\nfrom logHandler import log\nfrom scriptHandler import script\nfrom gui.settingsDialogs import NVDASettingsDia"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "s2",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 83715,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ResumoGemini/configSpec.py\nimport config\n\n\ndef apply_config_spec() -> None:\n\t\"\"\"Registra a especificação de configuração do addon ResumoGemini.\"\"\"\n\t_spec = {\n\t\t\"apiKey\": \"string(default='')\",\n\t}\n\tif \"ResumoGemini\" not in config.conf.spec:\n\t\tconfig.conf.spec[\"ResumoGemini\"] = "
+    },
+    {
+      "step_id": "s3",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 260214,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/ResumoGemini/gemini_service.py\n# Servico de chamada a API Google Gemini para o addon ResumoGemini.\n# Isola toda a logica de rede, autenticacao e prompt de resumo do codigo de interface do NVDA.\n\nfrom __future__ import annotations\n\nimport threading\nfrom collections.abc import "
+    },
+    {
+      "step_id": "sv_2",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "sv_3",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "er_inj",
+      "step_type": "engineering_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 54593,
+      "issues": [
+        "A revisão não aborda explicitamente a categoria 'recurso criado sem fim de vida' (ex.: threads não finalizadas, handles, timers, objetos wx sem destruição controlada), que consta no escopo do objetivo do step.",
+        "Confianca reduzida: score 85 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "DEFEITOS DE ENGENHARIA:\n- O serviço Gemini importa a biblioteca requests no nível do módulo. Se a dependência não estiver instalada no diretório lib, o addon falha silenciosamente na inicialização, pois o import ocorre antes de qualquer verificação de disponibilidade. Isso impede que o addon carregu"
+    },
+    {
+      "step_id": "s6",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 92,
+      "retries_used": 1,
+      "tokens_used": 85969,
+      "issues": [],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>ResumoGemini</title>\n<style>\nbody{font-family:sans-serif;max-width:800px;margin:auto;padding:1em;}\nkbd{background:#eee;border:1px solid #ccc;padding:2px 6px;border-radius:3px;}\ntable{border-coll"
+    },
+    {
+      "step_id": "s7",
+      "step_type": "accessibility_audit",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 168597,
+      "issues": [
+        "O output do accessibility_audit e apenas uma mensagem de erro de API (Ollama Cloud API falhou / loop de timeout), nao contendo qualquer analise de acessibilidade.",
+        "Nao identifica nenhuma regra NVDA-xxx, WX-A11Y-xxx, DTK-A11Y-xxx ou NVDA-UX-xxx.",
+        "Nao conclui que o codigo foi auditado e nao apresenta violacoes encontradas."
+      ],
+      "output_preview": "[ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Loop detectado: a mesma falha se repetiu 3x seguidas (ReadTimeout:None:The read operation timed out)"
+    },
+    {
+      "step_id": "s8",
+      "step_type": "assembly",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 99084,
+      "issues": [
+        "O objetivo do step exigia incluir a dependência google-generativeai em lib/, mas o output só entregou lib/__init__.py vazio, sem o pacote ou instrução de bundling.",
+        "Não foi produzido o pacote instalável (.nvda-addon) nem um buildVars.py/script de build para gerá-lo, apesar do objetivo pedir 'produzir o pacote instalável'.",
+        "globalPlugins/ResumoGemini/__init__.py não importa globalPluginHandler nem NVDASettingsDialog, que são referenciados diretamente no código, deixando o addon quebrado."
+      ],
+      "output_preview": "```python:globalPlugins/ResumoGemini/__init__.py\nimport wx\nimport ui\nimport api\nimport config\nimport addonHandler\nfrom scriptHandler import script\nfrom . import configSpec\nfrom . import settings_panel\nfrom . import gemini_service\n\naddonHandler.initTranslation()\n\n# Atualiza o spec de configuração\ncon"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "4"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "engineering_review"
+    ],
+    [
+      "AVALIANDO",
+      "engineering_review"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ResumoGemini_20260902_073405",
+  "files_saved": [
+    "__init__.py",
+    "configSpec.py",
+    "settings_panel.py",
+    "gemini_service.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\ResumoGemini.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/ResumoGemini/configSpec.py",
+    "globalPlugins/ResumoGemini/gemini_service.py",
+    "globalPlugins/ResumoGemini/settings_panel.py",
+    "globalPlugins/ResumoGemini/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-021: __init__.py: linha 20: indentacao com espacos detectada — o NVDA e o core NVDA usam TABs. Substitua os espacos por TABs para evitar IndentationError em Python com modo strict de mistura de indentacao."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/ResumoGemini/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/ResumoGemini/configSpec.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/ResumoGemini/settings_panel.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/ResumoGemini/gemini_service.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 64.2,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}

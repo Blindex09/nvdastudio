@@ -34,7 +34,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.19.0"
+MODULE_VERSION = "4.20.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -2057,6 +2057,24 @@ def _check_translatable_strings(addon_folder: str) -> list[str]:
 	return problems
 
 
+def _linhas_cobertas_por_string(src: str) -> set[int]:
+	"""Numeros de linha (1-based) que caem dentro de um token STRING.
+
+	Fail-open: em erro de sintaxe devolve conjunto vazio. Um arquivo que nao
+	tokeniza ja e reportado por outro degrau, melhor que por este -- nao cabe
+	a esta funcao converter erro de sintaxe em falso NVDA-021.
+	"""
+	try:
+		toks = list(tokenize.generate_tokens(io.StringIO(src).readline))
+	except (tokenize.TokenError, SyntaxError, IndentationError):
+		return set()
+	cobertas: set[int] = set()
+	for tok in toks:
+		if tok.type == tokenize.STRING:
+			cobertas.update(range(tok.start[0], tok.end[0] + 1))
+	return cobertas
+
+
 def _check_indentation_style(addon_folder: str) -> list[str]:
 	"""
 	E18 — NVDA-021: uso de espacos em vez de TABs para indentacao.
@@ -2085,10 +2103,26 @@ def _check_indentation_style(addon_folder: str) -> list[str]:
 					lines = fh.readlines()
 			except OSError:
 				continue
+			# 4.20.0 -- linhas cobertas por STRING nao sao indentacao.
+			#
+			# A checagem era puramente textual e acusava prosa dentro de docstring
+			# como se fosse indentacao de codigo. Medido na entrega ResumoGemini de
+			# 2026-09-02: o __init__.py foi reprovado por NVDA-021 na "linha 20" --
+			# que e texto dentro do docstring de CONTRATO. As 21 linhas com espaco
+			# do arquivo estavam TODAS dentro de strings; a indentacao de codigo era
+			# 100% TAB e o arquivo compilava. Portao reprovando codigo correto e a
+			# classe de defeito mais cara deste projeto.
+			#
+			# Mesma consciencia de strings que normalizar_indentacao() ja usa para
+			# CONVERTER -- so que aqui para ACUSAR: os dois lados do mesmo contrato
+			# precisam concordar sobre o que e indentacao.
+			linhas_em_string = _linhas_cobertas_por_string("".join(lines))
 			for i, line in enumerate(lines):
 				# Detecta linha que comeca com 4 ou mais espacos (nao TAB)
 				# e nao e uma linha em branco ou comentario de nivel 0
 				if line.startswith("    ") and not line.startswith("\t"):
+					if (i + 1) in linhas_em_string:
+						continue
 					problems.append(
 						f"NVDA-021: {py_file}: linha {i + 1}: "
 						f"indentacao com espacos detectada — o NVDA e o core NVDA usam TABs. "

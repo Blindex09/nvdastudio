@@ -15,7 +15,7 @@ class TestCriticNvdaUX001:
 
     def test_versao_e_2_9_0(self):
         from addon.globalPlugins.nvdastudio.ai.critic import MODULE_VERSION
-        assert MODULE_VERSION == "3.21.0"
+        assert MODULE_VERSION == "3.22.0"
 
     def test_quality_system_tem_nvda_ux_001(self):
         from addon.globalPlugins.nvdastudio.ai.critic import _CRITIC_QUALITY_SYSTEM
