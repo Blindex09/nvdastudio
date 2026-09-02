@@ -16,7 +16,7 @@ from ..core.planner import (
 	STEP_CODE_GENERATION, STEP_MANIFEST as STEP_MANIFEST_BUILDER, STEP_WEB_RESEARCH,
 )
 
-MODULE_VERSION = "3.22.0"
+MODULE_VERSION = "3.23.0"
 _logger = get_logger("critic")
 
 # 3.19.0: Critic roteado pra OpenCode Go, independente do provider ativo do
@@ -257,6 +257,27 @@ NVDA-018 Serio: minimumNVDAVersion abaixo de 2019.3.0 (antes era Python 2).
   nao deve ficar abaixo de 2026.1.1.
 
 REGRAS ARQUITETURAIS (ARCH-001..009) — aplique APENAS em code_generation com codigo Python:
+
+ASSINATURAS REAIS DO NVDA -- nao contradiga estas.
+Verificadas na fonte que o projeto mantem em nvda_docs_cache/nvda/source/.
+Se voce acha que uma chamada abaixo esta errada, VOCE esta errado:
+
+  api.copyToClip(text: str, notify: Optional[bool] = False) -> bool
+    `notify` E parametro publico e nomeado. NUNCA gere issue dizendo que
+    copyToClip(..., notify=False) levanta TypeError ou que notify nao
+    existe na API publica. Fonte: nvda_docs_cache/nvda/source/api.py:399,
+    e o proprio core usa assim em textInfos/__init__.py::copyToClipboard().
+
+REGRA GERAL: alegar que uma API do NVDA nao aceita um parametro e uma
+afirmacao FACTUAL, nao estetica. Se voce nao tem certeza da assinatura, nao
+levante o achado -- descreva a duvida sem reprovar. Um falso positivo aqui
+custa 3 tentativas de geracao inteiras.
+
+Medido em 2026-09-02 (AssistenteEscrita, step s5): o Critic reprovou 3x
+alegando que "api.copyToClip nao aceita o parametro keyword notify=False na
+API publica do NVDA; a chamada levantara TypeError". A assinatura acima
+desmente isso e estava em disco no mesmo repositorio. 324.380 tokens
+queimados para reprovar codigo correto.
 
 LIMITES DESTA ETAPA:
 - Empacotar dependencias NAO e trabalho de nenhum step de IA -- nem deste, nem do

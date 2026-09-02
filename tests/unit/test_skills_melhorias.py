@@ -72,7 +72,7 @@ class TestCriticConfidenceCalibration:
 
     def test_versao_e_2_9_0(self):
         from addon.globalPlugins.nvdastudio.ai.critic import MODULE_VERSION
-        assert MODULE_VERSION == "3.22.0"
+        assert MODULE_VERSION == "3.23.0"
 
     def test_calibrate_confidence_existe(self):
         from addon.globalPlugins.nvdastudio.ai.critic import Critic
@@ -149,7 +149,7 @@ class TestFeedbackLoopEstendido:
 
     def test_versao_orchestrator_e_3_1_0(self):
         from addon.globalPlugins.nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.82.0"
+        assert MODULE_VERSION == "5.83.0"
 
     def test_build_step_prompt_manifest_consulta_failures(self):
         """manifest_builder deve receber padroes de erro de sessoes anteriores."""

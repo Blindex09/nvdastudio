@@ -15,7 +15,7 @@ class TestCriticNvdaUX001:
 
     def test_versao_e_2_9_0(self):
         from addon.globalPlugins.nvdastudio.ai.critic import MODULE_VERSION
-        assert MODULE_VERSION == "3.22.0"
+        assert MODULE_VERSION == "3.23.0"
 
     def test_quality_system_tem_nvda_ux_001(self):
         from addon.globalPlugins.nvdastudio.ai.critic import _CRITIC_QUALITY_SYSTEM
@@ -216,7 +216,7 @@ class TestOrchestratorFeedbackTipado:
 
     def test_versao_e_2_9_0(self):
         from addon.globalPlugins.nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.82.0"
+        assert MODULE_VERSION == "5.83.0"
 
     def test_code_generation_passa_step_type(self):
         from unittest.mock import patch

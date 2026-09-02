@@ -7,7 +7,7 @@ class TestContextCompression:
 
     def test_orchestrator_versao_3_3_0(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.82.0"
+        assert MODULE_VERSION == "5.83.0"
 
     def test_build_context_output_curto_nao_usa_resumo(self):
         """Outputs curtos passam integralmente sem marcador RESUMO."""
@@ -165,7 +165,7 @@ class TestScreenReaderTestingCritic:
 
     def test_critic_versao_3_2_0(self):
         from nvdastudio.ai.critic import MODULE_VERSION
-        assert MODULE_VERSION == "3.22.0"
+        assert MODULE_VERSION == "3.23.0"
 
     def test_nvda_ux_002_presente(self):
         """NVDA-UX-002: scripts sem feedback auditivo."""

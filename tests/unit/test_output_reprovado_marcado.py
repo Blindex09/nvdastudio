@@ -34,7 +34,7 @@ def _reprovado(motivos, saida="conteudo produzido"):
 
 
 def test_versao():
-	assert MODULE_VERSION == "5.82.0"
+	assert MODULE_VERSION == "5.83.0"
 
 
 def test_output_reprovado_e_marcado_como_nao_verificado():

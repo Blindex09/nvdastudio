@@ -50,7 +50,7 @@ def _resultado(aprovado=True):
 
 
 def test_versao():
-	assert MODULE_VERSION == "5.82.0"
+	assert MODULE_VERSION == "5.83.0"
 
 
 def test_sem_manifest_aprovado_a_entrega_continua():

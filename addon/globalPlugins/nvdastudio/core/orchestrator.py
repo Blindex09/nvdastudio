@@ -23,6 +23,7 @@ from ..utils.logger import get_logger, log_decision
 from ..sub_agents.dispatcher import dispatch_step_with_tokens
 from ..builder.addon_builder import (
 	extract_code_blocks,
+	garantir_init_translation,
 	substituir_codigo_dos_blocos,
 	validate_python_syntax,
 	validate_python_imports,
@@ -49,7 +50,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.82.0"
+MODULE_VERSION = "5.83.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -2931,7 +2932,25 @@ class Orchestrator:
 						# A correcao volta para `last_output` de proposito: e ELE que
 						# vai para o assembly e para o disco. Corrigir so a copia
 						# extraida entregaria o addon ainda com o defeito.
-						_corrigidos = _static_sandbox.lint_autofix(py_files)
+						# 5.83.0 -- initTranslation tambem e corrigido ANTES do julgamento.
+						#
+						# garantir_init_translation() ja existia e ja era deterministica, mas
+						# so rodava no addon_builder (linha ~782), na extracao dos blocos --
+						# ou seja, DEPOIS do Critic. O Critic reprovava por um defeito que o
+						# projeto consertava sozinho segundos depois.
+						#
+						# Medido em 2026-09-02 (AssistenteEscrita): o step cg3 gastou 3
+						# tentativas e caiu para score 78 com um unico achado --
+						# "NVDA-003: usa _('...') sem addonHandler.initTranslation()" num
+						# atributo de classe. Exatamente o caso que a funcao resolve.
+						#
+						# Mesmo racional do lint_autofix logo abaixo: correcao mecanica nao
+						# deve ser paga a preco de modelo.
+						_corrigidos = {
+							rel: garantir_init_translation(codigo)
+							for rel, codigo in py_files.items()
+						}
+						_corrigidos = _static_sandbox.lint_autofix(_corrigidos)
 						_mudados = {
 							rel: novo for rel, novo in _corrigidos.items()
 							if novo != py_files.get(rel)

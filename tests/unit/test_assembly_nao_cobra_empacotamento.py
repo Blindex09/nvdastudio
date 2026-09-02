@@ -61,5 +61,8 @@ class TestVersoesAcompanham:
 		"""O log carimba a versao no prompt (critic_spec_v3.21.0). Mudar o
 		texto sem subir a versao torna os relatorios antigos indistinguiveis
 		dos novos."""
-		assert critic_mod.MODULE_VERSION == "3.22.0"
+		# Faixa, nao valor exato: a intencao e "a versao acompanhou a mudanca
+		# de prompt", e travar o numero exato quebra a cada mudanca legitima
+		# seguinte (aconteceu na 3.23.0, ancora de assinaturas reais).
+		assert re.match(r"3\.(2[2-9]|[3-9]\d)", critic_mod.MODULE_VERSION), critic_mod.MODULE_VERSION
 		assert re.match(r"2\.4[3-9]|2\.[5-9]", planner_mod.MODULE_VERSION), planner_mod.MODULE_VERSION
