@@ -45,11 +45,10 @@ from .checkpoint_manager import checkpoint_manager, CheckpointAction
 from .execution_context import execution_context_store
 from ..utils.task_tracker import task_tracker
 from ..memory.conversation_manager import conversation
-from ..tool_system.executor import ToolExecutor
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.71.0"
+MODULE_VERSION = "5.72.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -543,7 +542,19 @@ class Orchestrator:
 		self._current_plan_addon_name: str = ""  # 5.22.0: inicializado pra _learn_from_session() nunca dar AttributeError
 		self._suppress_complete_callback = False
 		# Hermes-inspired v2.1.0 (2026-06-09)
-		self._tool_executor = ToolExecutor(approval_callback=self._tool_approval_callback)
+		# 5.72.0 -- ToolExecutor NAO e mais instanciado aqui.
+		#
+		# Ele era criado a cada Orchestrator e NUNCA chamado: nao existe uma
+		# unica referencia a `self._tool_executor.<algo>` em todo o projeto. E o
+		# construtor abre um ThreadPoolExecutor(max_workers=4), com um
+		# shutdown() que ninguem chama -- ou seja, cada abertura do dialogo
+		# deixava quatro threads paradas dentro do processo do NVDA, que fica
+		# horas aberto na maquina do usuario.
+		#
+		# O caminho VIVO de ferramentas e tools/tool_gateway.py, que importa as
+		# funcoes de tool_system/builtins/ direto (code_generator chama
+		# tool_gateway.call("file_editor", ...)). ApprovalWorkflow, logo abaixo,
+		# continua sendo usado de verdade em _tool_approval_callback.
 		self._approval_workflow = ApprovalWorkflow()
 		self._session_start_time: str = ""
 		self._session_id: str = ""
