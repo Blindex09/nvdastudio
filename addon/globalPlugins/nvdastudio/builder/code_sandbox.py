@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.7.0"
+MODULE_VERSION = "1.8.0"
 _logger = get_logger("code_sandbox")
 
 _SANDBOX_TIMEOUT = 10  # segundos
@@ -35,6 +35,29 @@ _GENERATED_RUFF_CONFIG = """builtins = ["_", "ngettext", "pgettext", "npgettext"
 select = ["F", "E9", "B"]
 ignore = ["B904"]
 """
+
+# Config de mypy aplicada ao codigo GERADO.
+#
+# `name-defined` desligado de proposito, e a autoridade sobre nome indefinido
+# fica com o ruff (F821), que suporta declarar builtins injetados em tempo de
+# execucao -- ver `builtins` em _GENERATED_RUFF_CONFIG. O mypy nao tem esse
+# mecanismo, entao para ele `_("texto")` de TODO addon traduzido (isto e, de
+# todo addon correto pela NVDA-019) aparece como nome indefinido.
+#
+# Auditoria de 2026-09-02: rodados os NOVE portoes contra um addon
+# canonicamente correto, este era o UNICO que reprovava, com
+# `Name "_" is not defined` em cada string traduzivel. Nao bloqueia (mypy e
+# advisory), mas o resultado vai como CONTEXTO para a proxima tentativa: o
+# modelo recebia uma lista de problemas inexistentes para corrigir.
+#
+# Duas ferramentas opinando sobre a mesma coisa, uma delas mal informada, e
+# pior que uma so: a Regra 5 vale tambem para verificacao.
+_GENERATED_MYPY_CONFIG = """[mypy]
+ignore_missing_imports = True
+follow_imports = silent
+disable_error_code = name-defined
+"""
+
 
 # Roda em SUBPROCESSO isolado (nunca no processo deste modulo) -- instala
 # nvda_runtime_stubs.py (copiado pro mesmo diretorio temporario), importa o
@@ -746,6 +769,8 @@ class CodeSandbox:
             prefix="nvdastudio_typecheck_",
             missing_pattern=r"No module named .?mypy",
             missing_error="mypy_indisponivel",
+            config_filename="mypy.ini",
+            config_content=_GENERATED_MYPY_CONFIG,
         )
 
     def _run_static_tool(
