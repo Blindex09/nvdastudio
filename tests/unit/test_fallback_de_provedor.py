@@ -26,7 +26,7 @@ from nvdastudio.core.orchestrator import (
 
 
 def test_versao():
-	assert MODULE_VERSION == "5.76.0"
+	assert MODULE_VERSION == "5.77.0"
 
 
 class TestDeteccaoDeAutenticacao:
@@ -82,3 +82,51 @@ def test_a_troca_so_acontece_no_ramo_de_erro_de_infra():
 	trecho = src[max(0, i - 200):i + 60]
 	assert "_IS_SUBAGENT_ERROR_RE.search(last_output)" in trecho
 	assert "_modelo_de_outro_provedor(" in src
+
+
+class TestSaldoNaoEChaveInvalida:
+	"""
+	Provedor devolve 401 para falta de SALDO. Confirmado ao vivo em 2026-09-02
+	testando a chave do OpenCode Go isoladamente:
+
+	    GET  /v1/models            -> HTTP 200  (chave VALIDA, lista de modelos)
+	    POST /v1/chat/completions  -> HTTP 401
+	        {"type":"error","error":{"type":"CreditsError",
+	         "message":"Insufficient balance. Manage your billing here: ..."}}
+
+	O correto seria 402 Payment Required. Sem separar os dois casos, o usuario
+	ouve "chave invalida" e vai trocar uma chave que esta certa -- perdendo
+	tempo no lugar errado quando a acao necessaria e recarregar credito.
+	"""
+
+	def test_falta_de_saldo_conta_como_problema_de_conta(self):
+		"""Os dois casos trocam de provedor: nenhum modelo daquela conta vai
+		responder."""
+		from nvdastudio.core.orchestrator import _SEM_SALDO_RE
+
+		texto = (
+			"OpenCode Go API falhou: Client error '401 Unauthorized' -- "
+			'{"type":"error","error":{"type":"CreditsError",'
+			'"message":"Insufficient balance. Manage your billing here"}}'
+		)
+		assert _ERRO_DE_AUTENTICACAO_RE.search(texto)
+		assert _SEM_SALDO_RE.search(texto)
+
+	def test_chave_invalida_nao_e_confundida_com_saldo(self):
+		from nvdastudio.core.orchestrator import _SEM_SALDO_RE
+
+		assert not _SEM_SALDO_RE.search("invalid api key")
+		assert not _SEM_SALDO_RE.search("401 Unauthorized")
+
+	def test_falha_comum_de_rede_nao_e_nenhum_dos_dois(self):
+		from nvdastudio.core.orchestrator import _SEM_SALDO_RE
+
+		for texto in ("timeout apos 300s", "HTTP 503 service unavailable"):
+			assert not _ERRO_DE_AUTENTICACAO_RE.search(texto)
+			assert not _SEM_SALDO_RE.search(texto)
+
+	def test_o_log_diz_qual_dos_dois_e(self):
+		"""Mensagem generica manda o usuario mexer na coisa errada."""
+		src = inspect.getsource(Orchestrator)
+		assert "esta sem saldo" in src
+		assert "rejeitou a autenticacao" in src

@@ -48,7 +48,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.76.0"
+MODULE_VERSION = "5.77.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -289,10 +289,27 @@ def _scope_output_to_step(step_type: str, output: str) -> str:
 	)
 
 
-# Erro de AUTENTICACAO do provedor: chave invalida, expirada, revogada ou sem
-# cota. Trocar de MODELO nao ajuda -- o problema e a conta, nao o modelo.
+# Erro de CONTA do provedor: chave invalida, expirada, revogada ou sem saldo.
+# Trocar de MODELO nao ajuda -- o problema e a conta, nao o modelo.
+#
+# 'insufficient balance'/'credits' entram aqui porque provedor devolve 401 para
+# falta de saldo. Confirmado ao vivo em 2026-09-02 no OpenCode Go: GET /models
+# respondeu 200 (chave VALIDA) e /chat/completions respondeu 401 com
+# {"type":"CreditsError","message":"Insufficient balance"}. O correto seria 402,
+# e sem esta deteccao o usuario ouviria 'chave invalida' e iria trocar uma chave
+# que esta certa.
 _ERRO_DE_AUTENTICACAO_RE = re.compile(
-	r"401|403|unauthorized|forbidden|invalid.{0,12}(api.?key|token)|api.?key.{0,20}invalid",
+	r"401|403|unauthorized|forbidden|invalid.{0,12}(api.?key|token)"
+	r"|api.?key.{0,20}invalid|insufficient.{0,10}balance|creditserror|quota",
+	re.IGNORECASE,
+)
+
+
+# Falta de saldo, separada de chave invalida: sao acoes DIFERENTES para o
+# usuario (recarregar credito x trocar a chave), e dizer a errada faz ele
+# perder tempo no lugar errado.
+_SEM_SALDO_RE = re.compile(
+	r"insufficient.{0,10}balance|creditserror|quota.{0,20}exceeded|billing",
 	re.IGNORECASE,
 )
 
@@ -2556,9 +2573,14 @@ class Orchestrator:
 				# que continha "status == 503" (nota do fix v4.1.1 logo acima).
 				_outro = _modelo_de_outro_provedor(self._provedor_atual())
 				if _outro:
+					_motivo = (
+						"esta sem saldo"
+						if _SEM_SALDO_RE.search(last_output)
+						else "rejeitou a autenticacao"
+					)
 					_logger.warning(
-						"[FALLBACK] Step %s: provedor rejeitou a autenticacao. "
-						"Trocando de PROVEDOR para %s.", step.step_id, _outro,
+						"[FALLBACK] Step %s: o provedor %s. Trocando de PROVEDOR "
+						"para %s.", step.step_id, _motivo, _outro,
 					)
 					_alvo_fallback = _outro
 

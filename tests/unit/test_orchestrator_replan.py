@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 class TestOrchestratorVersaoV2:
     def test_versao_e_2_6_0(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.76.0"
+        assert MODULE_VERSION == "5.77.0"
 
     def test_max_replans_positivo(self):
         from nvdastudio.core.orchestrator import _MAX_REPLANS

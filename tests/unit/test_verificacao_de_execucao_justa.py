@@ -43,7 +43,7 @@ _ADDON_CORRETO = (
 
 
 def test_versao():
-	assert MODULE_VERSION == "5.76.0"
+	assert MODULE_VERSION == "5.77.0"
 
 
 class TestStubDeTraducao:
