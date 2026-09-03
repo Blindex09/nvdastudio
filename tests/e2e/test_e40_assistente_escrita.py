@@ -88,3 +88,25 @@ class TestAssistenteEscritaEntrega:
         assert any(n.endswith(".html") for n in nomes), (
             f"addon sem guia do usuario. Arquivos: {nomes}"
         )
+
+    def test_o_addon_entregue_de_fato_funciona(self, report):
+        """Os dois testes acima verificam que o pacote tem as PECAS certas.
+        Um addon pode ter todas elas e estar morto: em 2026-09-03 este caso
+        entregou 4 modulos, manifest e guia em dois idiomas, passou nos nove
+        portoes com success=True -- e os dois atalhos morriam de TypeError na
+        primeira tecla, porque __init__.py chamava proofread(text, model,
+        api_key, on_done, on_error) e openai_service.py definia
+        proofread(self, text, callback).
+
+        Este e o unico teste que pergunta se o .nvda-addon FUNCIONA: abre o
+        pacote entregue, revalida a estrutura (inclui NVDA-063) e executa o
+        addon em subprocesso isolado, acionando os comandos.
+
+        E o mesmo portao que a GUI ja aplicava antes de entregar. O E2E,
+        degrau mais caro da piramide, era o unico cego para ele.
+        """
+        assert report.final_gate_ok, (
+            "o .nvda-addon entregue nao passou no portao final -- entregar "
+            "isso ao usuario e entregar um addon quebrado com cara de pronto. "
+            f"Evidencia: {report.final_gate_evidence[:800]}"
+        )

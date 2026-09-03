@@ -63,16 +63,18 @@ class TestOrdemDePropagacaoDeEvento:
 
 
 class TestTotalDeRegrasAtualizado:
-	def test_total_61_regras_nvda(self):
-		"""61 apos NVDA-062 (secure mode, achado de auditoria 2026-08-04)."""
-		assert len(NVDA_DETECTION_RULES) == 61
+	def test_total_62_regras_nvda(self):
+		"""62 apos NVDA-063 (assinatura divergente entre arquivos do addon,
+		achado da rodada AssistenteEscrita de 2026-09-03). As 62 anteriores
+		olhavam um arquivo por vez; a 063 e a primeira que confronta dois."""
+		assert len(NVDA_DETECTION_RULES) == 62
 
-	def test_rule_registry_reflete_as_61(self):
+	def test_rule_registry_reflete_as_62(self):
 		from nvdastudio.rule_registry import RULE_REGISTRY
 		nvda_ids = [rid for rid in RULE_REGISTRY if rid.startswith("NVDA-") and not rid.startswith("NVDA-UX")]
 		# Exclui aliases depreciados (ex: NVDA-041) da contagem de regras ativas
 		ativos = [rid for rid in nvda_ids if RULE_REGISTRY[rid].status == "active"]
-		assert len(ativos) == 61
+		assert len(ativos) == 62
 
 	def test_novas_regras_aparecem_no_prompt_injetado(self):
 		from nvdastudio.rule_registry import RULE_REGISTRY_PROMPT_TEXT

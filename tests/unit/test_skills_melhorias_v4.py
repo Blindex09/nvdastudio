@@ -7,7 +7,8 @@ class TestNvdaDetectionRulesV4:
 
     def test_total_de_regras_e_21(self):
         from nvdastudio.builder.nvda_context import NVDA_DETECTION_RULES
-        assert len(NVDA_DETECTION_RULES) == 61
+        # 62 apos NVDA-063 (2026-09-03).
+        assert len(NVDA_DETECTION_RULES) == 62
 
     def test_nvda_019_existe(self):
         from nvdastudio.builder.nvda_context import NVDA_DETECTION_RULES

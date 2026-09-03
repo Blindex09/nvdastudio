@@ -10,6 +10,7 @@ from .orch_types import StepResult, OrchestrationResult, compute_progress
 from .planner import (
 	Planner, ExecutionPlan, ExecutionStep, STEP_USER_CLARIFICATION,
 	STEP_SYNTAX_VALIDATION, STEP_TEST_GENERATION, STEP_WEB_RESEARCH,
+	STEP_ASSEMBLY, STEP_ENGINEERING_REVIEW, STEP_DESIGN_REVIEW,
 	format_expected_files_for_prompt,
 	# tests/unit/test_syntax_validator.py::test_step_syntax_validation_importado
 	# depende dele como re-export deste modulo (ver changelog v5.12.0 acima:
@@ -50,7 +51,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.83.0"
+MODULE_VERSION = "5.84.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -428,6 +429,32 @@ _MAX_CONTEXT_CHARS_PER_STEP = 3000
 # cobre confortavelmente 4 dependencias no teto individual; alem disso,
 # comprime o AGREGADO com a mesma ferramenta (context_compressor).
 _MAX_TOTAL_CONTEXT_CHARS = 12000
+
+# Steps cujo TRABALHO e julgar ou montar o codigo dos outros. Para eles,
+# resumir o contexto nao economiza: destroi o objeto da avaliacao.
+#
+# Medido na rodada AssistenteEscrita (2026-09-03): `__init__.py` tinha
+# ~8.900 chars e chegava ao assembly comprimido em 3.000. O veredito
+# reprovou 3x (113.070 tokens) alegando que o arquivo "usa
+# api.getFocusObject(), config.conf e log.exception sem importar esses
+# modulos" -- os imports estao nas linhas 1 a 9, e tinham sido comidos
+# pela compressao. Citou tambem `correct_text` e `simplify_text`, nomes
+# que nao existem em arquivo nenhum: o resumo em prosa vira material de
+# alucinacao quando lido como se fosse codigo.
+#
+# O mesmo aconteceu no test_generation (141.577 tokens, 3 reprovacoes
+# citando `correct_grammar`) e no engineering_review, que reclamou
+# explicitamente dos "snippets comprimidos". Somados, 310.336 tokens --
+# 32% da rodada -- gastos julgando um codigo que ninguem mostrou.
+#
+# Quem JULGA codigo recebe o codigo. Quem recebe resumo, resume palpite.
+_STEPS_QUE_JULGAM_CODIGO = frozenset({
+	STEP_ASSEMBLY, STEP_ENGINEERING_REVIEW, STEP_DESIGN_REVIEW,
+	STEP_TEST_GENERATION,
+})
+# Teto proprio, e alto: um addon complexo inteiro cabe. Nao e ausencia de
+# orcamento -- e orcamento dimensionado para o que o step precisa ver.
+_MAX_CONTEXT_CHARS_CODIGO = 60000
 _MAX_PARALLEL_WORKERS = 3
 
 # Paralelismo adaptativo por provider.
@@ -3399,7 +3426,13 @@ class Orchestrator:
 
 		skill: context-compression — Anchored summary preserves critical info.
 		skill: context-degradation — Lost-in-middle: info no meio recebe menos atenção.
+
+		5.84.0 (2026-09-03): steps que JULGAM codigo saem por outro caminho --
+		ver _STEPS_QUE_JULGAM_CODIGO e _build_context_com_codigo_integro().
 		"""
+		if step.step_type in _STEPS_QUE_JULGAM_CODIGO:
+			return self._build_context_com_codigo_integro(step, outputs)
+
 		parts = []
 		for sid in step.context_from_steps:
 			if sid not in outputs:
@@ -3430,6 +3463,68 @@ class Orchestrator:
 			return compressed_total.full_text
 
 		return joined
+
+	def _build_context_com_codigo_integro(self, step: ExecutionStep, outputs: dict) -> str:
+		"""Contexto de quem julga codigo: o codigo vai INTEIRO, nunca resumido.
+
+		A compressao semantica e boa para prosa (pesquisa, plano, decisao) e
+		destrutiva para codigo: some com imports, renomeia funcao, e o proximo
+		leitor nao tem como saber que o que ele esta lendo nao e o arquivo.
+		Um revisor que recebe resumo reporta o resumo como se fosse o codigo --
+		foi assim que o assembly reprovou o AssistenteEscrita 3x por imports
+		que estavam nas 9 primeiras linhas.
+
+		Regras deste caminho:
+		  - bloco de codigo vai VERBATIM, com o nome do arquivo;
+		  - output sem codigo (pesquisa, plano) segue comprimido -- nao ha
+		    codigo para um resumo deturpar;
+		  - se estourar o teto, OMITE arquivo inteiro e DIZ quais omitiu.
+		    Um revisor que sabe que nao viu tudo cala sobre o que falta; um
+		    que recebe resumo acha que viu.
+		"""
+		partes: list[str] = []
+		omitidos: list[str] = []
+		orcamento = _MAX_CONTEXT_CHARS_CODIGO
+
+		for sid in step.context_from_steps:
+			if sid not in outputs:
+				continue
+			raw = outputs[sid]
+			blocos = [b for b in extract_code_blocks(raw) if b.get("code")]
+
+			if not blocos:
+				if len(raw) > _MAX_CONTEXT_CHARS_PER_STEP:
+					raw = context_compressor.compress(raw, _MAX_CONTEXT_CHARS_PER_STEP).full_text
+				trecho = f"--- Output do step {sid} ---\n{raw}"
+				if len(trecho) <= orcamento:
+					orcamento -= len(trecho)
+					partes.append(trecho)
+				continue
+
+			for bloco in blocos:
+				nome = bloco.get("filename") or "(arquivo sem nome)"
+				linguagem = bloco.get("language") or "python"
+				trecho = (
+					f"--- Arquivo {nome} (gerado no step {sid}) ---\n"
+					f"```{linguagem}\n{bloco['code']}\n```"
+				)
+				if len(trecho) > orcamento:
+					omitidos.append(nome)
+					continue
+				orcamento -= len(trecho)
+				partes.append(trecho)
+
+		if omitidos:
+			# Dizer o que falta e a diferenca entre um revisor cauteloso e um
+			# que inventa. O custo de nao avisar ja foi medido em 310 mil tokens.
+			partes.append(
+				"--- AVISO DE CONTEXTO ---\n"
+				f"{len(omitidos)} arquivo(s) NAO cabem neste contexto e NAO estao "
+				f"acima: {', '.join(omitidos)}. Nao afirme nada sobre o conteudo "
+				"deles -- avalie apenas o codigo literalmente presente aqui."
+			)
+
+		return "\n\n".join(partes)
 
 	def _tool_approval_callback(self, tool_name: str, arguments: dict) -> bool:
 		"""

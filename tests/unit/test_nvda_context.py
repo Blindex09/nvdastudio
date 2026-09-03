@@ -192,8 +192,10 @@ class TestNvdaDetectionRules:
         assert NVDA_DETECTION_RULES is not None
         assert len(NVDA_DETECTION_RULES) > 0
 
-    def test_exatamente_61_regras(self):
-        assert len(NVDA_DETECTION_RULES) == 61
+    def test_exatamente_62_regras(self):
+        """62 apos NVDA-063 (assinatura divergente entre arquivos,
+        achado da rodada AssistenteEscrita de 2026-09-03)."""
+        assert len(NVDA_DETECTION_RULES) == 62
 
     def test_cada_regra_tem_3_elementos(self):
         for rule in NVDA_DETECTION_RULES:

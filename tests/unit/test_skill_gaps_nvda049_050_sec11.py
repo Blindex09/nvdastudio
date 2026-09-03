@@ -311,10 +311,10 @@ class TestSec11InstallTasksSystemPrompt:
 class TestDetectionRulesTotal:
     def test_total_regras_apos_adicao_nvda049_e_050(self):
         rules = _get_detection_rules()
-        assert len(rules) == 61, (
-            f"Esperado 61 regras (58 anteriores + NVDA-060..062, sendo NVDA-060/061 da "
-            f"auditoria contra o Developer Guide oficial e NVDA-062 secure mode, 2026-08-04), "
-            f"encontrado {len(rules)}."
+        assert len(rules) == 62, (
+            f"Esperado 62 regras (58 anteriores + NVDA-060..062 da auditoria de "
+            f"2026-08-04 + NVDA-063, assinatura divergente entre arquivos, achada na "
+            f"rodada AssistenteEscrita de 2026-09-03), encontrado {len(rules)}."
         )
 
     def test_nvda049_e_050_presentes(self):

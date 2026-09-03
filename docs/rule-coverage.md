@@ -26,12 +26,23 @@ O Community Access declara:
 
 O NVDAStudio usa isso como baseline, mas expande a cobertura:
 
-- `NVDA-001..061`, exceto `NVDA-041`, que e alias historico de `NVDA-034` (60 regras ativas);
+- `NVDA-001..063`, exceto `NVDA-041`, que e alias historico de `NVDA-034` (62 regras ativas);
 - `WX-A11Y-001..014`;
-- `ARCH-001..007`;
+- `DTK-A11Y` (12 regras);
+- `ARCH-001..009`;
 - `NVDA-UX-001..003`.
 
-Total: 84 regras ativas (60 NVDA + 14 WX-A11Y + 7 ARCH + 3 NVDA-UX).
+Total: 100 regras ativas (62 NVDA + 14 WX-A11Y + 12 DTK-A11Y + 9 ARCH + 3 NVDA-UX),
+conferido contra `rule_registry.RULE_REGISTRY` em 2026-09-03. Os numeros
+anteriores deste bloco (84 ativas, 60 NVDA, 7 ARCH, sem DTK-A11Y) estavam
+defasados: nao acompanharam NVDA-062, NVDA-063, as 2 ARCH novas nem a
+familia DTK-A11Y inteira.
+
+`NVDA-063` (2026-09-03) e a primeira regra do catalogo que confronta DOIS
+arquivos: todas as outras olham um arquivo por vez, e por isso nenhuma via
+o defeito de costura que passou por todos os portoes na rodada
+AssistenteEscrita -- chamador e definicao discordando entre modulos do
+mesmo addon.
 
 **Nota de governanca (2026-08-03, achado de auditoria nao resolvido):**
 `ARCH-003` e `ARCH-006` tem topicos DIFERENTES em `core/planner.py` (menu

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.9.0"
+MODULE_VERSION = "1.10.0"
 _logger = get_logger("code_sandbox")
 
 _SANDBOX_TIMEOUT = 10  # segundos
@@ -93,6 +93,132 @@ if not candidates:
 	print("SEM_CLASSE_PRINCIPAL_ENCONTRADA")
 	sys.exit(0)
 
+_ACHADOS_SMOKE = []
+_ADDON_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Mensagens de TypeError que provam DISCORDANCIA entre chamador e definicao.
+# Qualquer outro TypeError pode ser dado ruim vindo do stub, nao defeito.
+_PADROES_ASSINATURA = (
+	"unexpected keyword argument",
+	"required positional argument",
+	"required keyword-only argument",
+	"positional arguments but",
+	"positional argument but",
+	"takes no arguments",
+	"got multiple values for argument",
+)
+
+
+def _e_defeito_estrutural(exc_type, exc_value):
+	"""So conta defeito de CODIGO, nunca falha de ambiente.
+
+	NameError e sempre defeito. TypeError so quando a mensagem e de
+	assinatura -- e o unico TypeError que prova que um chamador e uma
+	definicao discordam. ImportError fica de fora DE PROPOSITO: o par
+	`try: import openai / except ImportError` e o padrao CORRETO da
+	NVDA-022 e apareceria em todo addon bem escrito.
+	"""
+	if exc_type is NameError:
+		return True
+	if exc_type is TypeError:
+		msg = str(exc_value)
+		for _p in _PADROES_ASSINATURA:
+			if _p in msg:
+				return True
+	return False
+
+
+def _trace_local(frame, event, arg):
+	if event == "exception":
+		_et, _ev, _tb = arg
+		if _e_defeito_estrutural(_et, _ev):
+			_achado = _et.__name__ + ": " + str(_ev)
+			if _achado not in _ACHADOS_SMOKE:
+				_ACHADOS_SMOKE.append(_achado)
+	return _trace_local
+
+
+def _trace_global(frame, event, arg):
+	# So traceia frame do proprio addon: fora dele o custo nao se paga e
+	# stub/stdlib levantam excecao que nao e defeito do addon.
+	_fn = frame.f_code.co_filename
+	if not _fn.startswith(_ADDON_DIR) or _fn.endswith("_sandbox_runner.py"):
+		return None
+	return _trace_local
+
+
+def _smoke_comandos(cls, instance):
+	"""Executa os comandos (@script) do addon e testemunha o que levantam.
+
+	Instanciar prova que o addon CARREGA; nao prova que ele FAZ. O defeito
+	medido em 2026-09-03 (AssistenteEscrita) passou inteiro por import,
+	instanciacao e terminate, e os dois atalhos morriam na primeira tecla:
+	__init__.py chamava proofread(text, model, api_key, on_done, on_error)
+	e openai_service.py definia proofread(self, text, callback).
+
+	Chamar o script e ver "se levantou" NAO basta: o addon NVDA correto
+	engole a propria excecao (`except Exception` + ui.message) para nunca
+	derrubar o leitor de tela -- foi exatamente o que escondeu o defeito.
+	Por isso o testemunho e por sys.settrace, que registra a excecao no
+	instante em que ela e LEVANTADA, antes de qualquer except do addon.
+	"""
+	# Sob falha injetada o alvo e a resiliencia do carregamento, nao a
+	# assinatura; rodar o smoke ali so gastaria o orcamento de 3s.
+	if os.environ.get("NVDASTUDIO_FAULT_SCENARIO"):
+		return
+
+	_nomes = []
+	for _n in dir(cls):
+		if not _n.startswith("script_"):
+			continue
+		# getattr no CLS, nunca na instancia: GlobalPlugin.__getattr__ do
+		# stub devolve _Permissive para qualquer nome, e todo addon teria
+		# "comandos" que nao existem.
+		if inspect.isfunction(getattr(cls, _n, None)):
+			_nomes.append(_n)
+	if not _nomes:
+		return
+
+	# Modo seguro DESLIGADO de proposito: com o stub permissivo,
+	# globalVars.appArgs.secure e verdadeiro, e todo script guardado por
+	# NVDA-062 retornaria na primeira linha -- o smoke passaria sem
+	# executar nada. O caminho que interessa aqui e o normal.
+	try:
+		import globalVars
+
+		class _AppArgs:
+			secure = False
+
+			def __getattr__(self, _n):
+				return nvda_runtime_stubs._Permissive()
+
+		globalVars.appArgs = _AppArgs()
+	except Exception:
+		pass
+
+	import threading
+
+	_gesture = nvda_runtime_stubs._Permissive()
+	sys.settrace(_trace_global)
+	threading.settrace(_trace_global)
+	try:
+		for _n in _nomes:
+			try:
+				getattr(instance, _n)(_gesture)
+			except Exception:
+				# Levantar aqui nao condena o addon: sob stub, faltar dado
+				# de ambiente e esperado. Quem julga e o testemunho.
+				pass
+		# Da tempo do trabalho em thread (padrao NVDA-002) levantar.
+		time.sleep(0.2)
+	finally:
+		sys.settrace(None)
+		threading.settrace(None)
+
+	if _ACHADOS_SMOKE:
+		print("SMOKE_FALHOU: " + cls.__name__ + " -- " + " | ".join(_ACHADOS_SMOKE))
+		sys.exit(1)
+
 for cls in candidates:
 	# Injecao de falha controlada: acontece dentro do subprocesso que executa
 	# o addon, depois do import e antes da instanciação. Isso exercita o codigo
@@ -127,6 +253,16 @@ for cls in candidates:
 
 	try:
 		instance = cls()
+	except Exception:
+		print("INSTANCIACAO_FALHOU: " + cls.__name__)
+		traceback.print_exc()
+		sys.exit(1)
+
+	# Entre instanciar e terminar: o addon esta VIVO, que e a unica janela
+	# em que os comandos podem ser exercitados.
+	_smoke_comandos(cls, instance)
+
+	try:
 		if hasattr(instance, "terminate"):
 			instance.terminate()
 	except Exception:

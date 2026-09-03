@@ -62,7 +62,7 @@ class TestFixAddonStructureDiferentNames:
 
     def test_addon_builder_versao_2_6_0(self):
         from nvdastudio.builder.addon_builder import MODULE_VERSION
-        assert MODULE_VERSION == "4.22.0"
+        assert MODULE_VERSION == "4.23.0"
 
     def _make_addon(self, tmp_dir: str, dirs: dict[str, list[str]],
                     manifest_name: str | None = None) -> str:

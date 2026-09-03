@@ -35,7 +35,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.22.0"
+MODULE_VERSION = "4.23.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -2647,6 +2647,245 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 
 	return problems
 
+class _Assinatura:
+	"""Assinatura de uma funcao/metodo do addon, no que interessa a NVDA-063."""
+
+	__slots__ = ("nome", "arquivo", "linha", "posicionais", "kwonly",
+				 "obrigatorios", "tem_varargs", "tem_kwargs")
+
+	def __init__(self, nome, arquivo, linha, posicionais, kwonly,
+				 obrigatorios, tem_varargs, tem_kwargs):
+		self.nome = nome
+		self.arquivo = arquivo
+		self.linha = linha
+		self.posicionais = posicionais
+		self.kwonly = kwonly
+		self.obrigatorios = obrigatorios
+		self.tem_varargs = tem_varargs
+		self.tem_kwargs = tem_kwargs
+
+	@classmethod
+	def de_funcao(cls, no, arquivo: str, metodo: bool) -> "_Assinatura":
+		a = no.args
+		posicionais = [arg.arg for arg in (a.posonlyargs + a.args)]
+		if metodo and posicionais:
+			# self/cls e preenchido pelo proprio Python na chamada ligada --
+			# conta-lo faria toda chamada parecer faltar um argumento.
+			posicionais = posicionais[1:]
+		n_com_default = len(a.defaults)
+		if n_com_default:
+			obrigatorios = list(posicionais[: len(posicionais) - n_com_default])
+		else:
+			obrigatorios = list(posicionais)
+		kwonly = [arg.arg for arg in a.kwonlyargs]
+		# kw_defaults tem SEMPRE o mesmo tamanho de kwonlyargs (None onde
+		# nao ha default) -- strict=True documenta e protege a invariante.
+		for arg, padrao in zip(a.kwonlyargs, a.kw_defaults, strict=True):
+			if padrao is None:
+				obrigatorios.append(arg.arg)
+		return cls(
+			nome=no.name, arquivo=arquivo, linha=no.lineno,
+			posicionais=posicionais, kwonly=kwonly, obrigatorios=obrigatorios,
+			tem_varargs=a.vararg is not None, tem_kwargs=a.kwarg is not None,
+		)
+
+	@property
+	def aceitos(self) -> set:
+		return set(self.posicionais) | set(self.kwonly)
+
+
+def _indexar_definicoes_do_addon(pdir_path: str) -> tuple[dict, dict]:
+	"""Mapeia o que cada modulo do addon DEFINE.
+
+	Devolve (classes, funcoes):
+	  classes[modulo][Classe][metodo] = _Assinatura
+	  funcoes[modulo][funcao]         = _Assinatura
+	`modulo` e o nome do arquivo sem .py ("__init__" para o ponto de entrada).
+	"""
+	classes: dict = {}
+	funcoes: dict = {}
+
+	for py_file in sorted(os.listdir(pdir_path)):
+		if not py_file.endswith(".py"):
+			continue
+		full_path = os.path.join(pdir_path, py_file)
+		try:
+			with open(full_path, encoding="utf-8", errors="replace") as fh:
+				src = fh.read()
+			tree = ast.parse(src, filename=py_file)
+		except (OSError, SyntaxError):
+			continue
+		mod = py_file[: -len(".py")]
+		classes.setdefault(mod, {})
+		funcoes.setdefault(mod, {})
+		for no in tree.body:
+			if isinstance(no, ast.ClassDef):
+				metodos: dict = {}
+				for filho in no.body:
+					if isinstance(filho, (ast.FunctionDef, ast.AsyncFunctionDef)):
+						metodos[filho.name] = _Assinatura.de_funcao(filho, py_file, metodo=True)
+				classes[mod][no.name] = metodos
+			elif isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef)):
+				funcoes[mod][no.name] = _Assinatura.de_funcao(no, py_file, metodo=False)
+	return classes, funcoes
+
+
+def _conferir_chamada(chamada: ast.Call, alvo: _Assinatura, arquivo: str) -> list[str]:
+	"""Compara UMA chamada com a definicao que ela realmente atinge."""
+	# f(*args) ou f(**kwargs): o conteudo so existe em runtime. Calar e a
+	# unica resposta honesta -- palpite aqui vira retry infinito.
+	if any(isinstance(a, ast.Starred) for a in chamada.args):
+		return []
+	if any(kw.arg is None for kw in chamada.keywords):
+		return []
+
+	problemas: list[str] = []
+	onde = f"{alvo.arquivo}:{alvo.linha}"
+	assinatura_txt = ", ".join(alvo.posicionais + alvo.kwonly) or "(nenhum)"
+
+	if not alvo.tem_kwargs:
+		for kw in chamada.keywords:
+			if kw.arg not in alvo.aceitos:
+				problemas.append(
+					f"NVDA-063: {arquivo}: linha {chamada.lineno}: chamada a "
+					f"{alvo.nome}() passa o argumento '{kw.arg}', que a definicao em "
+					f"{onde} nao aceita (parametros: {assinatura_txt}). O chamador e a "
+					f"definicao discordam -- alinhe os dois lados."
+				)
+
+	if not alvo.tem_varargs and len(chamada.args) > len(alvo.posicionais):
+		problemas.append(
+			f"NVDA-063: {arquivo}: linha {chamada.lineno}: chamada a {alvo.nome}() passa "
+			f"{len(chamada.args)} argumento(s) posicional(is), e a definicao em {onde} "
+			f"aceita {len(alvo.posicionais)} (parametros: {assinatura_txt})."
+		)
+
+	if not problemas:
+		fornecidos = set(alvo.posicionais[: len(chamada.args)])
+		fornecidos |= {kw.arg for kw in chamada.keywords}
+		faltando = [nome for nome in alvo.obrigatorios if nome not in fornecidos]
+		if faltando:
+			problemas.append(
+				f"NVDA-063: {arquivo}: linha {chamada.lineno}: chamada a {alvo.nome}() nao "
+				f"passa o(s) argumento(s) obrigatorio(s) {', '.join(faltando)} exigido(s) "
+				f"pela definicao em {onde} (parametros: {assinatura_txt})."
+			)
+	return problemas
+
+
+def _check_cross_module_signatures(addon_folder: str) -> list[str]:
+	"""
+	E24 -- NVDA-063: chamador e definicao discordam ENTRE arquivos do addon.
+
+	Todas as outras 62 regras olham UM arquivo por vez, e por isso nenhuma
+	via o defeito que mais custou ate agora: cada arquivo perfeito sozinho,
+	a costura entre eles quebrada. Medido no AssistenteEscrita (2026-09-03):
+	__init__.py chamava proofread(text, model, api_key, on_done, on_error)
+	-- assinatura que ele mesmo declarava num comentario de contrato -- e
+	openai_service.py definia proofread(self, text, callback). O addon
+	carregava, registrava os atalhos, e morria de TypeError na primeira
+	tecla, engolido pelo proprio except Exception do addon.
+
+	So resolve chamada cujo alvo e INEQUIVOCO -- nas outras, cala:
+	  A. modulo.Classe().metodo(...)  (modulo irmao via `from . import X`)
+	  B. Classe().metodo(...)         (classe local ou `from .X import C`)
+	  C. modulo.funcao(...)           (funcao de modulo irmao)
+	  D. self.metodo(...)             (metodo definido na propria classe)
+
+	Nunca adivinha o tipo de uma variavel: `obj = fabrica(); obj.metodo(x)`
+	fica de fora de proposito. Falso positivo aqui custa retry infinito no
+	pipeline, entao a regra e conservadora por construcao -- o que ela
+	aponta, aponta com os dois lados na mensagem.
+
+	Regra 9: le e parseia texto; nao importa nem executa nada do addon.
+	"""
+	problems: list[str] = []
+	gp_dir = os.path.join(addon_folder, "globalPlugins")
+	if not os.path.isdir(gp_dir):
+		return problems
+
+	for pdir in sorted(os.listdir(gp_dir)):
+		pdir_path = os.path.join(gp_dir, pdir)
+		if not os.path.isdir(pdir_path) or pdir == "lib":
+			continue
+		classes, funcoes = _indexar_definicoes_do_addon(pdir_path)
+		if not classes and not funcoes:
+			continue
+
+		for py_file in sorted(os.listdir(pdir_path)):
+			if not py_file.endswith(".py"):
+				continue
+			full_path = os.path.join(pdir_path, py_file)
+			try:
+				with open(full_path, encoding="utf-8", errors="replace") as fh:
+					src = fh.read()
+				tree = ast.parse(src, filename=py_file)
+			except (OSError, SyntaxError):
+				continue
+			mod_atual = py_file[: -len(".py")]
+
+			# O que os imports relativos ligam a que.
+			modulos_irmaos: set = set()
+			classe_por_nome: dict = {}
+			for no in ast.walk(tree):
+				if not isinstance(no, ast.ImportFrom) or not no.level:
+					continue
+				if no.module is None:
+					for alias in no.names:
+						if alias.name in classes:
+							modulos_irmaos.add(alias.asname or alias.name)
+				elif no.module in classes:
+					for alias in no.names:
+						if alias.name in classes.get(no.module, {}):
+							classe_por_nome[alias.asname or alias.name] = (no.module, alias.name)
+			for nome_classe in classes.get(mod_atual, {}):
+				classe_por_nome.setdefault(nome_classe, (mod_atual, nome_classe))
+
+			# self.metodo(...) precisa saber em que classe o codigo esta.
+			classe_da_linha: dict = {}
+			for no in tree.body:
+				if isinstance(no, ast.ClassDef):
+					fim = getattr(no, "end_lineno", no.lineno) or no.lineno
+					for linha in range(no.lineno, fim + 1):
+						classe_da_linha[linha] = no.name
+
+			for no in ast.walk(tree):
+				if not isinstance(no, ast.Call) or not isinstance(no.func, ast.Attribute):
+					continue
+				metodo = no.func.attr
+				recept = no.func.value
+				alvo = None
+
+				if isinstance(recept, ast.Call):
+					construtor = recept.func
+					# A. modulo.Classe().metodo(...)
+					if (
+						isinstance(construtor, ast.Attribute)
+						and isinstance(construtor.value, ast.Name)
+						and construtor.value.id in modulos_irmaos
+					):
+						alvo = classes.get(construtor.value.id, {}).get(
+							construtor.attr, {}
+						).get(metodo)
+					# B. Classe().metodo(...)
+					elif isinstance(construtor, ast.Name) and construtor.id in classe_por_nome:
+						mod_c, nome_c = classe_por_nome[construtor.id]
+						alvo = classes.get(mod_c, {}).get(nome_c, {}).get(metodo)
+				# C. modulo.funcao(...)
+				elif isinstance(recept, ast.Name) and recept.id in modulos_irmaos:
+					alvo = funcoes.get(recept.id, {}).get(metodo)
+				# D. self.metodo(...)
+				elif isinstance(recept, ast.Name) and recept.id == "self":
+					nome_classe = classe_da_linha.get(no.lineno)
+					if nome_classe:
+						alvo = classes.get(mod_atual, {}).get(nome_classe, {}).get(metodo)
+
+				if alvo is not None:
+					problems.extend(_conferir_chamada(no, alvo, py_file))
+
+	return problems
+
+
 def validate_addon_structure(addon_folder: str) -> list[str]:
 	"""
 	Smoke test estrutural do addon gerado.
@@ -2663,6 +2902,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 	- Gestures reservados do NVDA core (NVDA-009) via _check_reserved_gestures()
 	- _() sem # Translators: comment (NVDA-019) via _check_translatable_strings()
 	- Indentacao com espacos em vez de TABs (NVDA-021) via _check_indentation_style()
+	- Chamador e definicao discordando entre arquivos (NVDA-063) via _check_cross_module_signatures()
 	- Widgets wx sem acessibilidade (WX-A11Y-001/002/003) via _check_wx_accessibility()
 	- Imports de simbolos privados (NVDA-026) via _check_private_symbol_imports()
 	- Dialogos sem Escape/StdDialogButtonSizer (WX-A11Y-004) via _check_dialog_accessibility()
@@ -3288,6 +3528,9 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 
 	# E17 — NVDA-019: _() sem # Translators: comment
 	problems.extend(_check_translatable_strings(addon_folder))
+
+	# E24 — NVDA-063: chamador e definicao discordam entre arquivos
+	problems.extend(_check_cross_module_signatures(addon_folder))
 
 	# E18 — NVDA-021: indentacao com espacos em vez de TABs
 	problems.extend(_check_indentation_style(addon_folder))

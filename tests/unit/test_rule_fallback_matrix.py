@@ -32,7 +32,11 @@ def test_fallback_matrix_cobre_todas_as_regras():
         | set(arch_rule_ids)
     )
 
-    assert len(all_rule_ids) == 96, "Esperado: 61 NVDA + 14 WX + 12 DTK + 9 ARCH = 96 regras"
+    # NVDA-063 (assinatura divergente entre arquivos) entrou em 2026-09-03.
+    # Cobertura dela e o default STRICT_ONLY, que e a semantica correta:
+    # nao ha implementacao alternativa para "chamador e definicao tem que
+    # casar" -- ou casam, ou o addon quebra na primeira tecla.
+    assert len(all_rule_ids) == 97, "Esperado: 62 NVDA + 14 WX + 12 DTK + 9 ARCH = 97 regras"
     assert set(overrides.keys()).issubset(all_rule_ids), "Overrides contem IDs fora do catalogo de regras"
 
     # A cobertura completa depende do default STRICT_ONLY no builder + overrides.

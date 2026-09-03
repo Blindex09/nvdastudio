@@ -123,6 +123,14 @@ class PipelineReport:
     has_doc: bool = False
     has_lib: bool = False
 
+    # Portao final: o MESMO que a GUI aplica antes de entregar
+    # (studio_dialog::_on_package -> validate_final_package). Ate
+    # 2026-09-03 o E2E chamava package_addon() direto e nunca rodava
+    # esse portao -- o degrau mais CARO da piramide era o unico cego
+    # para uma checagem que ja existia e que a GUI ja fazia.
+    final_gate_ok: bool = False
+    final_gate_evidence: str = ""
+
     # Blocos coletados por step (Fix A)
     blocks_collected: list[dict] = field(default_factory=list)
 
@@ -215,6 +223,9 @@ class PipelineReport:
                 print(f"    {p}")
         else:
             print("  Sem problemas estruturais")
+        print(f"  Portao final: {'APROVADO' if self.final_gate_ok else 'REPROVADO'}")
+        if not self.final_gate_ok and self.final_gate_evidence:
+            print(f"    {self.final_gate_evidence[:500]}")
         print(sep)
 
     def to_dict(self) -> dict:
@@ -256,6 +267,8 @@ class PipelineReport:
             "has_manifest": self.has_manifest,
             "has_doc": self.has_doc,
             "has_lib": self.has_lib,
+            "final_gate_ok": self.final_gate_ok,
+            "final_gate_evidence": self.final_gate_evidence,
             "blocks_collected": [
                 {"language": b.get("language", "?"), "filename": b.get("filename", "")}
                 for b in self.blocks_collected
@@ -484,6 +497,20 @@ def _rodar_pipeline_e2e(
         if zipfile.is_zipfile(nvda_path):
             with zipfile.ZipFile(nvda_path, "r") as zf:
                 report.zip_names = zf.namelist()
+
+        # Portao final sobre o ARQUIVO entregue, nao sobre a pasta
+        # intermediaria: abre o ZIP, revalida a estrutura (inclui
+        # NVDA-063) e EXECUTA o addon em subprocesso isolado, agora
+        # acionando os comandos. E o unico ponto do E2E que responde
+        # "esse .nvda-addon funciona?" em vez de "esse .nvda-addon
+        # tem os arquivos certos?".
+        from nvdastudio.builder.code_sandbox import CodeSandbox
+
+        final_check = CodeSandbox(timeout_sec=30).validate_final_package(nvda_path)
+        report.final_gate_ok = final_check.success
+        report.final_gate_evidence = (
+            final_check.error or final_check.stderr or final_check.stdout
+        )[:2000]
     except Exception as exc:
         report.error = f"package_addon: {exc}"
 

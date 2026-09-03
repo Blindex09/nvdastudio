@@ -175,6 +175,22 @@ NVDA_DETECTION_RULES: list[tuple[str, str, str]] = [
 	# PRs #13056/#13059 corrigiram exploits reais de dialogo de arquivo
 	# acessivel em tela segura).
 	("NVDA-062", "Critico", "Addon com script/dialogo/persistencia de config sem checar globalVars.appArgs.secure -- em secure mode (tela de login, UAC, tela segura), scripts continuam executaveis (definidos a nivel de classe) mesmo se o __init__ verificar o flag e sair cedo; qualquer wx.Dialog que abre arquivo/pasta, salva config, ou loga dado sensivel deve checar o flag em CADA ponto de entrada perigoso, nao so no __init__; NUNCA logar senha/token/API key incondicionalmente (o proprio NVDA trata logging em secure mode como risco de seguranca)"),
+	# NVDA-063: achado da rodada AssistenteEscrita (2026-09-03). As 62
+	# regras acima olham UM arquivo por vez, e o defeito mais caro medido
+	# ate agora nao mora dentro de arquivo nenhum: mora na costura. O addon
+	# entregue tinha __init__.py chamando proofread(text, model, api_key,
+	# on_done, on_error) -- assinatura que ele MESMO declarava num
+	# comentario de contrato -- e openai_service.py definindo
+	# proofread(self, text, callback). Carregou, registrou os atalhos,
+	# passou nos nove portoes, e morria de TypeError na primeira tecla.
+	("NVDA-063", "Critico", "Chamada entre arquivos do addon com assinatura "
+	 "divergente da definicao -- arquivo A chama metodo/funcao de B com argumento "
+	 "que B nao aceita, ou sem argumento obrigatorio que B exige. Cada arquivo e "
+	 "valido sozinho e o addon carrega normalmente; o TypeError so nasce quando o "
+	 "usuario aciona o comando, e o `except Exception` correto do addon (que existe "
+	 "para nunca derrubar o leitor de tela) transforma o defeito numa mensagem "
+	 "generica. Quando um arquivo DECLARA o contrato que outro implementa, os dois "
+	 "lados tem que casar literalmente"),
 ]
 
 # ------------------------------------------------------------------

@@ -13,6 +13,10 @@ Nada aqui é obrigação. É registro do que foi avaliado, com o custo e o risco
 de cada item, para decidir com informação depois — e para o próximo agente
 não redescobrir do zero.
 
+**Atualizado em 2026-09-03:** o Item 1 saiu de "futuro" — foi
+implementado e em parte revertido no mesmo dia; a seção abaixo guarda o
+que sobrou e o que não deve voltar. O Item 2 continua aberto.
+
 ---
 
 ## Resposta à pergunta das 3 tentativas: está correto
@@ -58,35 +62,71 @@ Vale para os 11 sub-agentes, não só a pesquisa.
 
 ---
 
-## Item 1 — Orquestração adaptativa
+## Item 1 — Orquestração adaptativa — FEITO, e em parte revertido
+
+**Status (2026-09-03):** implementado em `f493280` e parcialmente revertido em
+`da4427f`. Não é mais trabalho futuro. Fica registrado porque a reversão
+ensinou mais que a implementação.
 
 **O que o agentic faz** (`features/orchestration/README.md`): escolhe
 internamente a forma menos complexa e confiável para cada tarefa — resposta
 direta, etapas dependentes, partes independentes em paralelo, pesquisa e
 análise, ou produção com revisão. O usuário não escolhe arquitetura.
 
-**Por que interessa aqui**: o NVDAStudio monta um plano de steps sempre. As
-oito rodadas do golden set complexo viraram planos de 25 a 27 steps; com 47%
-de aprovação por step de código, a chance de todos passarem é de 0,25%. O
-`test_e39` foi criado justamente para contornar isso encurtando o pedido — ou
-seja, o problema do comprimento do plano está reconhecido e contornado, não
-resolvido.
+**O que foi implementado** (`planner` 2.44.0): `_aplicar_teto_de_steps()`, com
+`_TETO_DE_STEPS = 8`, aplicado no fim da cadeia de injeção em `create_plan` E
+em replan. A poda seguia `_PRIORIDADE_DE_PODA`, ordenada por conversão MEDIDA
+após retentar — engineering_review (0%), design_review (0%, 5,9M de tokens
+perdidos), web_research (16%), accessibility_audit, test_generation — e nunca
+podava quem produz arquivo do addon. Decisão 100% determinística, como a
+Regra 7 exige: tabela de conversão medida, não modelo. Até então o projeto só
+tinha pressão numa direção: `oversized_code_generation_steps()` decompõe o
+plano e nada o encurtava.
 
-**Risco real**: mexe no coração do Planner. O pipeline acabou de estabilizar
-depois de seis defeitos corrigidos em 2026-09-02, e a primeira entrega
-complexa é recentíssima. Uma mudança arquitetural agora tem chance concreta
-de regredir o que acabou de passar a funcionar.
+**Por que foi revertido** (`planner` 2.45.0): a medição que o justificava
+estava confundida. Contando `code_generation` por faixa:
 
-**Pré-requisito antes de codar**: o `CLAUDE.md` exige roteamento
-determinístico (Regra 7), e a auditoria de 2026-08-26 já **recusou
-deliberadamente** o classificador de complexidade do agentic por ele ser por
-LLM. Qualquer orquestração adaptativa aqui tem que decidir a FORMA de modo
-determinístico. O `COMPLEXITY_MAP` e o `iteration_budget.apply_plan()` já são
-matéria-prima para isso.
+| faixa | entrega | média de code_generation por plano |
+|---|---|---|
+| 6-8 steps | 110/117 (94%) | 1,5 |
+| 9-11 steps | 3/11 (27%) | 4,4 |
+| 12+ steps | 3/9 (33%) | 6,4 |
 
-**Como medir se valeu**: número de steps por plano e taxa de entrega do
-golden set complexo, comparados antes/depois. Sem essa medição não dá para
-saber se ajudou.
+Os planos de 6-8 steps que entregavam 94% eram addons SIMPLES, de um ou dois
+arquivos. O número de steps era **termômetro da dificuldade do pedido, não
+causa da falha**. Encurtar o plano de um addon complexo não o torna simples —
+torna cada step maior.
+
+Confirmado na rodada de 2026-09-02 20:38, com o teto ativo: o plano caiu de 13
+para 9 steps e o custo por `code_generation` SUBIU de ~100-135 mil para
+252.185 e 261.138. Pior, o teto do orçamento deriva do plano, então encurtar
+encolheu a caixa junto (1.398.750 → 704.550): mesmo trabalho, caixa menor.
+
+**O que sobreviveu da investigação**: a recalibração da tabela de custos
+(`utils/iteration_budget.py`, `_CUSTO_MEDIDO_POR_STEP` — `code_generation`
+custava 157.105 na média medida com n=404, e a tabela dizia 87.500) e a
+correção do terceiro portão de orçamento (`orchestrator` 5.82.0), que barrava
+o assembly com o teto reduzido — a reserva existia e era negada justamente a
+quem ela protege.
+
+**Guardas contra reintrodução**: bloco `NAO REINTRODUZIR` no topo do
+`planner.py` (linha 1034) com a medição e o confundidor, e
+`tests/unit/test_orcamento_code_generation.py`, que falha se `_TETO_DE_STEPS`
+ou `_aplicar_teto_de_steps` voltarem a existir.
+
+**Armadilha de medição, registrada para não ser repetida**: a faixa de 1-5
+steps aparecia com 7% de entrega em 132 rodadas e sugeria que plano curto
+também fosse ruim. Conferindo, 123 dos 132 tinham erro registrado — eram
+execuções ABORTADAS, e o relatório só grava os steps que chegaram a rodar.
+Não eram planos curtos, eram planos truncados. Excluir os abortos inverteu a
+leitura.
+
+**O que continua valendo para quem retomar o tema**: o que a reversão fechou
+foi o caminho de *encurtar o plano*, não a ideia de escolher a forma. A
+adaptação determinística que existe hoje é o `COMPLEXITY_MAP` (mapa de modelo
+por complexidade) e a `oversized_code_generation_steps()` (pressão para
+decompor). A métrica de sucesso é taxa de entrega do golden set complexo
+antes/depois — nunca número de steps, que já se provou termômetro e não causa.
 
 ---
 
