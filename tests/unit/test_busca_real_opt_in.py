@@ -51,7 +51,7 @@ def _resposta(texto="conteudo de pesquisa suficientemente longo " * 8):
 
 
 def test_versao():
-	assert web_researcher.MODULE_VERSION == "4.14.0"
+	assert web_researcher.MODULE_VERSION == "4.15.0"
 
 
 def test_sem_a_variavel_nao_ha_busca_real(monkeypatch):

@@ -1,0 +1,510 @@
+{
+  "addon_name": "AssistenteEscrita",
+  "query": "Crie um addon NVDA chamado AssistenteEscrita que usa a API do ChatGPT da OpenAI para ajudar a revisar textos. Funcionalidades: (1) um atalho NVDA+shift+g que pega o texto selecionado, corrige a gramat",
+  "timestamp": "2026-09-03T01:31:50.627834",
+  "plan_id": "d4803124",
+  "complexity": "",
+  "duration_seconds": 4118.21,
+  "total_tokens": 1111538,
+  "total_tokens_medidor": 1111538,
+  "total_retries": 14,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 30384,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteEscrita\nsummary = Assistente de Escrita\ndescription = Ajuda a revisar textos usando a API do ChatGPT da OpenAI, corrigindo gramática, ortografia e simplificando linguagem.\nauthor = Nome do Autor <email@exemplo.com>\nurl = https://github.com/usuario/AssistenteEscri"
+    },
+    {
+      "step_id": "s1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 13544,
+      "issues": [
+        "O exemplo de código ainda usa a API HTTP raw em vez do SDK Python openai v1.x (OpenAI(api_key=...) e client.chat.completions.create(...)) conforme solicitado.",
+        "Falta a nota explícita de que openai.api_key / openai.ChatCompletion.create pertencem à API legada v0.x e não funcionam no pacote 1.30.0+.",
+        "A lista de modelos está extremamente duplicada e inclui snapshots antigos, não refletindo apenas os modelos atualmente disponíveis."
+      ],
+      "output_preview": "[WEB_SEARCH] **Pacote:** openai\n**Versão estável:** 1.30.0\n**Instalação:** `pip install openai`\n**API principal:**\n- Endpoint: `POST https://api.openai.com/v1/chat/completions`\n- Autenticação: cabeçalho `Authorization: Bearer <API_KEY>`\n- Corpo (JSON):\n  ```json\n  {\n    \"model\": \"gpt-4o\",\n    \"messa"
+    },
+    {
+      "step_id": "cg_root",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 326900,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\nimport threading\nimport wx\nimport gui\nimport api\nimport ui\nimport config\nimport globalVars\nimport globalPluginHandler\nimport addonHandler\nfrom logHandler import log\nfrom scriptHandler import script\nfrom gui.settingsDialogs import NVDASettingsDial"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_configspec",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 66278,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/configSpec.py\nimport config\n\n\n_CONFSPEC = {\n\t\"apiKey\": \"string(default='')\",\n\t\"modelo\": \"string(default='gpt-4o-mini')\",\n}\n\n\ndef apply_config_spec() -> None:\n\t\"\"\"Registra a especificacao de configuracao do addon AssistenteEscrita.\n\n\tDeve ser chamada no carre"
+    },
+    {
+      "step_id": "sv_2",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 165203,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/settings_panel.py\nimport wx\nimport config\nimport addonHandler\nfrom gui.settingsDialogs import SettingsPanel\nfrom gui import guiHelper\n\naddonHandler.initTranslation()\n\n\nclass AssistenteEscritaSettingsPanel(SettingsPanel):\n\t# Translators: Titulo do painel de c"
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 121952,
+      "issues": [
+        "doc/en/userGuide.html mantém os créditos em português ('Nome do Autor <email@exemplo.com>') em vez de traduzi-los para o inglês, quebrando a consistência do guia em inglês.",
+        "doc/pt_BR/userGuide.html usa 'Adicionar‑in Manager', termo inexistente no NVDA em português; o rótulo correto é 'Gerenciador de Complementos' (ou equivalente da interface do NVDA em pt_BR).",
+        "doc/en/userGuide.html usa 'Add‑in Manager' em vez do termo oficial do NVDA em inglês, 'Add-ons Manager'."
+      ],
+      "output_preview": "```html:doc/pt_BR/userGuide.html\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<title>AssistenteEscrita</title>\n<style>\nbody{font-family:sans-serif;max-width:800px;margin:auto;padding:1em;}\nkbd{background:#eee;border:1px solid #ccc;padding:2px 6px;border-radius:3px;}\ntable{border"
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 133364,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/openai_service.py\nimport threading\nfrom collections.abc import Callable\nfrom typing import Any\n\nimport addonHandler\nimport config\nimport wx\nfrom logHandler import log\n\naddonHandler.initTranslation()\n\n\nclass OpenAIService:\n\t\"\"\"Servico que encapsula as chamada"
+    },
+    {
+      "step_id": "aa1",
+      "step_type": "accessibility_audit",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 90,
+      "retries_used": 0,
+      "tokens_used": 93413,
+      "issues": [],
+      "output_preview": "Nenhuma violação encontrada nas regras NVDA-001..038, NVDA-040, NVDA-042..050, WX-A11Y-001..014 e DTK-A11Y-001..012."
+    },
+    {
+      "step_id": "sv_3",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "sv_4",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "er_inj",
+      "step_type": "engineering_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 56629,
+      "issues": [
+        "ENG/NVDA-002: As chamadas à API OpenAI não definem timeout explícito; em rede lenta ou API indisponível a thread de trabalho pode ficar bloqueada indefinidamente, prejudicando a responsividade do NVDA.",
+        "ENG/NVDA-004: Não há evidência de gerenciamento de lifecycle das threads de API (atributo daemon, flag de cancelamento ou join em terminate()); recarregar o addon pode deixar threads órfãs consumindo recursos.",
+        "ENG: A lista de modelos e os nomes de chaves de configuração estão duplicados entre settings_panel.py e openai_service.py, aumentando risco de divergência; devem ser centralizados em um módulo de constantes compartilhado."
+      ],
+      "output_preview": "DEFEITOS DE ENGENHARIA:\nO serviço que chama a API do OpenAI não define um timeout para a requisição. Se a rede ficar lenta ou a API ficar indisponível, a thread que executa a chamada pode ficar bloqueada indefinidamente, travando a fala e o braille do NVDA. Isso impede que o usuário perceba que algo"
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 103871,
+      "issues": [
+        "Em globalPlugins/AssistenteEscrita/__init__.py, o método _process_text recebe on_done mas o ignora, usando um callback fixo que apenas fala o resultado; isso quebra a funcionalidade de copiar o resultado para a área de transferência prometida na documentação.",
+        "doc/en/userGuide.html mantém os créditos do autor em português ('Nome do Autor <email@exemplo.com>') em vez de uma versão em inglês, prejudicando a consistência do guia em inglês."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\nimport wx\nimport api\nimport config\nimport globalVars\nimport ui\nimport addonHandler\nimport scriptHandler\nimport globalPluginHandler\nfrom gui.settingsDialogs import NVDASettingsDialog\nfrom . import configSpec\nfrom . import settings_panel\nfrom . imp"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "5"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "AVALIANDO",
+      "documentation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "accessibility_audit"
+    ],
+    [
+      "APROVADO",
+      "accessibility_audit"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "engineering_review"
+    ],
+    [
+      "AVALIANDO",
+      "engineering_review"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteEscrita_20260903_024028",
+  "files_saved": [
+    "__init__.py",
+    "configSpec.py",
+    "settings_panel.py",
+    "openai_service.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteEscrita.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AssistenteEscrita/configSpec.py",
+    "globalPlugins/AssistenteEscrita/openai_service.py",
+    "globalPlugins/AssistenteEscrita/settings_panel.py",
+    "globalPlugins/AssistenteEscrita/__init__.py"
+  ],
+  "struct_problems": [
+    "NVDA-019: settings_panel.py: linha 25: chamada a _() sem '# Translators: ...' na linha anterior — o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha.",
+    "NVDA-019: settings_panel.py: linha 34: chamada a _() sem '# Translators: ...' na linha anterior — o Poedit nao extraira essa string para traducao. Adicione '# Translators: Descricao breve' acima da linha."
+  ],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/configSpec.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/settings_panel.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/openai_service.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 69.6,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}

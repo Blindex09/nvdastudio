@@ -19,7 +19,7 @@ from ._base import (
 )
 
 _logger = get_logger("web_researcher")
-MODULE_VERSION = "4.14.0"
+MODULE_VERSION = "4.15.0"
 
 # Cache: registros com menos de N dias sao considerados frescos.
 # Opt-in explicito para busca real sob pytest. Ver o comentario em run().
@@ -142,8 +142,29 @@ def on_demand_web_search(query: str, model_id: str = "") -> str:
 			_logger.warning("[WEB_SEARCH] nao foi possivel criar client: %s", exc)
 			return ""
 
-		narrate(f"navegando na web procurando informacao sobre {query}")
-		result = _buscar_em_paralelo(query, client)
+			# 4.15.0 -- a CONSULTA passa a ser o objetivo, nao o prompt inteiro.
+		#
+		# O caller passa o prompt do step, que tem dezenas de milhares de
+		# caracteres (tarefa original + contexto NVDA + objetivo). Isso ia
+		# direto para as APIs de busca como se fosse uma pergunta.
+		#
+		# Medido na rodada de 2026-09-03 01:35:
+		#   "[WEB_SEARCH] fonte tavily falhou: Client error 400 Bad Request"
+		# O Tavily recusa consulta desse tamanho. O Exa aceita, mas responde
+		# a um bloco de prompt em vez de a uma pergunta -- por isso a pesquisa
+		# vinha generica e o Critic reprovava por falta de especificidade.
+		#
+		# _extract_topic() ja existia e ja fazia exatamente essa extracao, mas
+		# so era usada como chave de cache -- nunca como consulta.
+		termos = _extract_topic(query) or query[:_MAX_QUERY_CHARS]
+		termos = termos.strip()[:_MAX_QUERY_CHARS]
+		if termos != query:
+			_logger.info(
+				"[WEB_SEARCH] consulta extraida do prompt (%d -> %d chars): %r",
+				len(query), len(termos), termos[:120],
+			)
+		narrate(f"navegando na web procurando informacao sobre {termos}")
+		result = _buscar_em_paralelo(termos, client)
 
 		if not result:
 			_logger.info("[WEB_SEARCH] sem resultados para: '%s'", query[:60])
@@ -161,6 +182,10 @@ def on_demand_web_search(query: str, model_id: str = "") -> str:
 _TAVILY_URL = "https://api.tavily.com/search"
 _EXA_URL = "https://api.exa.ai/search"
 _FALLBACK_MAX_RESULTS = 5
+# Teto de caracteres da consulta enviada as APIs de busca. O Tavily recusa
+# consulta longa com 400 Bad Request (medido 2026-09-03); 400 chars cobre
+# qualquer objetivo de step com folga e e conservador para as tres fontes.
+_MAX_QUERY_CHARS = 400
 _FALLBACK_TIMEOUT_SECONDS = 20.0
 
 
