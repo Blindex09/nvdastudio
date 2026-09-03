@@ -3,7 +3,7 @@ import math
 from .model_registry import registry, is_alto_model
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.6.0"
+MODULE_VERSION = "1.7.0"
 _logger = get_logger("model_router")
 
 # Pontuacao neutra pra modelo sem hint curado -- mesmo valor de fallback
@@ -288,7 +288,7 @@ def select_model(
 # Todos os provedores nativos que o NVDAStudio sabe rotear -- usado so pela
 # escalacao cross-provider (select_model_and_provider), nunca pra escolha
 # inicial (essa continua dentro do provider ativo, ver select_model acima).
-_ALL_ROUTABLE_PROVIDERS = ("ollama", "openai", "gemini", "anthropic", "xai", "opencode_go")
+_ALL_ROUTABLE_PROVIDERS = ("ollama", "openai", "gemini", "anthropic", "xai", "opencode_go", "factory")
 
 # 1.2.0: quando o provider ATIVO e "ollama", o resgate cross-provider fica
 # restrito a este conjunto -- NUNCA os provedores pagos diretos (openai/
@@ -300,7 +300,14 @@ _ALL_ROUTABLE_PROVIDERS = ("ollama", "openai", "gemini", "anthropic", "xai", "op
 # com os outros, por que os outros nao tenho assinatura". OpenCode Go e
 # assinatura fixa (custo marginal ~0, ver ai/pricing.py), entao e o UNICO
 # fallback seguro quando o Ollama e o provider principal escolhido.
-_OLLAMA_RESCUE_PROVIDERS: tuple[str, ...] = ("opencode_go",)
+# 1.7.0: Factory entra pelo MESMO criterio que ja escolheu o OpenCode Go --
+# assinatura fixa, custo marginal previsivel, sem risco de gastar credito
+# avulso que o usuario nao tem. Palavras dele em 2026-08-09: "so nao faco
+# isso com os outros, por que os outros nao tenho assinatura". Em
+# 2026-09-03 o criterio provou seu valor ao contrario: o OpenCode Go ficou
+# sem saldo (401) e o Ollama comecou a devolver 429 na mesma sessao,
+# deixando o resgate sem para onde ir.
+_OLLAMA_RESCUE_PROVIDERS: tuple[str, ...] = ("opencode_go", "factory")
 
 
 def select_model_and_provider(

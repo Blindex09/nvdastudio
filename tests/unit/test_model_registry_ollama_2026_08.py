@@ -78,4 +78,4 @@ class TestGetFallbackChainFoldDeProviderNovo:
 
 	def test_versao_1_10_0(self):
 		from nvdastudio.ai.model_registry import MODULE_VERSION
-		assert MODULE_VERSION == "1.20.0"
+		assert MODULE_VERSION == "1.21.0"

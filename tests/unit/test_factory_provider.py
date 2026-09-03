@@ -229,3 +229,100 @@ def test_factory_e_selecionavel_como_provedor():
 	assert "factory" in sp._API_KEY_CONFIG_KEYS
 	assert "factory" in sp._API_KEY_ENV_VARS
 	assert sp._API_KEY_ENV_VARS["factory"] == "FACTORY_API_KEY"
+
+
+# Ids confirmados AO VIVO em 2026-09-03: o `droid` lista os validos quando
+# recusa um invalido. Qualquer id fora desta lista e recusado pelo CLI.
+_IDS_VALIDOS_NA_FACTORY = frozenset({
+	"auto", "claude-fable-5", "claude-opus-5", "claude-opus-5-fast",
+	"claude-sonnet-5", "claude-sonnet-4-6", "claude-haiku-4-5-20251001",
+	"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4",
+	"gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2", "gemini-3.1-pro-preview",
+	"gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "inkling",
+	"glm-5.3-flash", "glm-5.3", "glm-5.2", "glm-5.2-fast", "kimi-k3",
+	"kimi-k2.7-code", "kimi-k2.6", "nemotron-3-ultra",
+	"deepseek-v4-flash-0731", "deepseek-v4-pro", "minimax-m3", "grok-4.6",
+	"grok-4.5", "minimax-m2.7",
+})
+
+
+class TestCalibracaoDoRoteamento:
+	"""A escada de custo foi MEDIDA na Factory (creditos reportados pelo
+	proprio usage.factory_credits, prompt identico nos seis modelos):
+
+	    kimi-k2.7-code               894    1.0x   JSON ok
+	    glm-5.3-flash              1.074    1.2x   JSON ok
+	    gpt-5.4-mini               1.192    1.3x   JSON ok
+	    claude-haiku-4-5-20251001  6.634    7.4x   JSON FALHOU
+	    claude-sonnet-5           14.006   15.7x   JSON ok
+	    gemini-3.7-flash          18.437   20.6x   JSON ok
+	"""
+
+	def test_factory_nao_cai_silenciosamente_no_catalogo_do_ollama(self):
+		"""Sem a chave no mapa, select_model() fazia `provider = "ollama"` e
+		devolvia ids do Ollama para executar na Factory. `deepseek-v4-flash`
+		existe no Ollama; na Factory o id e `deepseek-v4-flash-0731`."""
+		from nvdastudio.ai.model_registry import _UI_PROVIDER_TO_REGISTRY_PROVIDERS
+
+		assert "factory" in _UI_PROVIDER_TO_REGISTRY_PROVIDERS
+
+	def test_todo_modelo_roteado_existe_na_factory(self):
+		"""A regressao que importa: id que o droid recusa derruba o step."""
+		from nvdastudio.ai.model_registry import get_provider_step_models
+		from nvdastudio.ai.model_router import select_model
+
+		tiers = get_provider_step_models("factory")
+		for tier, modelo in tiers.items():
+			assert modelo in _IDS_VALIDOS_NA_FACTORY, f"{tier}={modelo}"
+
+		for complexidade in ("low", "medium", "high"):
+			for step in ("code_generation", "documentation", "assembly", "web_research"):
+				escolhido = select_model("factory", step, "alto", complexity=complexidade)
+				assert escolhido in _IDS_VALIDOS_NA_FACTORY, (
+					f"{step}/{complexidade} -> {escolhido}"
+				)
+
+	def test_leve_e_pesado_sao_o_mesmo_por_medicao_e_nao_por_descuido(self):
+		"""Nao ha tier mais barato na Factory: o kimi-k2.7-code, que o projeto
+		ja usa como heavy, e o mais barato do catalogo. Mandar step leve para
+		o Haiku custaria 7,4x A MAIS e ainda erraria o JSON."""
+		from nvdastudio.ai.model_registry import get_provider_step_models
+
+		tiers = get_provider_step_models("factory")
+
+		assert tiers["light"] == tiers["heavy"] == "kimi-k2.7-code"
+
+	def test_frontier_nunca_e_o_modelo_mais_caro(self):
+		"""claude-opus-5 custou 82.549 creditos, 92x o heavy. O frontier e
+		reservado a code_generation de complexidade alta, mas reservado nao
+		quer dizer sem teto."""
+		from nvdastudio.ai.model_registry import get_provider_step_models
+
+		frontier = get_provider_step_models("factory")["frontier"]
+
+		assert frontier == "claude-sonnet-5"
+		assert "opus" not in frontier
+
+	def test_frontier_so_aparece_em_complexidade_alta(self):
+		from nvdastudio.ai.model_router import select_model
+
+		assert select_model("factory", "code_generation", "alto", complexity="high") == "claude-sonnet-5"
+		for baixa in ("low", "medium"):
+			assert select_model("factory", "code_generation", "alto", complexity=baixa) == "kimi-k2.7-code"
+
+	def test_factory_e_resgate_valido_para_o_ollama(self):
+		"""O criterio ja escolhido pelo usuario para o resgate e ASSINATURA:
+		'so nao faco isso com os outros, por que os outros nao tenho
+		assinatura'. A Factory e assinatura, mesma categoria do OpenCode Go --
+		e em 2026-09-03 o OpenCode Go ficou sem saldo e o Ollama comecou a
+		devolver 429, deixando o resgate sem para onde ir."""
+		from nvdastudio.ai.model_router import (
+			_ALL_ROUTABLE_PROVIDERS,
+			_OLLAMA_RESCUE_PROVIDERS,
+		)
+
+		assert "factory" in _OLLAMA_RESCUE_PROVIDERS
+		assert "factory" in _ALL_ROUTABLE_PROVIDERS
+		# Provedor pago por token continua fora: o usuario nao tem credito avulso.
+		for pago in ("openai", "anthropic", "gemini", "xai"):
+			assert pago not in _OLLAMA_RESCUE_PROVIDERS

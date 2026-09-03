@@ -5,7 +5,7 @@ from typing import Optional
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.20.0"
+MODULE_VERSION = "1.21.0"
 _logger = get_logger("model_registry")
 
 ALTO_MODEL = "alto"
@@ -43,6 +43,20 @@ _UI_PROVIDER_TO_REGISTRY_PROVIDERS: dict[str, tuple[str, ...]] = {
     "gemini": ("google",),
     "xai": ("xai",),
     "opencode_go": ("opencode_go",),
+    # Factory: tupla VAZIA de proposito, e isso e a calibracao.
+    #
+    # Sem a chave aqui, select_model() caia no `provider = "ollama"` e
+    # escolhia ids do catalogo do Ollama para executar na Factory --
+    # defeito introduzido junto com o provedor (b152951). `deepseek-v4-flash`
+    # existe no Ollama e na Factory o id e `deepseek-v4-flash-0731`: o
+    # roteador entregaria um id que o droid recusa.
+    #
+    # Com a chave presente e vazia, o roteador nao acha candidato e cai no
+    # _PROVIDER_TIER_MODELS["factory"] abaixo -- ids VERIFICADOS ao vivo
+    # (o droid lista os validos ao recusar um invalido). Pontuar um
+    # catalogo cujos ids nem todos existem no provedor seria trocar um
+    # defeito silencioso por outro.
+    "factory": (),
 }
 
 
@@ -569,6 +583,23 @@ _FALLBACK_CHAINS: dict[str, list[str]] = {
 # Modelos por tier/provedor
 # ---------------------------------------------------------------------------
 
+# Escada de custo MEDIDA na Factory em 2026-09-03, prompt identico nos seis
+# modelos (creditos reportados pelo proprio `usage.factory_credits`):
+#
+#     kimi-k2.7-code               894    1.0x   JSON ok
+#     glm-5.3-flash              1.074    1.2x   JSON ok
+#     gpt-5.4-mini               1.192    1.3x   JSON ok
+#     claude-haiku-4-5-20251001  6.634    7.4x   JSON FALHOU
+#     claude-sonnet-5           14.006   15.7x   JSON ok
+#     gemini-3.7-flash          18.437   20.6x   JSON ok
+#
+# O resultado derruba a intuicao de "flash/mini = barato": os
+# multiplicadores da Factory nao seguem o preco por token dos provedores
+# de origem. O `kimi-k2.7-code`, que o projeto JA usa como heavy, e o mais
+# barato do catalogo -- nao existe tier mais barato para onde rotear, e
+# mandar step leve para o Haiku custaria 7,4x A MAIS e ainda erraria o
+# JSON. Por isso heavy e light sao o MESMO modelo aqui: e o que a medicao
+# mostra, nao economia por descuido.
 _PROVIDER_TIER_MODELS: dict[str, dict[str, str]] = {
     "ollama": {
         "heavy": "kimi-k2.7-code",
@@ -579,6 +610,20 @@ _PROVIDER_TIER_MODELS: dict[str, dict[str, str]] = {
         # maior modelo confirmado na conta real) -- specs de benchmark reais
         # ainda nao auditadas em profundidade, revisar quando houver evidencia.
         "frontier": "qwen3.5:397b",
+    },
+    "factory": {
+        "heavy": "kimi-k2.7-code",
+        # Mesmo modelo do heavy: medido, nao ha nada mais barato na
+        # Factory. Ver a escada acima.
+        "light": "kimi-k2.7-code",
+        # Reservado: so entra em code_generation com complexity="high",
+        # e nunca compete como candidato comum (ver model_router 1.4.0).
+        # Custa 15,7x o heavy, e a escolha e deliberada: um cg_core que
+        # nao converge ja custou 635.658 tokens numa rodada so
+        # (2026-09-03) -- gastar 15x em UM step que precisa acertar sai
+        # mais barato que tres tentativas que falham. NUNCA claude-opus-5
+        # aqui: medido em 82.549 creditos, 92x o heavy.
+        "frontier": "claude-sonnet-5",
     },
     "anthropic": {
         "heavy": "claude-opus-5",
