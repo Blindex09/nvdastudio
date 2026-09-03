@@ -60,6 +60,11 @@ class OrchestrationResult:
 	tokens_by_model: dict[str, tuple[int, int]] = field(default_factory=dict)
 	estimated_cost_usd: float = 0.0
 	replan_count: int = 0
+	# Espelha ExecutionPlan.planejamento_degradado: o plano veio do caminho
+	# sem json_schema estrito. Nao e falha -- as injecoes deterministicas
+	# garantem os steps essenciais -- mas explica variacao de FORMA do plano
+	# entre rodadas do MESMO pedido, que sem isso parece aleatoria.
+	planejamento_degradado: bool = False
 	autonomous_loop_count: int = 0
 	completed_message: str = ""
 	# 5.50.0: propagado do plano ("addon" default, "controller_client") --

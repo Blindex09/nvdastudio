@@ -95,6 +95,9 @@ class PipelineReport:
     query: str
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     plan_id: str = ""
+    # O plano veio do caminho degradado (sem json_schema estrito)? Explica
+    # por que o MESMO pedido gera planos de formas diferentes entre rodadas.
+    planejamento_degradado: bool = False
     complexity: str = ""
     duration_seconds: float = 0.0
     total_tokens: int = 0
@@ -168,6 +171,8 @@ class PipelineReport:
             print(f"  ERRO:        {self.error}")
         print("\n--- PIPELINE ---")
         print(f"  Plano ID:    {self.plan_id}")
+        if self.planejamento_degradado:
+            print("  Plano:       DEGRADADO (sem json_schema estrito)")
         print(f"  Complexidade:{self.complexity}")
         print(f"  Total steps: {len(self.steps)}")
         print(f"  Aprovados:   {len(self.approved_steps)}/{len(self.steps)}")
@@ -235,6 +240,7 @@ class PipelineReport:
             "query": self.query[:200],
             "timestamp": self.timestamp,
             "plan_id": self.plan_id,
+            "planejamento_degradado": self.planejamento_degradado,
             "complexity": self.complexity,
             "duration_seconds": round(self.duration_seconds, 2),
             "total_tokens": self.total_tokens,
@@ -371,6 +377,7 @@ def _rodar_pipeline_e2e(
     result = orch_results[0]
     report.success = result.success
     report.plan_id = result.plan_id
+    report.planejamento_degradado = getattr(result, "planejamento_degradado", False)
     report.total_tokens = getattr(result, "total_tokens", 0)
     report.total_tokens_medidor = getattr(result, "total_tokens_medidor", 0)
     report.total_retries = result.total_retries

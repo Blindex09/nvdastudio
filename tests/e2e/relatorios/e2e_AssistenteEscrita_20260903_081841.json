@@ -1,0 +1,315 @@
+{
+  "addon_name": "AssistenteEscrita",
+  "query": "Crie um addon NVDA chamado AssistenteEscrita que usa a API do ChatGPT da OpenAI para ajudar a revisar textos. Funcionalidades: (1) um atalho NVDA+shift+g que pega o texto selecionado, corrige a gramat",
+  "timestamp": "2026-09-03T07:23:09.223046",
+  "plan_id": "3a5c9232",
+  "complexity": "",
+  "duration_seconds": 3332.53,
+  "total_tokens": 1159155,
+  "total_tokens_medidor": 1399298,
+  "total_retries": 13,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação não foi concluída porque o addon não tem ponto de entrada que o NVDA consiga carregar. Os arquivos Python ficaram em globalPlugins/AssistenteEscrita, mas sem __init__.py — o NVDA carrega um pacote de addon apenas pelo __init__.py, e ignora qualquer outro arquivo ao lado dele. Do jeito que está, o addon instalaria sem erro e simplesmente não faria nada.",
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 30311,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteEscrita\nsummary = Assistente de Escrita\ndescription = Ajuda a revisar textos usando a API do ChatGPT da OpenAI, corrigindo gramática, ortografia e simplificando linguagem.\nauthor = Seu Nome <seu@email.com>\nurl = https://github.com/usuario/AssistenteEscrita\nversio"
+    },
+    {
+      "step_id": "wr1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 95,
+      "retries_used": 3,
+      "tokens_used": 3309,
+      "issues": [
+        "A versão estável listada (1.2.0) parece desatualizada em relação ao ciclo de releases recentes do pacote openai; recomenda-se validar a versão mínima compatível com a baseline do projeto, mas não afeta a utilidade do resumo."
+      ],
+      "output_preview": "[WEB_SEARCH] **Pacote:** openai\n**Versão estável:** 1.2.0\n**Instalação:** `pip install openai`\n**API principal:**\n- `OpenAI(api_key=...)` ou `OpenAI()` com a variável de ambiente `OPENAI_API_KEY`.\n- `client.chat.completions.create(model=\"gpt-4o\", messages=[{\"role\":\"user\",\"content\":\"Hello\"}], tempera"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 316581,
+      "issues": [
+        "O FIXME solicitou uso de wx.CallAfter para criacao e remocao do item de menu; o codigo usa wx.CallLater na criacao e remove o item de forma sincrona em terminate(), sem wx.CallAfter.",
+        "Os blocos try/except de importacao tolerante registram apenas log.warning; o objetivo pedia anunciar ao usuario que a feature especifica esta indisponivel (em vez de apenas logar).",
+        "O registro do painel de configuracoes nao e condicionado ao modo seguro, embora essa parte do FIXME fosse opcional."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\nimport threading\nimport wx\nimport gui\nimport api\nimport ui\nimport globalVars\nimport config\nimport textInfos\nimport addonHandler\nimport globalPluginHandler\nfrom logHandler import log\nfrom scriptHandler import script\nfrom gui.settingsDialogs import"
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 404719,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/openai_service.py\nimport config\n\nclass OpenAIService:\n\t\"\"\"Encapsula as chamadas à API ChatGPT da OpenAI para o AssistenteEscrita.\"\"\"\n\n\tdef __init__(self) -> None:\n\t\t# Leitura direta da configuração — o configSpec do plugin já foi aplicado.\n\t\tself._api_key: s"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "glm-5.2",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 85158,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/configSpec.py\nimport config\n\n#: Especificacao de configuracao do AssistenteEscrita.\n#: NVDA-025: a secao DEVE ser \"AssistenteEscrita\", igual ao campo name do manifest.ini.\n#: NVDA-015: usar config.conf.spec para que o ConfigObj coaja os tipos automaticamente"
+    },
+    {
+      "step_id": "sv_settings",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "sv_service",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 82,
+      "retries_used": 3,
+      "tokens_used": 109972,
+      "issues": [
+        "Menu Ferramentas: a descricao do item diz 'Abre o dialogo do Assistente de Escrita', mas _on_menu apenas anuncia os atalhos e nao abre nenhum wx.Dialog. Isso deixa o ponto de entrada principal sem a acao prometida e contradiz o objetivo do step. [ARCH-009 / completude]",
+        "terminate() nao remove o item de menu de forma confiavel: wx.FindWindowById(self._menu_item.GetId()) nao localiza wx.MenuItem (retorna None), entao tools_menu.Remove(self._menu_item) nunca e executado. Ao recarregar o addon, o item e duplicado no menu Ferramentas. [qualidade de engenharia / cleanup]",
+        "O item de menu e criado mesmo em modo seguro (globalVars.appArgs.secure), enquanto o painel de configuracoes e explicitamente omitido nesse modo. Alinhe a criacao do item de menu com a mesma politica de modo seguro ou faca _on_menu respeitar _bloqueado_em_modo_seguro."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\nimport threading\nimport wx\nimport globalVars\nimport globalPluginHandler\nimport addonHandler\nimport gui\nimport ui\nimport api\nfrom scriptHandler import script\nfrom logHandler import log\nfrom gui.settingsDialogs import NVDASettingsDialog\n\naddonHandl"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 2,
+      "tokens_used": 209105,
+      "issues": [
+        "Orcamento excedido: Saldo reservado para a entrega (1399298/1339050; reserva de 120000)"
+      ],
+      "output_preview": "import wx\nimport threading\nimport globalVars\nimport addonHandler\nimport globalPluginHandler\nimport scriptHandler\nimport ui\nimport api\nfrom gui.settingsDialogs import NVDASettingsDialog\nfrom .settings_panel import AssistenteEscritaSettingsPanel\nfrom .configSpec import apply_config_spec\n\n# Translators"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "ESCALANDO",
+      "Aprofundando a pesquisa sobre a API OpenAI..."
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "ESCALANDO",
+      "Aplicando revisão aprofundada no plugin principal..."
+    ],
+    [
+      "REPLANEJANDO",
+      ""
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "final_gate_ok": false,
+  "final_gate_evidence": "",
+  "blocks_collected": [],
+  "avg_score": 73.6,
+  "models_used": [
+    "glm-5.2",
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}

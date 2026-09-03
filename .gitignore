@@ -2,6 +2,12 @@
 .env
 .env.*
 !.env.example
+# Chaves reais em texto. Ficaram fora do versionamento por sorte ate
+# 2026-09-03, quando um `git add docs/` as colocou no stage -- pegas
+# antes do commit, mas o proximo `git add .` distraido nao teria essa
+# chance. O .gitignore e a unica defesa que nao depende de atencao.
+docs/chaves de api.txt
+*chaves*api*.txt
 
 # Python
 __pycache__/

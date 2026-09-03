@@ -51,7 +51,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.84.0"
+MODULE_VERSION = "5.85.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -119,6 +119,18 @@ _NON_BLOCKING_STEP_TYPES = {
 	# simples", que e estritamente melhor que nao entregar.
 	"documentation",
 }
+
+# Steps cujo output E arquivo do addon: sem eles nao ha o que entregar.
+# Conceito diferente de _STEP_TYPES_DE_ENTREGA (reserva de orcamento) e de
+# _CRITICAL_STEP_TYPES (dispara replanejamento) -- por isso set proprio, e
+# nao reuso de um deles com outro significado (Regra 5).
+_STEPS_QUE_PRODUZEM_ARQUIVO = {"code_generation"}
+
+# Piso para aceitar por portoes verdes. 60 e o mesmo limite que o Critic ja
+# usa para separar CORRIGIR (60-89) de REJEITAR (<60), em critic.py: abaixo
+# disso ele esta dizendo que o output e irrecuperavel, e nao ha portao
+# determinístico que compense isso.
+_SCORE_MIN_ACEITACAO_POR_PORTOES = 60
 
 # Steps que PRODUZEM a entrega -- so eles enxergam a reserva de orcamento.
 _STEP_TYPES_DE_ENTREGA = {"assembly"}
@@ -854,6 +866,18 @@ class Orchestrator:
 			result = AgenticLoop(self).run(user_query)
 		finally:
 			self._suppress_complete_callback = False
+
+		# Ponto UNICO por onde todo OrchestrationResult passa antes de sair
+		# daqui. A degradacao de planejamento e propagada aqui, e nao nos 5+
+		# construtores de OrchestrationResult espalhados pelo modulo: copiar
+		# em cinco lugares e a costura que quebra quando alguem adiciona o
+		# sexto e esquece -- exatamente o defeito que esta sessao passou o dia
+		# corrigindo. Deriva do plano vigente, nunca de copia manual.
+		_plano = getattr(self, "_current_plan", None)
+		if _plano is not None and result is not None:
+			result.planejamento_degradado = bool(
+				getattr(_plano, "planejamento_degradado", False)
+			)
 
 		self._last_result = result
 		if self._on_complete:
@@ -2576,6 +2600,12 @@ class Orchestrator:
 		# seguidos, como vimos em rodadas reais do test_e36 com 6-10 retries
 		# identicos) devem escalar cedo.
 		_consecutive_repeat_count = 0
+		# 5.85.0: melhor tentativa que CHEGOU ao Critic com veredicto CORRIGIR.
+		# Chegar ao Critic ja e informacao: todo portao deterministico do laco
+		# (target_files entregues, syntax_check, ruff, execucao real em sandbox
+		# com smoke dos comandos, fault injection) faz `retries += 1; continue`
+		# quando reprova. Um output que chegou ao julgamento passou em todos.
+		_melhor_com_portoes_verdes: tuple[int, str, list[str]] | None = None
 		clear_client_cache()  # limpa cache entre steps — novo step, novo contexto
 
 		for attempt in range(step.max_retries):
@@ -3213,6 +3243,17 @@ class Orchestrator:
 				continue
 			else:
 				retries += 1
+				if (
+					step.step_type in _STEPS_QUE_PRODUZEM_ARQUIVO
+					and crit.score >= _SCORE_MIN_ACEITACAO_POR_PORTOES
+					and (
+						_melhor_com_portoes_verdes is None
+						or crit.score > _melhor_com_portoes_verdes[0]
+					)
+				):
+					_melhor_com_portoes_verdes = (
+						crit.score, last_output, list(crit.issues),
+					)
 				if _same_as_previous_attempt:
 					_logger.info(
 						"[LOOP] Step %s: tentativa %d repetiu o MESMO problema da "
@@ -3292,6 +3333,14 @@ class Orchestrator:
 				latency_ms=_esc_latency_ms,
 				complexity_level=_esc_complexity,
 				model_id=_esc_result.model_used, provider=_get_llm_provider_esc())
+			if not _esc_result.approved and _melhor_com_portoes_verdes is not None:
+				# A escalacao tambem nao convenceu o Critic. Antes de devolver
+				# fracasso, ha um candidato que passou em toda verificacao
+				# mecanica -- entregar ele com ressalva e melhor que nada.
+				return self._aceitar_por_portoes_verdes(
+					step, _melhor_com_portoes_verdes, retries,
+					total_step_tokens + _esc_result.tokens_used,
+				)
 			return _esc_result
 
 		# 5.32.0: web_research (e outros _ESCALATION_ELIGIBLE_STEP_TYPES)
@@ -3321,6 +3370,10 @@ class Orchestrator:
 			latency_ms=_latency_ms,
 			complexity_level=_complexity,
 			model_id=step.model_id, provider=get_llm_provider())
+		if _melhor_com_portoes_verdes is not None:
+			return self._aceitar_por_portoes_verdes(
+				step, _melhor_com_portoes_verdes, retries, total_step_tokens,
+			)
 		return StepResult(
 			step_id=step.step_id, step_type=step.step_type,
 			output=last_output, approved=False,
@@ -3331,6 +3384,71 @@ class Orchestrator:
 	# ------------------------------------------------------------------
 	# Helpers
 	# ------------------------------------------------------------------
+
+	def _aceitar_por_portoes_verdes(
+		self,
+		step: ExecutionStep,
+		melhor: tuple[int, str, list[str]],
+		retries: int,
+		tokens: int,
+	) -> StepResult:
+		"""Ultima linha antes de entregar NADA: aceita o melhor candidato que
+		passou em TODOS os portoes deterministicos, com as objecoes do Critic
+		registradas como ressalva.
+
+		Medido na rodada de 2026-09-03 07:23. O `cg_core` -- o step que gera o
+		__init__.py, sem o qual o NVDA nao carrega nada -- foi reprovado tres
+		vezes e consumiu 635.658 tokens (55% da rodada) antes de estourar o
+		orcamento. As objecoes eram REAIS e DIFERENTES a cada tentativa: a
+		tentativa 2 corrigia a 1 e ganhava tres objecoes novas, score 82 contra
+		um limiar de 90. O pipeline entregou zero arquivo.
+
+		Nao converge por desenho: um juiz de linguagem natural sempre acha o
+		que dizer sobre codigo real, e cada retry muda o codigo o suficiente
+		para gerar objecoes novas. Numero de tentativas nao resolve isso --
+		so troca "nao converge em 3" por "nao converge em 5, mais caro".
+
+		Por que e seguro parar aqui, e so aqui:
+
+		  - so vale para step que PRODUZ arquivo do addon, onde a alternativa
+		    literal e nao entregar nada;
+		  - so a partir de score 60, que e o proprio piso do Critic para
+		    CORRIGIR: abaixo disso ele diz que o output e irrecuperavel;
+		  - so para candidato que CHEGOU ao Critic, o que implica ter passado
+		    em target_files, syntax_check, ruff, execucao real em sandbox com
+		    o smoke dos comandos, e fault injection;
+		  - so depois de a escalacao de modelo e o resgate cross-provider ja
+		    terem falhado.
+
+		E a mesma troca que o usuario ja aprovou para `documentation` na
+		5.81.0 -- "entrega com ressalva" em vez de "nao entrega" -- e pela
+		mesma razao: existe rede deterministica embaixo. A diferenca e que
+		aqui a rede e mais forte do que era la, porque o smoke dos comandos e
+		a NVDA-063 entraram depois.
+
+		A ressalva NAO e cosmetica: vai nas issues do StepResult, aparece no
+		relatorio, e o portao final ainda pode barrar o pacote.
+		"""
+		score, output, issues = melhor
+		_logger.warning(
+			"[PORTOES] Step %s: aceito com ressalva por score %d apos portoes "
+			"deterministicos verdes -- a alternativa era entregar nada. %d objecao(oes) "
+			"do Critic registradas.", step.step_id, score, len(issues),
+		)
+		ressalvas = [
+			f"ACEITO COM RESSALVA (score {score}, limiar 90): o codigo passou em "
+			"todos os portoes deterministicos (arquivos declarados entregues, "
+			"sintaxe, lint, execucao real em sandbox com os comandos acionados, "
+			"fault injection), e as tentativas de correcao se esgotaram. As "
+			"objecoes abaixo do Critic NAO foram resolvidas:",
+			*issues,
+		]
+		return StepResult(
+			step_id=step.step_id, step_type=step.step_type,
+			output=output, approved=True,
+			score=score, issues=ressalvas, retries_used=retries,
+			model_used=step.model_id, tokens_used=tokens,
+		)
 
 	def _arquivos_de_outros_steps(
 		self, step: ExecutionStep, ja_produzidos: dict,

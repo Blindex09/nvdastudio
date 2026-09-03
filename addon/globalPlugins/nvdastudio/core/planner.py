@@ -13,7 +13,7 @@ from ..sub_agents._base import _TOOL_PREAMBLE_INSTRUCTION, _FINAL_TOOL_INSTRUCTI
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from ..utils.engineering_principles import ENGINEERING_PLANNING_PROMPT_TEXT
 
-MODULE_VERSION = "2.45.0"
+MODULE_VERSION = "2.46.0"
 _logger = get_logger("planner")
 
 
@@ -658,6 +658,12 @@ class ExecutionPlan:
 	cancellation_message: str = ""
 	modification_message: str = ""
 	assembling_message: str = ""
+	# True quando o plano NAO veio do provedor de saida estruturada e sim do
+	# caminho degradado, sem json_schema estrito (ver _call_planner_llm). O
+	# plano continua valido -- as injecoes deterministicas garantem os steps
+	# essenciais -- mas a FORMA dele passa a variar entre rodadas, e quem
+	# compara duas execucoes precisa saber que vieram de caminhos diferentes.
+	planejamento_degradado: bool = False
 	completed_message: str = ""
 	replan_message: str = ""
 	dependencies: list[str] = field(default_factory=list)
@@ -1227,6 +1233,7 @@ class Planner:
 
 		plan = ExecutionPlan(
 			plan_id=str(uuid.uuid4())[:8],
+			planejamento_degradado=getattr(self, "_planejamento_degradado", False),
 			original_query=user_query,
 			steps=steps,
 			addon_name=raw_addon_name,
@@ -2301,6 +2308,10 @@ class Planner:
 				"estrito. Se o JSON vier quebrado, o plano cai no minimo.",
 				modelo_degradado,
 			)
+			# Marca a degradacao para o relatorio: sem isso ela existe apenas
+			# numa linha de WARNING do log, e quem compara duas rodadas nao tem
+			# como saber que os planos vieram por caminhos diferentes.
+			self._planejamento_degradado = True
 			cliente_degradado = create_llm_client(model_id=modelo_degradado)
 			resp = cliente_degradado.chat(
 				full_prompt,
@@ -2476,6 +2487,7 @@ class Planner:
 
 			plan = ExecutionPlan(
 				plan_id=str(uuid.uuid4())[:8],
+				planejamento_degradado=getattr(self, "_planejamento_degradado", False),
 				original_query=original_query,
 				steps=steps,
 				addon_name=raw_addon_name,
