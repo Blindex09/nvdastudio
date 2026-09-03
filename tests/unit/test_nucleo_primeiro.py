@@ -41,7 +41,7 @@ def _plano_arch010():
 
 
 def test_versao():
-	assert MODULE_VERSION == "2.44.0"
+	assert MODULE_VERSION == "2.45.0"
 
 
 class TestNucleoVemPrimeiro:

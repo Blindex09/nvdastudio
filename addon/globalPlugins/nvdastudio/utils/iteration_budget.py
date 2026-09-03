@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .logger import get_logger
 
-MODULE_VERSION = "1.8.0"
+MODULE_VERSION = "1.9.0"
 _logger = get_logger("iteration_budget")
 
 # Custos por 1M tokens (USD) — atualizar conforme provider
@@ -48,28 +48,36 @@ _TOKEN_BUDGET_BY_COMPLEXITY: dict[str, int] = {
 # aprovados sem retentativa nos 391 relatorios E2E (n entre 3 e 132 por tipo).
 # Serve para dimensionar o teto pelo plano que foi realmente aprovado, em vez de
 # por uma constante por complexidade -- ver apply_plan().
+# Custo por TENTATIVA. O consumidor multiplica por _TENTATIVAS_ESPERADAS, e o
+# `tokens_used` dos relatorios ja inclui as retentativas -- entao o valor aqui
+# e (medido / tentativas esperadas).
+#
+# 1.9.0 -- tabela inteira recalibrada pela MEDIA medida nos relatorios E2E,
+# com o n de cada tipo. Quase tudo subestimava, e como o teto do orcamento sai
+# daqui, isso derrubou entrega pronta quatro vezes em 2026-09-02.
+#
+# Usa a media, nao a mediana: subestimar mata addon pronto (medido), enquanto
+# superestimar apenas eleva um disjuntor que so dispara em fuga real.
+#
+# LICAO REGISTRADA: na 1.7.0 eu troquei accessibility_audit de 35.000 para
+# 88.000 com base em UMA rodada, sinalizando o n=1. Com 125 execucoes a media
+# e 45.734 -- o valor original estava mais perto que a minha correcao. Uma
+# amostra nao e uma medicao; ao recalibrar, contar o n primeiro.
 _CUSTO_MEDIDO_POR_STEP: dict[str, int] = {
-	"design_review":       90_000,
-	"code_generation":     35_000,
-	# 1.7.0 -- medido 176.041 tokens com rt=2 (~88k/tentativa) na rodada
-	# ResumoGemini de 2026-09-02. AMOSTRA DE UMA RODADA: e a unica medicao
-	# real que existe deste step ate agora. O valor antigo (35k) subestimava
-	# em 5x, e como o teto sai desta tabela, ele derrubou o pipeline por 2%
-	# com o addon inteiro ja gerado e aprovado. Preferir o numero medido, mesmo
-	# com n=1, a um numero inventado que ja provou destruir entrega pronta.
-	"accessibility_audit": 88_000,
-	# medido 40.883 e 56.904 em duas rodadas; ficava fora da tabela caindo no
-	# padrao de 25.000.
-	"engineering_review":  49_000,
-	"agent_template":      29_000,
-	"agent_runner":        35_000,
-	"documentation":       27_000,
-	"test_generation":     26_000,
-	"assembly":            24_000,
-	"manifest_builder":    22_000,
-	"web_research":         3_000,
+	# tipo                   valor    (media medida / tentativas, n de execucoes)
+	"code_generation":     63_000,   # 157.105 / 2,5   n=404
+	"design_review":      137_000,   # 136.685 / 1,0   n=68
+	"agent_template":      64_000,   #  64.272 / 1,0   n=38
+	"engineering_review":  56_000,   #  55.720 / 1,0   n=3  -- amostra pequena
+	"test_generation":     47_000,   #  46.621 / 1,0   n=11
+	"assembly":            42_000,   #  42.129 / 1,0   n=130
+	"manifest_builder":    36_000,   #  35.568 / 1,0   n=213
+	"agent_runner":        32_000,   #  78.977 / 2,5   n=12
+	"documentation":       31_000,   #  31.451 / 1,0   n=150
+	"accessibility_audit": 23_000,   #  45.734 / 2,0   n=125
+	"web_research":         8_000,   #   7.895 / 1,0   n=48
 	"user_clarification":       0,
-	"syntax_validation":        0,
+	"syntax_validation":        0,   # deterministico, sem chamada de modelo
 }
 _CUSTO_PADRAO_POR_STEP = 25_000
 

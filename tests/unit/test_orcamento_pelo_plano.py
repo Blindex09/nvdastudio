@@ -39,7 +39,7 @@ _PLANO_COMPLEXO_REAL = (
 
 
 def test_versao():
-	assert MODULE_VERSION == "1.8.0"
+	assert MODULE_VERSION == "1.9.0"
 
 
 def test_plano_complexo_real_cabe_no_teto():
@@ -53,10 +53,19 @@ def test_plano_complexo_real_cabe_no_teto():
 
 @pytest.mark.parametrize("complexidade", ["low", "medium", "high"])
 def test_plano_pequeno_mantem_o_teto_de_antes(complexidade):
-	"""Planos pequenos nao podem PERDER folga: a mudanca e para o caso grande."""
+	"""Planos pequenos nao podem PERDER folga: a mudanca e para o caso grande.
+
+	Era `==` ate a recalibracao da tabela de custos (iteration_budget 1.9.0).
+	Com os custos medidos -- quase todos subestimados antes -- ate um plano de
+	3 steps passa do piso por complexidade (low: estimado 329.700 contra piso
+	de 300.000). A INTENCAO do teste era "nunca menos que o teto de antes", e
+	ela continua valendo; a igualdade estrita era so como se expressava isso
+	quando a tabela subestimava. Trocar por `>=` preserva a garantia sem
+	congelar numeros que a medicao corrigiu.
+	"""
 	pequeno = ["code_generation", "manifest_builder", "assembly"]
 	teto = IterationBudget().apply_plan(pequeno, complexidade)
-	assert teto == _TOKEN_BUDGET_BY_COMPLEXITY[complexidade]
+	assert teto >= _TOKEN_BUDGET_BY_COMPLEXITY[complexidade]
 
 
 def test_teto_absoluto_preserva_o_disjuntor():

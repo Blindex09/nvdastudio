@@ -22,7 +22,7 @@ class TestPlannerSyntaxValidation:
 
     def test_versao_Planner(self):
         from addon.globalPlugins.nvdastudio.core.planner import MODULE_VERSION
-        assert MODULE_VERSION == "2.44.0"
+        assert MODULE_VERSION == "2.45.0"
 
 
 # ===========================================================================
