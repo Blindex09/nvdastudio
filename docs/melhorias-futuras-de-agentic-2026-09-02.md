@@ -15,7 +15,9 @@ não redescobrir do zero.
 
 **Atualizado em 2026-09-03:** o Item 1 saiu de "futuro" — foi
 implementado e em parte revertido no mesmo dia; a seção abaixo guarda o
-que sobrou e o que não deve voltar. O Item 2 continua aberto.
+que sobrou e o que não deve voltar. O Item 2 continua aberto. O Item 3
+entrou depois, medido na primeira rodada inteira pela Factory: é o
+candidato de corte mais claro do projeto e está esperando decisão.
 
 ---
 
@@ -151,6 +153,60 @@ dados que já existem, sem tocar no pipeline.
 ver se alguma comparação já existe. Esta regra foi violada duas vezes em
 2026-09-02 (um `select_model_and_provider()` duplicado e uma regra do
 OpenCode Go que já estava documentada), com custo real de retrabalho.
+
+---
+
+## Item 3 — `design_review`: o step mais caro, com 0% de aproveitamento
+
+**Status (2026-09-03):** medido, não decidido. É o candidato mais claro de
+corte do projeto, e a decisão é do usuário porque envolve tirar uma etapa de
+qualidade.
+
+**O que a medição diz.** Duas fontes independentes, meses e provedores
+diferentes, concordando:
+
+- a tabela de conversão que originou a `_PRIORIDADE_DE_PODA` (planner 2.44.0,
+  medida em 415 relatórios): `design_review` converte **0%**, com **5,9
+  milhões de tokens perdidos** — é a pior linha da tabela inteira;
+- a rodada de 2026-09-03 17:26, a primeira inteira na Factory: uma única
+  chamada de `design_review` custou **157.628 créditos**, carregando ~2
+  milhões de tokens de contexto. Foi o item mais caro da rodada, disparado nos
+  primeiros 6 minutos.
+
+**Por que isso não é o mesmo erro do teto de steps.** A poda foi revertida em
+`da4427f` porque a premissa estava confundida: número de steps era termômetro
+da dificuldade do pedido, não causa da falha. Essa reversão não invalidou a
+medição de *quem converte* — invalidou a de *quantos steps*. São coisas
+diferentes, e vale registrar para ninguém usar a reversão como argumento
+contra este item.
+
+**O que exatamente decidir.** Três formas, da mais conservadora à mais
+agressiva:
+
+1. **Manter e baratear:** `design_review` não precisa dos ~2M de contexto que
+   recebeu. Ele é consultivo e já é não-bloqueante; `_DESIGN_REVIEW_PERSONA_DOCS`
+   (nvda_context 3.33.0) já recorta contexto por persona e pode ser apertado
+   mais. Custo baixo, ganho parcial.
+2. **Tornar opcional por complexidade:** só injetar em `complexity="high"`.
+   O planner já tem a classificação; a decisão continuaria determinística
+   (Regra 7).
+3. **Remover a injeção:** o `assembly` já não depende dele (`_STEPS_CONSULTIVOS`,
+   planner 2.42.0), então sair não quebra o grafo.
+
+**Como saber se valeu:** taxa de entrega do golden set complexo antes/depois.
+Se não mudar, os 5,9M de tokens eram puro custo. Se cair, o step estava
+fazendo algo que a medição de conversão não captura — e aí a resposta é a
+forma 1, não a 3.
+
+**Contexto de orçamento (2026-09-03):** o usuário tem assinatura Factory de
+US$ 20/mês (plano Pro). A Factory não publica o total absoluto de créditos de
+nenhum plano, e a Analytics API responde `403: Analytics is only available for
+Enterprise organizations` — então não há como medir "quanto do teto foi
+gasto". O que se sabe: o consumo é governado por três janelas rolantes (5h, 7
+dias, 30 dias) e, esgotado o Standard Usage, o uso cai no **Droid Core**, pool
+gratuito com rate limit separado que inclui GLM, Kimi e DeepSeek — as mesmas
+famílias que o projeto já roteia. Confirmar no painel se `kimi-k2.7-code`
+está listado como Droid Core: é isso que decide se a degradação é suave.
 
 ---
 
