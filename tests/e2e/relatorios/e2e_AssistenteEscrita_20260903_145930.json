@@ -1,0 +1,425 @@
+{
+  "addon_name": "AssistenteEscrita",
+  "query": "Crie um addon NVDA chamado AssistenteEscrita que usa a API do ChatGPT da OpenAI para ajudar a revisar textos. Funcionalidades: (1) um atalho NVDA+shift+g que pega o texto selecionado, corrige a gramat",
+  "timestamp": "2026-09-03T14:40:08.965308",
+  "plan_id": "cb99567a",
+  "planejamento_degradado": false,
+  "complexity": "",
+  "duration_seconds": 1160.53,
+  "total_tokens": 736010,
+  "total_tokens_medidor": 736010,
+  "total_retries": 16,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "mb1",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 30387,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteEscrita\nsummary = Assistente de Escrita\ndescription = Ajuda a revisar textos, corrigindo gramática e ortografia, e simplificando a linguagem usando ChatGPT da OpenAI.\nauthor = Seu Nome <seu@email.com>\nurl = https://github.com/seuusuario/AssistenteEscrita\ndocFileN"
+    },
+    {
+      "step_id": "wr1",
+      "step_type": "web_research",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 13167,
+      "issues": [
+        "Não menciona explicitamente o modelo recomendado gpt-4o, apenas gpt-4o-mini.",
+        "Não inclui a data da consulta ou uma nota concreta sobre a versão mais recente do pacote openai verificada, conforme solicitado.",
+        "A lista/citação de modelos recomendados está incompleta (falta gpt-4o)."
+      ],
+      "output_preview": "[WEB_SEARCH] Estou pesquisando a documentação oficial da API de chat completions da OpenAI, verificando o endpoint, autenticação, modelos, formato de requisição e resposta, e códigos de erro. Também confirmo as APIs do NVDA necessárias para obter texto selecionado, copiar para a área de transferênci"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 96,
+      "retries_used": 1,
+      "tokens_used": 211408,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\n# globalPlugins/AssistenteEscrita/__init__.py\n# GlobalPlugin que orquestra a revisão e simplificação de textos via OpenAI.\n# Este arquivo é carregado antes dos módulos de feature; por isso declaramos\n# abaixo o contrato que eles devem implementar"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 94,
+      "retries_used": 0,
+      "tokens_used": 84662,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/configSpec.py\nimport config\n\n\nADDON_ID = \"AssistenteEscrita\"\n\n_CONFIG_SPEC = {\n\t\"openai_api_key\": \"string(default='')\",\n\t\"model\": \"string(default='gpt-4o-mini')\",\n}\n\n\ndef apply_config_spec() -> None:\n\t\"\"\"Registra a especificação de configuração do addon no N"
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 2,
+      "tokens_used": 396386,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/openai_service.py\n\"\"\"Servico de integracao com a API de chat completions da OpenAI.\n\nEste modulo nao realiza chamadas de UI. Toda interacao com a API e feita de\nforma sincrona, e o chamador e responsavel por executar os metodos em uma\nthread de background e "
+    },
+    {
+      "step_id": "sv_2",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: PASS\nTodos os blocos Python sao sintaticamente validos."
+    },
+    {
+      "step_id": "sv_3",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "er_inj",
+      "step_type": "engineering_review",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 0,
+      "issues": [
+        "Falha de infraestrutura, nao de conteudo: o provedor nao devolveu resposta para este step. [ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Loop detectado: a mesma falha se repetiu 3x seguidas (HTTPStatusError:429:Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/We"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "doc1",
+      "step_type": "documentation",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Falha de infraestrutura, nao de conteudo: o provedor nao devolveu resposta para este step. [ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Loop detectado: a mesma falha se repetiu 3x seguidas (HTTPStatusError:429:Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/We"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "aa1",
+      "step_type": "accessibility_audit",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Falha de infraestrutura, nao de conteudo: o provedor nao devolveu resposta para este step. [ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Loop detectado: a mesma falha se repetiu 3x seguidas (HTTPStatusError:429:Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/We"
+      ],
+      "output_preview": ""
+    },
+    {
+      "step_id": "asm1",
+      "step_type": "assembly",
+      "model_used": "gpt-oss:20b",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 0,
+      "issues": [
+        "Falha de infraestrutura, nao de conteudo: o provedor nao devolveu resposta para este step. [ERRO] Sub-agente nao conseguiu gerar resposta: [ERRO] Ollama Cloud API falhou: Loop detectado: a mesma falha se repetiu 3x seguidas (HTTPStatusError:429:Client error '429 Too Many Requests' for url 'https://ollama.com/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/We"
+      ],
+      "output_preview": ""
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "engineering_review"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "accessibility_audit"
+    ],
+    [
+      "EXECUTANDO",
+      "documentation"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteEscrita_20260903_145929",
+  "files_saved": [
+    "__init__.py",
+    "configSpec.py",
+    "settings_panel.py",
+    "openai_service.py",
+    "manifest.ini",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteEscrita.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AssistenteEscrita/configSpec.py",
+    "globalPlugins/AssistenteEscrita/openai_service.py",
+    "globalPlugins/AssistenteEscrita/settings_panel.py",
+    "globalPlugins/AssistenteEscrita/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "final_gate_ok": true,
+  "final_gate_evidence": "pacote íntegro; estrutura válida; execução do pacote final aprovada",
+  "blocks_collected": [
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/__init__.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/configSpec.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/settings_panel.py"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/openai_service.py"
+    },
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 57.1,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}
