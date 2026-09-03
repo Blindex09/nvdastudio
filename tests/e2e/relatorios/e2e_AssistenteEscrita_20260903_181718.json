@@ -1,0 +1,284 @@
+{
+  "addon_name": "AssistenteEscrita",
+  "query": "Crie um addon NVDA chamado AssistenteEscrita que usa a API do ChatGPT da OpenAI para ajudar a revisar textos. Funcionalidades: (1) um atalho NVDA+shift+g que pega o texto selecionado, corrige a gramat",
+  "timestamp": "2026-09-03T17:26:37.096536",
+  "plan_id": "ea3bbd83",
+  "planejamento_degradado": false,
+  "complexity": "",
+  "duration_seconds": 3041.25,
+  "total_tokens": 2076593,
+  "total_tokens_medidor": 2076593,
+  "total_retries": 10,
+  "replan_count": 0,
+  "success": true,
+  "error": "",
+  "steps": [
+    {
+      "step_id": "dr0",
+      "step_type": "design_review",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 132875,
+      "issues": [
+        "NVDA-025: o contrato exige que a seção de configuração use exatamente \"AssistenteEscrita\", igual ao campo name. Deve usar o addonId único real do manifest.ini, não necessariamente name.",
+        "A revisão identifica riscos de privacidade, braille, confirmação antes do envio e opção para desativar cópia automática, mas não os torna requisitos obrigatórios do Implementation Contract.",
+        "Há redundância significativa entre Challenger, Constraint Guardian e User Advocate, dificultando distinguir requisitos obrigatórios de recomendações opcionais."
+      ],
+      "output_preview": "=== REVISAO DE DESIGN (3 ESTAGIOS) ===\n\n--- Challenger (riscos e suposicoes) ---\nA ferramenta entregar_critica_challenger nao esta disponivel neste ambiente, entao vou entregar o documento de revisao diretamente em texto puro.\n\nSUPOSICOES QUE PODEM ESTAR ERRADAS\n\nO pedido assume que o usuario sempre"
+    },
+    {
+      "step_id": "research_openai",
+      "step_type": "web_research",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 3,
+      "tokens_used": 692032,
+      "issues": [
+        "A síntese é relevante e cobre os tópicos pedidos, mas mantém a afirmação incorreta sobre “HTTPX2”; deve ser “HTTPX”.",
+        "Os modelos listados e a versão 3.8.0 precisam ser verificados diretamente nas fontes oficiais, removendo IDs não encontrados.",
+        "A resposta não demonstra confirmação individual dos IDs de modelo solicitados."
+      ],
+      "output_preview": "[WEB_SEARCH] Vou consolidar a pesquisa e preparar a síntese técnica. Notei que a ferramenta `entregar_sintese` solicitada não está disponível neste ambiente, então vou apresentar o resultado diretamente no formato obrigatório do WebResearcher.\n\n---\n\n**Pacote:** `openai`\n\n**Versão estável:** `3.8.0` "
+    },
+    {
+      "step_id": "agent_prompts",
+      "step_type": "agent_template",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 0,
+      "tokens_used": 33217,
+      "issues": [],
+      "output_preview": "Como a ferramenta de entrega nao esta disponivel neste ambiente, vou apresentar o template diretamente na resposta, respeitando o formato Community Access solicitado.\n\n# AssistenteEscrita AI Task Specialist\n\nAgente especializado em definir contratos de tarefas de inteligencia artificial para revisao"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "claude-sonnet-5",
+      "approved": true,
+      "score": 87,
+      "retries_used": 3,
+      "tokens_used": 652013,
+      "issues": [
+        "ACEITO COM RESSALVA (score 87, limiar 90): o codigo passou em todos os portoes deterministicos (arquivos declarados entregues, sintaxe, lint, execucao real em sandbox com os comandos acionados, fault injection), e as tentativas de correcao se esgotaram. As objecoes abaixo do Critic NAO foram resolvidas:",
+        "Há chamadas diretas a ui.message em validações e no início das operações, apesar do objetivo exigir atualização da interface exclusivamente por wx.CallAfter.",
+        "Confianca reduzida: score 87 esta proximo ao limite de veredicto (boundary ±10 pts). Revisar manualmente se possivel."
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\n# AssistenteEscrita - addon NVDA para revisao e simplificacao de texto via API da OpenAI.\n#\n# CONTRATO com os modulos de feature (gerados em steps separados). Este arquivo importa\n# cada um deles de forma TOLERANTE A AUSENCIA: se um modulo faltar"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "claude-sonnet-5",
+      "approved": false,
+      "score": 0,
+      "retries_used": 2,
+      "tokens_used": 483976,
+      "issues": [
+        "Orcamento excedido: Saldo reservado para a entrega (1994113/1929150; reserva de 120000)"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/configSpec.py\nimport config\n\ndef apply_config_spec() -> None:\n\t# NVDA-025: secao identica ao name= do manifest.ini (AssistenteEscrita)\n\t_spec = {\n\t\t\"apiKey\": \"string(default='')\",\n\t\t\"model\": \"string(default='gpt-5.6-luna')\",\n\t}\n\tif \"AssistenteEscrita\" not in"
+    },
+    {
+      "step_id": "assemble_addon",
+      "step_type": "assembly",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 1,
+      "tokens_used": 82480,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\n# AssistenteEscrita - addon NVDA para revisao e simplificacao de texto via API da OpenAI.\n#\n# CONTRATO com os modulos de feature (gerados em steps separados). Este arquivo importa\n# cada um deles de forma TOLERANTE A AUSENCIA: se um modulo faltar"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "design_review"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "design_review"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "EXECUTANDO",
+      "web_research"
+    ],
+    [
+      "AVALIANDO",
+      "web_research"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "agent_template"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "agent_template"
+    ],
+    [
+      "APROVADO",
+      "agent_template"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "assembly"
+    ],
+    [
+      "AVALIANDO",
+      "assembly"
+    ],
+    [
+      "MONTANDO",
+      ""
+    ],
+    [
+      "CONCLUIDO",
+      ""
+    ]
+  ],
+  "addon_folder": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteEscrita_20260903_181718",
+  "files_saved": [
+    "manifest.ini",
+    "__init__.py",
+    "userGuide.html",
+    "userGuide.html"
+  ],
+  "nvda_addon_path": "C:\\Users\\olive\\Documents\\NVDAStudio\\addons_gerados\\e2e_tests\\AssistenteEscrita.nvda-addon",
+  "zip_names": [
+    "manifest.ini",
+    "doc/en/userGuide.html",
+    "doc/pt_BR/userGuide.html",
+    "globalPlugins/AssistenteEscrita/__init__.py"
+  ],
+  "struct_problems": [],
+  "has_init_py": true,
+  "has_manifest": true,
+  "has_doc": true,
+  "has_lib": false,
+  "final_gate_ok": true,
+  "final_gate_evidence": "pacote íntegro; estrutura válida; execução do pacote final aprovada",
+  "blocks_collected": [
+    {
+      "language": "ini",
+      "filename": "manifest.ini"
+    },
+    {
+      "language": "python",
+      "filename": "globalPlugins/AssistenteEscrita/__init__.py"
+    },
+    {
+      "language": "html",
+      "filename": "doc/pt_BR/userGuide.html"
+    },
+    {
+      "language": "html",
+      "filename": "doc/en/userGuide.html"
+    }
+  ],
+  "avg_score": 40.3,
+  "models_used": [
+    "claude-sonnet-5",
+    "kimi-k2.7-code"
+  ]
+}

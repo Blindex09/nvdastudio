@@ -292,23 +292,34 @@ class TestCalibracaoDoRoteamento:
 
 		assert tiers["light"] == tiers["heavy"] == "kimi-k2.7-code"
 
-	def test_frontier_nunca_e_o_modelo_mais_caro(self):
-		"""claude-opus-5 custou 82.549 creditos, 92x o heavy. O frontier e
-		reservado a code_generation de complexidade alta, mas reservado nao
-		quer dizer sem teto."""
+	def test_nao_ha_frontier_na_factory(self):
+		"""Correcao de uma decisao minha do mesmo dia. A 1.21.0 pos
+		claude-sonnet-5 como frontier justificando 15,7x com "UM step que
+		precisa acertar". Nao e um step: apply_model_budget() dimensiona o slot
+		elevado como PERCENTUAL do plano, e com retry virou oito chamadas.
+
+		Medido na rodada de 2026-09-03 17:26, carga real:
+
+		    claude-sonnet-5   8 chamadas  1.704.493 creditos  71,4%
+		    kimi-k2.7-code    8 chamadas    659.444 creditos  27,6%
+		    gpt-5.6-luna     24 chamadas     23.065 creditos   1,0%
+
+		71,4% da conta num modelo que nao entregou melhor: o cg_core que ele
+		gerou precisou da aceitacao por ressalva (score 87) e o addon saiu
+		incompleto mesmo assim."""
 		from nvdastudio.ai.model_registry import get_provider_step_models
 
-		frontier = get_provider_step_models("factory")["frontier"]
+		assert "frontier" not in get_provider_step_models("factory")
 
-		assert frontier == "claude-sonnet-5"
-		assert "opus" not in frontier
-
-	def test_frontier_so_aparece_em_complexidade_alta(self):
+	def test_complexidade_alta_usa_o_heavy_e_nao_um_modelo_caro(self):
 		from nvdastudio.ai.model_router import select_model
 
-		assert select_model("factory", "code_generation", "alto", complexity="high") == "claude-sonnet-5"
-		for baixa in ("low", "medium"):
-			assert select_model("factory", "code_generation", "alto", complexity=baixa) == "kimi-k2.7-code"
+		for complexidade in ("low", "medium", "high"):
+			escolhido = select_model(
+				"factory", "code_generation", "alto", complexity=complexidade,
+			)
+			assert escolhido == "kimi-k2.7-code", complexidade
+			assert "sonnet" not in escolhido and "opus" not in escolhido
 
 	def test_factory_e_resgate_valido_para_o_ollama(self):
 		"""O criterio ja escolhido pelo usuario para o resgate e ASSINATURA:
@@ -326,3 +337,46 @@ class TestCalibracaoDoRoteamento:
 		# Provedor pago por token continua fora: o usuario nao tem credito avulso.
 		for pago in ("openai", "anthropic", "gemini", "xai"):
 			assert pago not in _OLLAMA_RESCUE_PROVIDERS
+
+
+class TestSemToolUseFalhaAlto:
+	"""O silencio mais caro da sessao.
+
+	Ate a 1.0.0 o cliente recebia `tools` e ignorava. Os sub-agentes entregam
+	resultado por tool call OBRIGATORIA (padrao "final answer as tool"):
+	`entregar_sintese` no web_researcher, `entregar_critica_challenger` no
+	design_review_agent. Sem o canal, eles deram voltas e reprovaram:
+
+	    "a ferramenta entregar_sintese solicitada nao esta disponivel"
+	    research_openai  692.032 tokens, reprovado 3x
+	    dr0              132.875 tokens, reprovado
+
+	824.907 tokens tentando chamar o que nao existe. Ignorar um parametro que
+	nao se sabe honrar e pior que recusar: a recusa roteia para quem sabe.
+	"""
+
+	def test_tools_levanta_em_vez_de_ignorar(self):
+		ferramentas = [{"type": "function", "function": {"name": "entregar_sintese"}}]
+
+		with pytest.raises(FactoryClientError, match="nao aceita ferramentas"):
+			_cliente().chat("pesquise algo", tools=ferramentas)
+
+	def test_mensagem_nomeia_a_ferramenta_pedida(self):
+		"""Sem o nome, quem le o log nao sabe QUAL step nao pode rodar aqui."""
+		ferramentas = [{"type": "function", "function": {"name": "entregar_critica_challenger"}}]
+
+		with pytest.raises(FactoryClientError, match="entregar_critica_challenger"):
+			_cliente().chat("revise", tools=ferramentas)
+
+	def test_sem_tools_segue_normal(self):
+		"""A guarda nao pode barrar o caminho comum -- a maioria dos steps nao
+		usa tool call."""
+		import inspect
+
+		fonte = inspect.getsource(FactoryClient.chat)
+		i_guarda = fonte.index("if tools:")
+		i_prompt = fonte.index("prompt = ")
+
+		assert i_guarda < i_prompt, (
+			"a guarda tem que vir antes de montar prompt e gastar subprocesso"
+		)

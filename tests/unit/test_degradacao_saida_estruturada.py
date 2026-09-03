@@ -30,7 +30,7 @@ from nvdastudio.ai import model_registry as mr
 
 
 def test_versao():
-	assert mr.MODULE_VERSION == "1.21.0"
+	assert mr.MODULE_VERSION == "1.22.0"
 
 
 def _limpar():

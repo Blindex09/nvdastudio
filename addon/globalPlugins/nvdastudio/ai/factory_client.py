@@ -11,8 +11,13 @@ json_schema.
 
 A Factory entra como terceira perna REAL, por assinatura ja paga, e serve os
 MESMOS ids de modelo que o projeto ja roteia (gpt-5.6-luna, kimi-k2.7-code,
-kimi-k2.6, glm-5.2, deepseek-v4-flash-0731) mais os tiers baratos
-(claude-haiku-4-5, gemini-3.7-flash, gpt-5.4-mini).
+kimi-k2.6, glm-5.2, deepseek-v4-flash-0731).
+
+Nao ha "tier barato" para onde fugir: medido em 2026-09-03, o
+kimi-k2.7-code (que o projeto ja usa como heavy) e o MAIS BARATO do
+catalogo da Factory -- claude-haiku custa 7,4x mais e ainda errou o JSON,
+gemini-3.7-flash custa 20,6x. Os multiplicadores da Factory nao seguem o
+preco por token dos provedores de origem.
 
 O QUE ELE NAO E
 ---------------
@@ -63,7 +68,7 @@ from typing import Any, Callable
 from ..utils.logger import get_logger
 from .llm_client import LLMClientError, LLMResponse
 
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
 _logger = get_logger("factory_client")
 
 # Mesmo heavy que o projeto ja usa no Ollama -- trocar de provedor nao pode
@@ -152,6 +157,38 @@ class FactoryClient:
 		step_type: str = "",
 		**kwargs: Any,
 	) -> LLMResponse:
+		# SEM tool use: falha ALTO em vez de gerar lixo caro.
+		#
+		# `droid exec` e um agente com as ferramentas DELE; nao aceita
+		# definicao de funcao do chamador como um endpoint de completions
+		# aceita. Ate a 1.0.0 este cliente recebia `tools` e ignorava em
+		# silencio -- e o silencio custou caro.
+		#
+		# Medido na rodada de 2026-09-03 17:26: web_researcher e
+		# design_review_agent entregam o resultado por tool call OBRIGATORIA
+		# (`entregar_sintese`, `entregar_critica_challenger` -- padrao "final
+		# answer as tool"). Sem o canal, os dois deram voltas e reprovaram:
+		#
+		#   "a ferramenta entregar_sintese solicitada nao esta disponivel"
+		#   "A ferramenta entregar_critica_challenger nao esta disponivel"
+		#
+		#   research_openai  692.032 tokens, reprovado 3x
+		#   dr0              132.875 tokens, reprovado
+		#
+		# 824.907 tokens gastos tentando chamar o que nao existe. Levantar aqui
+		# faz o orchestrator tratar como falha de infraestrutura (guarda da
+		# 5.79.0) e rotear para um provedor com tool use -- correto, e barato.
+		if tools:
+			nomes = [
+				(t.get("function", {}) or {}).get("name") or t.get("name") or "?"
+				for t in tools if isinstance(t, dict)
+			]
+			raise FactoryClientError(
+				"Factory Droid nao aceita ferramentas definidas pelo chamador "
+				f"(pedidas: {', '.join(str(n) for n in nomes)}). Este step precisa "
+				"de um provedor com tool use nativo."
+			)
+
 		prompt = "\n\n".join(
 			p for p in (system_override, user_message) if p
 		) + _instrucao_de_schema(response_format)

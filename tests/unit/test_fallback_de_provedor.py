@@ -26,7 +26,7 @@ from nvdastudio.core.orchestrator import (
 
 
 def test_versao():
-	assert MODULE_VERSION == "5.85.0"
+	assert MODULE_VERSION == "5.86.0"
 
 
 class TestDeteccaoDeAutenticacao:

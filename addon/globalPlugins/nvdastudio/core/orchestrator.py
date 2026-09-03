@@ -51,7 +51,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.85.0"
+MODULE_VERSION = "5.86.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -3962,6 +3962,18 @@ class Orchestrator:
 			if entry_error:
 				return entry_error
 
+		# 5.86.0 -- O ADDON ESTA COMPLETO?
+		#
+		# O portao acima prova que o addon CARREGA. Nao prova que ele tem
+		# tudo o que o plano declarou. Ver _missing_declared_files: a rodada
+		# de 2026-09-03 17:26 entregou 1 dos 3 modulos Python declarados e
+		# passou em TODOS os portoes, inclusive na execucao real.
+		declared_error = Orchestrator._missing_declared_files(
+			getattr(plan, "expected_files", []) or [], python_files,
+		)
+		if declared_error:
+			return declared_error
+
 		# 5.57.0 -- FUNCIONALIDADE PEDIDA vs FUNCIONALIDADE ENTREGUE.
 		#
 		# Ate aqui o portao so provava que o addon EXISTE e CARREGA. Faltava a
@@ -4092,6 +4104,64 @@ class Orchestrator:
 		"brailleDisplayDrivers",
 		"visionEnhancementProviders",
 	)
+
+	@staticmethod
+	def _missing_declared_files(
+		expected_files: list[str], python_files: set[str],
+	) -> str:
+		"""Confere que os modulos Python DECLARADOS no plano chegaram.
+
+		Medido na rodada de 2026-09-03 17:26 (a primeira inteira pela Factory):
+		o pedido tinha tres partes -- dois atalhos, um servico OpenAI e uma tela
+		de configuracoes -- e o addon entregue tinha UM arquivo Python. O
+		`__init__.py` importava `settings_panel` e `openai_service`, ausentes do
+		pacote, com try/except tolerante (que e a pratica CORRETA da NVDA-022).
+
+		Resultado: o addon carregava, registrava os dois atalhos, e ao apertar
+		NVDA+shift+G falava "Chave de API nao configurada. Abra as
+		configuracoes" -- apontando para uma tela que nao existia. Uma casca.
+
+		Nenhum portao pegou, e cada um por um bom motivo:
+		  - o ponto de entrada EXISTIA (__init__.py estava la);
+		  - os gestos declarados EXISTIAM (os dois @script estavam la);
+		  - a execucao real passou: o addon carrega e os comandos rodam;
+		  - a NVDA-063 nao acusou: import ausente vira ImportError tratado,
+		    nao discordancia de assinatura.
+
+		Um addon que degrada com elegancia e, pela definicao de todos eles,
+		um addon que funciona. Faltava perguntar se ele esta COMPLETO.
+
+		Mesma divisao da Regra 7 usada em `expected_gestures`: declarar o
+		layout e decisao semantica da LLM (campo `expected_files` do plano);
+		aqui so CONFERIMOS que o declarado chegou. So olha .py -- doc, manifest
+		e recursos ja tem portoes proprios.
+		"""
+		declarados = {
+			c.replace("\\", "/").lstrip("/")
+			for c in (expected_files or [])
+			if isinstance(c, str) and c.endswith(".py")
+		}
+		if not declarados:
+			return ""
+		entregues = {c.replace("\\", "/").lstrip("/") for c in python_files}
+		# Compara por NOME de arquivo tambem: caminho divergente e problema de
+		# colocacao, que o addon_builder ja resolve -- reprovar por isso aqui
+		# seria cobrar duas vezes pela mesma coisa.
+		nomes_entregues = {c.rsplit("/", 1)[-1] for c in entregues}
+		faltando = sorted(
+			c for c in declarados
+			if c not in entregues and c.rsplit("/", 1)[-1] not in nomes_entregues
+		)
+		if not faltando:
+			return ""
+		return (
+			"A criação não foi concluída porque o addon ficou incompleto. O plano "
+			f"declarou {len(declarados)} arquivo(s) Python e {len(faltando)} não "
+			f"chegaram: {', '.join(faltando)}. O addon instalaria e carregaria "
+			"normalmente — os imports que faltam são tratados com try/except, como "
+			"manda a boa prática — mas a funcionalidade que depende deles "
+			"simplesmente não existiria, sem erro visível para o usuário."
+		)
 
 	@staticmethod
 	def _missing_loadable_entry_point(python_files: set[str]) -> str:

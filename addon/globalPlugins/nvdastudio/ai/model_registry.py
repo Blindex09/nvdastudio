@@ -5,7 +5,7 @@ from typing import Optional
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.21.0"
+MODULE_VERSION = "1.22.0"
 _logger = get_logger("model_registry")
 
 ALTO_MODEL = "alto"
@@ -616,14 +616,37 @@ _PROVIDER_TIER_MODELS: dict[str, dict[str, str]] = {
         # Mesmo modelo do heavy: medido, nao ha nada mais barato na
         # Factory. Ver a escada acima.
         "light": "kimi-k2.7-code",
-        # Reservado: so entra em code_generation com complexity="high",
-        # e nunca compete como candidato comum (ver model_router 1.4.0).
-        # Custa 15,7x o heavy, e a escolha e deliberada: um cg_core que
-        # nao converge ja custou 635.658 tokens numa rodada so
-        # (2026-09-03) -- gastar 15x em UM step que precisa acertar sai
-        # mais barato que tres tentativas que falham. NUNCA claude-opus-5
-        # aqui: medido em 82.549 creditos, 92x o heavy.
-        "frontier": "claude-sonnet-5",
+        # SEM frontier, e isso e correcao de uma decisao minha do mesmo dia.
+        #
+        # A 1.21.0 pos claude-sonnet-5 aqui, justificando 15,7x com "um
+        # cg_core que nao converge ja custou 635.658 tokens -- gastar 15x
+        # em UM step que precisa acertar sai mais barato que tres
+        # tentativas que falham". O argumento estava certo e a premissa
+        # errada: nao e UM step. apply_model_budget() dimensiona o slot
+        # elevado como PERCENTUAL do plano (_HEAVY_BUDGET_BY_COMPLEXITY,
+        # "high" = 0.35), e com retry virou oito chamadas.
+        #
+        # Medido na rodada de 2026-09-03 17:26, a primeira inteira pela
+        # Factory, com carga real (contexto grande, muito cache):
+        #
+        #     claude-sonnet-5   8 chamadas  1.704.493 creditos  71,4%
+        #     kimi-k2.7-code    8 chamadas    659.444 creditos  27,6%
+        #     gpt-5.6-luna     24 chamadas     23.065 creditos   1,0%
+        #
+        # Na carga real a razao e 2,6x (nao 15,7x -- ela encolhe quando o
+        # contexto e majoritariamente cache), mas 2,6x sobre o item mais
+        # caro da rodada e 1,05 milhao de creditos, e o addon saiu
+        # INCOMPLETO mesmo assim: o cg_core gerado pelo Sonnet precisou da
+        # aceitacao por ressalva (score 87) e o cg_settings reprovou. Nao
+        # ha evidencia de que o modelo caro entregou melhor.
+        #
+        # Sem a chave "frontier", get_provider_step_models() nao devolve
+        # nenhum, e select_model() usa o heavy tambem em complexity="high"
+        # -- comportamento ja suportado (o registry documenta "cai pra
+        # heavy quando nao tem").
+        #
+        # Candidato para um frontier barato existe e NAO foi medido:
+        # `kimi-k3` esta no catalogo da Factory. Medir antes de por aqui.
     },
     "anthropic": {
         "heavy": "claude-opus-5",
