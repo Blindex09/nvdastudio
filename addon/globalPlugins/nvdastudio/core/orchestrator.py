@@ -51,7 +51,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.86.0"
+MODULE_VERSION = "5.87.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -1200,6 +1200,17 @@ class Orchestrator:
 			self._check_cancel()
 			self._emit_phase(PipelinePhase.EXECUTING, "")
 
+			# 5.87.0 -- espelha o _run_pipeline (FSM, ver o `self._current_plan =
+			# plan` na fase de planejamento dele). Este pipeline conversacional
+			# so setava _current_plan_addon_name e esquecia o plano inteiro, entao
+			# TODO metodo plan-aware (_project_type, _arquivos_de_outros_steps,
+			# a complexidade do replan, a propagacao de planejamento_degradado,
+			# e agora _descarte_condena_entrega) degradava para o default seguro
+			# aqui -- inclusive tratando um controller_client como "addon". Setado
+			# com o plano JA aprovado (original ou o replanejado por feedback do
+			# usuario logo acima), antes de qualquer step rodar.
+			self._current_plan = plan
+
 			remaining = list(plan.steps)
 			failed_step_ids: set[str] = set()
 
@@ -1219,7 +1230,7 @@ class Orchestrator:
 				# graceful degradation: entregar o que funcionou e dizer por que
 				# parou, em vez de descartar tudo.
 				_orcamento_ok, _orcamento_motivo = self._saldo_permite_seguir(
-					remaining, failed_step_ids,
+					remaining, failed_step_ids, plan, outputs,
 				)
 				if not _orcamento_ok:
 					_nao_rodados = [s.step_id for s in remaining]
@@ -1708,7 +1719,7 @@ class Orchestrator:
 				# graceful degradation: entregar o que funcionou e dizer por que
 				# parou, em vez de descartar tudo.
 				_orcamento_ok, _orcamento_motivo = self._saldo_permite_seguir(
-					remaining, failed_step_ids,
+					remaining, failed_step_ids, plan, outputs,
 				)
 				if not _orcamento_ok:
 					_nao_rodados = [s.step_id for s in remaining]
@@ -3478,6 +3489,7 @@ class Orchestrator:
 
 	def _saldo_permite_seguir(
 		self, remaining: list, failed_step_ids: set,
+		plan: "ExecutionPlan | None" = None, outputs: "dict | None" = None,
 	) -> tuple[bool, str]:
 		"""Reserva de orcamento para a entrega (padrao 'budget backstop').
 
@@ -3508,6 +3520,20 @@ class Orchestrator:
 		descartados = [
 			s for s in remaining if s.step_type not in _STEP_TYPES_DE_ENTREGA
 		]
+		# 5.87.0 -- NAO montar uma casca CONDENADA.
+		#
+		# Descartar um step que ainda deve um modulo Python DECLARADO nao e
+		# "entregar algo": o portao de completude (_missing_declared_files,
+		# 5.86.0) vai rejeitar o pacote montado sem ele. Antes do portao existir,
+		# a casca era degradacao graciosa; agora e pagar a montagem (medido:
+		# ~82.480 tokens na rodada de 2026-09-03) de um pacote que ja nasce
+		# reprovado. Parar aqui e honesto -- o portao roda na FASE 6 e nomeia o
+		# modulo que faltou -- e barato. So os steps PURAMENTE consultivos
+		# (design_review, web_research, ...) seguem sendo descartados para dar
+		# lugar a entrega. Sem plano em maos (chamador antigo/teste), o
+		# comportamento e o anterior (nada condena) -- e o seguro.
+		if self._descarte_condena_entrega(descartados, plan, outputs):
+			return False, motivo
 		_logger.warning(
 			"[BUDGET] Saldo entrou na reserva de entrega (%s). Descartando %d "
 			"step(s) que nao produzem arquivo e seguindo para a entrega: %s",
@@ -3518,6 +3544,65 @@ class Orchestrator:
 			failed_step_ids.add(d.step_id)
 			remaining.remove(d)
 		return True, ""
+
+	@staticmethod
+	def _python_files_produzidos(outputs: "dict | None") -> set:
+		"""Nomes de arquivo .py ja gerados (qualquer step), lidos dos blocos de
+		codigo dos outputs -- mesma leitura de _validate_minimum_addon_artifacts.
+
+		Conservador de proposito: conta tudo que apareceu num output, aprovado
+		ou nao. Um modulo presente mas reprovado sera tratado como 'ja existe' e
+		NAO condenara o descarte -- no pior caso reproduz o comportamento antigo
+		(monta e o portao rejeita), nunca o pior desfecho (parar uma entrega que
+		na verdade estava completa)."""
+		produzidos: set = set()
+		for saida in (outputs or {}).values():
+			for block in extract_code_blocks(saida or ""):
+				filename = (block.get("filename") or block.get("name") or "").replace("\\", "/")
+				if (block.get("language") or "").lower() == "python" and filename.lower().endswith(".py"):
+					produzidos.add(filename.lstrip("/"))
+		return produzidos
+
+	@staticmethod
+	def _nome_de_arquivo(caminho: str) -> str:
+		return caminho.replace("\\", "/").rsplit("/", 1)[-1]
+
+	def _descarte_condena_entrega(
+		self, descartados: list, plan: "ExecutionPlan | None", outputs: "dict | None",
+	) -> list:
+		"""Steps entre os descartados que ainda devem um modulo Python DECLARADO
+		e ainda nao produzido -- descarta-los faz o portao de completude
+		(_missing_declared_files) reprovar o pacote montado sem eles.
+
+		Compara por NOME DE ARQUIVO, exatamente como o portao decide o que falta:
+		ele aceita um declarado cujo NOME bate um entregue, mesmo em caminho
+		diferente (caminho divergente e colocacao, que o addon_builder resolve).
+		Comparar por caminho aqui pararia uma entrega que o portao APROVARIA --
+		o modulo existe, so noutro caminho -- que e o pior desfecho (falso
+		positivo que recusa entrega boa).
+		"""
+		declarados = {
+			self._nome_de_arquivo(c)
+			for c in (getattr(plan, "expected_files", []) or [])
+			if isinstance(c, str) and c.endswith(".py")
+		}
+		if not declarados:
+			return []
+		produzidos = {self._nome_de_arquivo(p) for p in self._python_files_produzidos(outputs)}
+		pendentes = declarados - produzidos
+		if not pendentes:
+			return []
+		condenam = []
+		for s in descartados:
+			if s.step_type not in _STEPS_QUE_PRODUZEM_ARQUIVO:
+				continue
+			alvos = {
+				self._nome_de_arquivo(c)
+				for c in (getattr(s, "target_files", []) or [])
+			}
+			if alvos & pendentes:
+				condenam.append(s)
+		return condenam
 
 	def _deps_partially_ready(self, step: ExecutionStep, outputs: dict, failed_step_ids: set) -> bool:
 		"""Verifica se pelo menos um dependente falhou mas outros estao disponiveis.

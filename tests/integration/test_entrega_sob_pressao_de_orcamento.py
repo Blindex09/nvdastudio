@@ -222,3 +222,110 @@ class TestCadeiaCompleta_CustoDecideEntrega:
 		assert _modulo_seria_gerado(barato) is True, (
 			"cortar custo mantem o cg_settings vivo -> addon completo -> portao aprova"
 		)
+
+
+class TestElo1b_DescarteCondenadoParaEmVezDeMontarCasca:
+	"""5.87.0: descartar um code_generation que ainda deve um modulo DECLARADO
+	condena o portao de completude -- o pacote montado sem ele ja nasce
+	reprovado. Parar honesto e economico (nao paga a montagem condenada); so os
+	consultivos PUROS seguem sendo descartados para dar lugar a entrega."""
+
+	def _entrar_na_reserva(self) -> None:
+		teto = _teto_do_plano()
+		_consumir(teto - ib._RESERVA_DE_ENTREGA // 2)
+
+	def _cg_pendente_e_montagem(self) -> list:
+		return [
+			ExecutionStep("cg_settings", STEP_CODE_GENERATION, "config", "kimi-k2.7-code",
+						  target_files=[_SETTINGS]),
+			ExecutionStep("asm", STEP_ASSEMBLY, "montar", "kimi-k2.7-code"),
+		]
+
+	def test_descartar_modulo_declarado_para_em_vez_de_montar_casca(self):
+		self._entrar_na_reserva()
+		remaining = self._cg_pendente_e_montagem()
+		failed: set = set()
+
+		ok, _ = _orch()._saldo_permite_seguir(remaining, failed, _plano(), {})
+
+		assert ok is False, "condenar a entrega tem que PARAR, nao montar uma casca"
+		# Nada foi descartado nem a montagem condenada avancou -- a FASE 6 roda o
+		# portao e nomeia o modulo que faltou, sem pagar os ~82k da montagem.
+		assert "cg_settings" in [s.step_id for s in remaining]
+		assert "cg_settings" not in failed
+
+	def test_consultivo_puro_ainda_e_descartado(self):
+		"""Nao-regressao: um step que NAO produz arquivo continua sendo
+		descartado para dar lugar a entrega (comportamento da 5.60.0)."""
+		self._entrar_na_reserva()
+		remaining = [
+			ExecutionStep("dr0", STEP_DESIGN_REVIEW, "revisao", "kimi-k2.7-code"),
+			ExecutionStep("asm", STEP_ASSEMBLY, "montar", "kimi-k2.7-code"),
+		]
+		failed: set = set()
+
+		ok, _ = _orch()._saldo_permite_seguir(remaining, failed, _plano(), {})
+
+		assert ok is True
+		assert [s.step_id for s in remaining] == ["asm"]
+		assert failed == {"dr0"}
+
+	def test_modulo_ja_produzido_nao_condena(self):
+		"""Sem falso positivo -- o pior desfecho seria recusar entrega boa: se os
+		modulos declarados JA estao em outputs, descartar um step redundante
+		nao condena nada."""
+		self._entrar_na_reserva()
+		remaining = self._cg_pendente_e_montagem()
+		outputs = {"cg_core": _bloco_py(_ENTRADA), "outro": _bloco_py(_SETTINGS)}
+		failed: set = set()
+
+		ok, _ = _orch()._saldo_permite_seguir(remaining, failed, _plano(), outputs)
+
+		assert ok is True, "os dois modulos declarados ja existem -- nada a condenar"
+		assert "cg_settings" not in [s.step_id for s in remaining]
+
+	def test_modulo_em_caminho_divergente_nao_condena(self):
+		"""Falso positivo por caminho -- o pior desfecho: o modulo foi entregue
+		com o NOME certo mas em outro caminho (colocacao, que o addon_builder
+		resolve). O portao de completude aprovaria; condenar aqui recusaria uma
+		entrega boa. So o NOME importa, igual ao portao."""
+		self._entrar_na_reserva()
+		remaining = self._cg_pendente_e_montagem()
+		outputs = {
+			"cg_core": _bloco_py(_ENTRADA),
+			"outro": _bloco_py("configSpec.py"),  # nome certo, caminho bare
+		}
+		failed: set = set()
+
+		ok, _ = _orch()._saldo_permite_seguir(remaining, failed, _plano(), outputs)
+
+		assert ok is True, "configSpec.py existe (nome bate) -- nada a condenar"
+		assert "cg_settings" not in [s.step_id for s in remaining]
+
+	def test_sem_plano_mantem_o_comportamento_antigo(self):
+		"""Chamador antigo/teste sem plano: nada condena -- descarta e segue,
+		exatamente como antes da 5.87.0."""
+		self._entrar_na_reserva()
+		remaining = self._cg_pendente_e_montagem()
+		failed: set = set()
+
+		ok, _ = _orch()._saldo_permite_seguir(remaining, failed)  # sem plan/outputs
+
+		assert ok is True
+		assert [s.step_id for s in remaining] == ["asm"]
+
+
+def test_ambos_os_pipelines_setam_current_plan():
+	"""Fitness function: _current_plan alimenta _project_type,
+	_arquivos_de_outros_steps, a complexidade do replan, a propagacao de
+	planejamento_degradado e _descarte_condena_entrega. Um pipeline que esquece
+	de seta-lo degrada tudo isso para o default silencioso -- inclusive tratando
+	um controller_client como "addon". Os DOIS pipelines precisam seta-lo."""
+	import inspect
+	from nvdastudio.core import orchestrator as _mod
+
+	for metodo in ("_run_pipeline", "_run_conversational_pipeline"):
+		fonte = inspect.getsource(getattr(_mod.Orchestrator, metodo))
+		assert "self._current_plan = plan" in fonte, (
+			f"{metodo} nao seta self._current_plan -- metodos plan-aware degradam la"
+		)
