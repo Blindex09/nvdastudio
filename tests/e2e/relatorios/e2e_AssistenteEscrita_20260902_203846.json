@@ -1,0 +1,182 @@
+{
+  "addon_name": "AssistenteEscrita",
+  "query": "Crie um addon NVDA chamado AssistenteEscrita que usa a API do ChatGPT da OpenAI para ajudar a revisar textos. Funcionalidades: (1) um atalho NVDA+shift+g que pega o texto selecionado, corrige a gramat",
+  "timestamp": "2026-09-02T20:28:24.018826",
+  "plan_id": "08bef961",
+  "complexity": "",
+  "duration_seconds": 622.16,
+  "total_tokens": 711463,
+  "total_tokens_medidor": 711463,
+  "total_retries": 4,
+  "replan_count": 0,
+  "success": false,
+  "error": "A criação parou por limite de recursos (Budget excedido — pipeline parado) antes de concluir o código do addon. 4 etapa(s) não chegaram a ser executadas. O que foi aprovado até aqui está preservado no relatório desta execução.",
+  "steps": [
+    {
+      "step_id": "s_manifest",
+      "step_type": "manifest_builder",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 98,
+      "retries_used": 0,
+      "tokens_used": 31075,
+      "issues": [],
+      "output_preview": "```ini:manifest.ini\nname = AssistenteEscrita\nsummary = Assistente de Escrita\ndescription = Versão inicial com correção de gramática e simplificação de textos usando ChatGPT. Initial release with grammar correction and text simplification using ChatGPT.\nauthor = Seu Nome <email@exemplo.com>\nurl = htt"
+    },
+    {
+      "step_id": "cg_core",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 93,
+      "retries_used": 1,
+      "tokens_used": 252185,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/__init__.py\nimport threading\nimport wx\nimport api\nimport ui\nimport config\nimport globalPluginHandler\nimport addonHandler\nfrom logHandler import log\nfrom scriptHandler import script\nfrom gui.settingsDialogs import NVDASettingsDialog\n\naddonHandler.initTranslat"
+    },
+    {
+      "step_id": "sv_1",
+      "step_type": "syntax_validation",
+      "model_used": "gpt-oss:20b",
+      "approved": true,
+      "score": 100,
+      "retries_used": 0,
+      "tokens_used": 0,
+      "issues": [],
+      "output_preview": "RESULTADO: SKIP\nNenhum bloco Python encontrado no input para validar."
+    },
+    {
+      "step_id": "cg_service",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": true,
+      "score": 95,
+      "retries_used": 1,
+      "tokens_used": 261138,
+      "issues": [],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/openai_service.py\n\"\"\"Serviço de integração com a API de chat completions da OpenAI.\n\nEste módulo encapsula as chamadas à API da OpenAI para revisão e simplificação\nde textos. Ele executa as requisições em threads de background e converte as\nexceções do pacot"
+    },
+    {
+      "step_id": "cg_settings",
+      "step_type": "code_generation",
+      "model_used": "kimi-k2.7-code",
+      "approved": false,
+      "score": 0,
+      "retries_used": 2,
+      "tokens_used": 167065,
+      "issues": [
+        "Orcamento excedido: Budget excedido — pipeline parado"
+      ],
+      "output_preview": "```python:globalPlugins/AssistenteEscrita/configSpec.py\nimport config\n\n\ndef apply_config_spec() -> None:\n\t\"\"\"Registra a especificação de configuração do addon AssistenteEscrita.\"\"\"\n\t_spec = {\n\t\t\"apiKey\": \"string(default='')\",\n\t\t\"model\": \"string(default='gpt-4o-mini')\",\n\t}\n\tif \"AssistenteEscrita\" not"
+    }
+  ],
+  "events": [
+    [
+      "PLANEJANDO",
+      ""
+    ],
+    [
+      "PARALELO",
+      "2"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "manifest_builder"
+    ],
+    [
+      "APROVADO",
+      "manifest_builder"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ],
+    [
+      "PARALELO",
+      "3"
+    ],
+    [
+      "EXECUTANDO",
+      "syntax_validation"
+    ],
+    [
+      "AVALIANDO",
+      "syntax_validation"
+    ],
+    [
+      "APROVADO",
+      "syntax_validation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "EXECUTANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "AVALIANDO",
+      "code_generation"
+    ],
+    [
+      "APROVADO",
+      "code_generation"
+    ]
+  ],
+  "addon_folder": "",
+  "files_saved": [],
+  "nvda_addon_path": "",
+  "zip_names": [],
+  "struct_problems": [],
+  "has_init_py": false,
+  "has_manifest": false,
+  "has_doc": false,
+  "has_lib": false,
+  "blocks_collected": [],
+  "avg_score": 77.2,
+  "models_used": [
+    "gpt-oss:20b",
+    "kimi-k2.7-code"
+  ]
+}
