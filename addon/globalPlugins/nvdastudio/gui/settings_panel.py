@@ -35,6 +35,11 @@ _PROVIDERS = [
     ("Google Gemini", "gemini"),
     ("Anthropic",     "anthropic"),
     ("xAI",           "xai"),
+    # Factory Droid via CLI headless (`droid exec`). Selecionavel porque e
+    # provedor de LLM de verdade: serve os MESMOS ids que o projeto ja
+    # roteia (kimi-k2.7-code, gpt-5.6-luna, glm-5.2, deepseek-v4-flash-0731)
+    # com prompt caching, que a Ollama Cloud nao tem em nenhum modelo.
+    ("Factory Droid", "factory"),
 ]
 _PROVIDER_CODES = [code for _, code in _PROVIDERS]
 
@@ -46,6 +51,9 @@ _API_KEY_CONFIG_KEYS: dict[str, str] = {
     "anthropic": "apiKeyAnthropic",
     "xai":       "apiKeyXAI",
     "opencode_go": "apiKeyOpenCodeGo",
+    # Factory Droid: chave OPCIONAL -- o droid tambem autentica pelo login
+    # do proprio CLI. Preencher so quando quiser forcar outra conta.
+    "factory":   "apiKeyFactory",
     # Nao sao provedores de LLM (nao aparecem no dropdown "Provedor de IA") --
     # chaves de busca web usadas como FALLBACK em web_researcher.py quando o
     # provedor de IA ativo nao tem busca nativa disponivel para o modelo em
@@ -62,6 +70,7 @@ _API_KEY_LABELS: dict[str, str] = {
     "anthropic": "Chave Anthropic API:",
     "xai":       "Chave xAI API:",
     "opencode_go": "Chave OpenCode Go API:",
+    "factory":   "Chave Factory API (opcional, ha login do droid CLI):",
     "tavily":    "Chave Tavily API (busca web, opcional):",
     "exa":       "Chave Exa API (busca web, opcional):",
 }
@@ -73,6 +82,7 @@ _API_KEY_ENV_VARS: dict[str, str] = {
     "anthropic": "ANTHROPIC_API_KEY",
     "xai":       "XAI_API_KEY",
     "opencode_go": "OPENCODE_GO_API_KEY",
+    "factory":   "FACTORY_API_KEY",
     "tavily":    "TAVILY_API_KEY",
     "exa":       "EXA_API_KEY",
 }

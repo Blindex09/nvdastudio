@@ -69,7 +69,9 @@ class TestCriticFallbackE120b:
     def test_critic_fallback_esta_na_cadeia_verificada(self):
         from nvdastudio.ai.critic import get_critic_fallback_model
         from nvdastudio.ai.model_registry import STRUCTURED_OUTPUT_MODEL_CHAIN
-        modelo = get_critic_fallback_model().split("::", 1)[1]
+        # 1.20.0: a cadeia passou a ser cross-provider e cada entrada ja
+        # carrega o provedor. Comparar o id NU contra ela sempre falharia.
+        modelo = get_critic_fallback_model()
         assert modelo in STRUCTURED_OUTPUT_MODEL_CHAIN, (
             f"fallback '{modelo}' nao esta na cadeia verificada {STRUCTURED_OUTPUT_MODEL_CHAIN}"
         )

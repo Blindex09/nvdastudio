@@ -4,7 +4,7 @@ from .llm_client import LLMClientError, LLMClientProtocol, LLMResponse
 from .model_registry import ALTO_MODEL, is_alto_model, resolve_alto_model
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "5.3.0"
+MODULE_VERSION = "5.4.0"
 _logger = get_logger("llm_factory")
 
 DEFAULT_MODEL = ALTO_MODEL
@@ -78,6 +78,24 @@ def create_llm_client(
 			return client
 		except OpenCodeGoClientError as e:
 			_logger.warning("[AVISO] OpenCodeGoClient nativo falhou: %s", e)
+			raise LLMFactoryError(f"Provedor {provider} indisponivel: {e}")
+
+	# --- Factory Droid (terceiro provedor, via CLI headless) ---
+	#
+	# Diferente dos outros: a chave e OPCIONAL. O droid tambem autentica
+	# pelo login do proprio CLI (~/.factory/auth.v2.keyring), entao exigir
+	# chave configurada barraria o caso comum de quem ja fez `droid` login
+	# na maquina. Quando a chave existe, ela vence.
+	if provider == "factory":
+		from ..gui.settings_panel import get_api_key
+		from .factory_client import FactoryClient, FactoryClientError, _DEFAULT_MODEL
+		try:
+			actual_model = _DEFAULT_MODEL if is_alto_model(model_id) else model_id
+			client = FactoryClient(api_key=get_api_key(provider), model_id=actual_model)
+			_logger.info("[OK] FactoryClient (droid exec). model=%s", actual_model)
+			return client
+		except FactoryClientError as e:
+			_logger.warning("[AVISO] FactoryClient indisponivel: %s", e)
 			raise LLMFactoryError(f"Provedor {provider} indisponivel: {e}")
 
 	# --- Clientes HTTP nativos para os demais provedores ---

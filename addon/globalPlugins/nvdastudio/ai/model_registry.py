@@ -5,7 +5,7 @@ from typing import Optional
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.19.0"
+MODULE_VERSION = "1.20.0"
 _logger = get_logger("model_registry")
 
 ALTO_MODEL = "alto"
@@ -643,8 +643,32 @@ def get_provider_step_models(provider: str) -> dict[str, str]:
 # chamada do Critic (mesmo prompt de sistema de ~42k chars repetido em toda
 # avaliacao) e exatamente o caso onde a cache de prefixo da Responses API
 # reaproveita sem precisar de previous_response_id (conversas encadeadas).
+# 1.20.0 -- a cadeia passa a ser CROSS-PROVIDER, com o provedor embutido em
+# cada entrada. Antes eram cinco modelos do MESMO provedor, o que o proprio
+# comentario abaixo ja apontava como ponto unico de falha -- e que se
+# concretizou em 2026-09-02/03: 401 sem saldo derrubou os cinco de uma vez e
+# TODA rodada passou a planejar sem json_schema.
+#
+# A Factory entra como segunda perna real. Ela nao tem response_format
+# nativo (o `droid exec` e agente, nao endpoint de completions), entao o
+# schema vai no prompt -- medido em 2026-09-03 com o _PLAN_SCHEMA real: 2 de
+# 3 amostras com JSON valido, todos os campos, enums corretos, caixa do nome
+# coerente e dependencies limpo. Nao e a garantia do json_schema estrito,
+# mas a alternativa quando o OpenCode Go cai NAO e a garantia: e o provedor
+# ativo, sem garantia nenhuma e com modelo mais fraco.
+#
+# Os ids da Factory sao os MESMOS que o projeto ja roteia -- trocar de
+# provedor nao troca de modelo por acidente.
 STRUCTURED_OUTPUT_MODEL_CHAIN: tuple[str, ...] = (
-    "gpt-5.6-luna", "kimi-k2.6", "glm-5.1", "deepseek-v4-flash", "qwen3.8-max",
+    "opencode_go::gpt-5.6-luna",
+    "opencode_go::kimi-k2.6",
+    "opencode_go::glm-5.1",
+    "opencode_go::deepseek-v4-flash",
+    "opencode_go::qwen3.8-max",
+    "factory::gpt-5.6-luna",
+    "factory::kimi-k2.6",
+    "factory::glm-5.2",
+    "factory::deepseek-v4-flash-0731",
 )
 
 
@@ -667,27 +691,35 @@ STRUCTURED_OUTPUT_MODEL_CHAIN: tuple[str, ...] = (
 # os consumidores ja toleram JSON imperfeito (o Critic tem caminho para
 # "sem JSON reconhecivel", o Planner tem _parse_plan), mas a taxa de acerto
 # cai. E melhor que a alternativa, que e o pipeline inteiro parar.
-_estruturado_indisponivel = False
+# 1.20.0: era um bool global -- marcar "estruturado indisponivel" derrubava a
+# cadeia inteira. Agora e por PROVEDOR: o OpenCode Go cair nao tem por que
+# tirar a Factory do jogo.
+_provedores_indisponiveis: set[str] = set()
 
 
-def marcar_saida_estruturada_indisponivel(motivo: str = "") -> None:
-	"""Registra que o provedor de saida estruturada nao esta atendendo."""
-	global _estruturado_indisponivel
-	if not _estruturado_indisponivel:
+def marcar_saida_estruturada_indisponivel(
+	motivo: str = "", provider: str = "opencode_go",
+) -> None:
+	"""Registra que UM provedor de saida estruturada nao esta atendendo.
+
+	O default e opencode_go por compatibilidade com o unico chamador
+	historico (opencode_go_client), que marcava antes de a cadeia ser
+	cross-provider.
+	"""
+	if provider not in _provedores_indisponiveis:
 		_logger.warning(
-			"[ESTRUTURADO] Provedor de saida estruturada indisponivel (%s). "
-			"As proximas chamadas usam o provedor ativo, SEM garantia de "
-			"json_schema estrito -- a qualidade do JSON cai.", motivo or "sem detalhe",
+			"[ESTRUTURADO] Provedor %s indisponivel (%s). A cadeia continua "
+			"nos provedores restantes; se acabarem, cai no provedor ativo SEM "
+			"garantia de json_schema estrito.", provider, motivo or "sem detalhe",
 		)
-	_estruturado_indisponivel = True
+	_provedores_indisponiveis.add(provider)
 
 
 def resetar_saida_estruturada() -> None:
 	"""Volta ao provedor preferido. Chamado no inicio de cada execucao: o
 	limite de uso do OpenCode Go e por JANELA DE TEMPO (5 horas / semana /
 	mes), entao a indisponibilidade e temporaria e nao pode virar permanente."""
-	global _estruturado_indisponivel
-	_estruturado_indisponivel = False
+	_provedores_indisponiveis.clear()
 
 
 def get_structured_output_model(fallback_index: int = 0) -> str:
@@ -705,20 +737,29 @@ def get_structured_output_model(fallback_index: int = 0) -> str:
     fallback_index: indice na cadeia (0 = preferido). Fora do intervalo
     satura no ultimo item -- nunca levanta excecao nem retorna vazio.
     """
-    if _estruturado_indisponivel:
-        # Degradacao anunciada: sem o provedor preferido, o provedor ATIVO
-        # do usuario continua respondendo -- so que sem json_schema estrito.
-        try:
-            from ..gui.settings_panel import get_llm_model, get_llm_provider
+    # Salta as entradas de provedor que ja se declarou fora do ar. Enquanto
+    # sobrar UMA entrada viva, a garantia (ou a melhor aproximacao dela)
+    # continua de pe -- degradar para o provedor ativo e o ultimo recurso,
+    # nao o primeiro.
+    vivas = [
+        entrada for entrada in STRUCTURED_OUTPUT_MODEL_CHAIN
+        if entrada.split("::", 1)[0] not in _provedores_indisponiveis
+    ]
+    if vivas:
+        idx = min(max(fallback_index, 0), len(vivas) - 1)
+        return vivas[idx]
 
-            return resolve_provider_tier_model(
-                get_llm_provider(), "heavy", get_llm_model(),
-            )
-        except Exception:  # pragma: no cover - defesa
-            pass
-    chain = STRUCTURED_OUTPUT_MODEL_CHAIN
-    idx = min(max(fallback_index, 0), len(chain) - 1)
-    return f"opencode_go::{chain[idx]}"
+    # Nenhum provedor da cadeia responde: o provedor ATIVO do usuario ainda
+    # responde, so que sem json_schema estrito. Degradacao real, anunciada.
+    try:
+        from ..gui.settings_panel import get_llm_model, get_llm_provider
+
+        return resolve_provider_tier_model(
+            get_llm_provider(), "heavy", get_llm_model(),
+        )
+    except Exception:  # pragma: no cover - defesa
+        chain = STRUCTURED_OUTPUT_MODEL_CHAIN
+        return chain[min(max(fallback_index, 0), len(chain) - 1)]
 
 
 def is_alto_model(model: str | None) -> bool:
