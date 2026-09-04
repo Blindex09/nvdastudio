@@ -12,7 +12,7 @@ from gui.guiHelper import BoxSizerHelper
 from ..utils.logger import get_logger
 from ..ai.model_registry import ALTO_MODEL, get_provider_step_models, registry
 
-MODULE_VERSION = "6.9.0"
+MODULE_VERSION = "6.10.0"
 _logger = get_logger("settings_panel")
 
 CONFIG_SECTION = "nvdastudio"
@@ -180,7 +180,14 @@ def _build_models_for_provider(ui_provider: str) -> list[tuple[str, str]]:
 # nao mais hand-maintained (ver _build_models_for_provider acima).
 _MODELS_BY_PROVIDER: dict[str, list[tuple[str, str]]] = {
     ui_provider: _build_models_for_provider(ui_provider)
-    for ui_provider in ("ollama", "openai", "gemini", "anthropic", "xai")
+    # "factory" estava em _PROVIDERS (selecionavel) mas fora desta lista: o
+    # dropdown de modelo ficava VAZIO ao escolher Factory -- nem "Alto"
+    # aparecia. A Factory nao expoe catalogo por-modelo de proposito
+    # (_UI_PROVIDER_TO_REGISTRY_PROVIDERS vazio: ids diferem do Ollama, so o
+    # tier e verificado), entao _build_models_for_provider("factory") devolve
+    # so [("Alto (recomendado)", ALTO_MODEL)] -- que e exatamente o certo:
+    # Factory roda no Alto/automatico, roteando pro modelo verificado.
+    for ui_provider in ("ollama", "openai", "gemini", "anthropic", "xai", "factory")
 }
 
 _DEFAULT_MODELS = {
@@ -189,6 +196,7 @@ _DEFAULT_MODELS = {
     "gemini":    ALTO_MODEL,
     "anthropic": ALTO_MODEL,
     "xai":       ALTO_MODEL,
+    "factory":   ALTO_MODEL,
 }
 
 _LANGUAGES = [

@@ -16,7 +16,34 @@ def _read_settings() -> str:
 class TestSettingsPanelVersao:
     def test_versao_e_4_2_0(self):
         from nvdastudio.gui.settings_panel import MODULE_VERSION
-        assert MODULE_VERSION == "6.9.0"
+        assert MODULE_VERSION == "6.10.0"
+
+
+class TestFactoryNoDropdownDeModelo:
+    """Regressao: Factory estava em _PROVIDERS (selecionavel) mas fora de
+    _MODELS_BY_PROVIDER -- ao escolher Factory o dropdown de modelo ficava
+    VAZIO, nem 'Alto' aparecia. A Factory roda no Alto/automatico (nao expoe
+    catalogo por-modelo de proposito), entao o dropdown deve mostrar 'Alto'."""
+
+    def test_factory_e_selecionavel(self):
+        from nvdastudio.gui.settings_panel import _PROVIDER_CODES
+        assert "factory" in _PROVIDER_CODES
+
+    def test_factory_tem_alto_no_dropdown(self):
+        from nvdastudio.gui.settings_panel import _MODELS_BY_PROVIDER
+        from nvdastudio.ai.model_registry import ALTO_MODEL
+
+        modelos = _MODELS_BY_PROVIDER.get("factory", [])
+        assert modelos, "dropdown de modelo da Factory nao pode ficar vazio"
+        assert any(code == ALTO_MODEL for _, code in modelos), (
+            "Factory roda no Alto/automatico -- o dropdown tem que oferecer 'Alto'"
+        )
+
+    def test_factory_tem_default(self):
+        from nvdastudio.gui.settings_panel import _DEFAULT_MODELS
+        from nvdastudio.ai.model_registry import ALTO_MODEL
+
+        assert _DEFAULT_MODELS.get("factory") == ALTO_MODEL
 
 
 class TestConfigSpecDeclarado:
