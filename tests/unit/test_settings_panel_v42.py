@@ -16,7 +16,7 @@ def _read_settings() -> str:
 class TestSettingsPanelVersao:
     def test_versao_e_4_2_0(self):
         from nvdastudio.gui.settings_panel import MODULE_VERSION
-        assert MODULE_VERSION == "6.10.0"
+        assert MODULE_VERSION == "6.11.0"
 
 
 class TestFactoryNoDropdownDeModelo:
@@ -44,6 +44,36 @@ class TestFactoryNoDropdownDeModelo:
         from nvdastudio.ai.model_registry import ALTO_MODEL
 
         assert _DEFAULT_MODELS.get("factory") == ALTO_MODEL
+
+
+class TestTestarChaveFactoryUsaODroid:
+    """Regressao: o botao Testar mandava a Factory para o ProviderClient (HTTP),
+    que nao conhece 'factory' -- falhava sempre. Factory fala pelo droid CLI
+    (FactoryClient). A chave e opcional (login do droid)."""
+
+    def test_validate_provider_key_usa_factory_client(self, monkeypatch):
+        import nvdastudio.ai.factory_client as fc_mod
+        import nvdastudio.gui.settings_panel as sp
+
+        usado = {}
+
+        class _FakeFactory:
+            def __init__(self, api_key="", model_id=""):
+                usado["client"] = "factory"
+
+            def chat(self, *a, **k):
+                class _R:
+                    content = "OK"
+                return _R()
+
+        # Se cair no else (ProviderClient), este patch nao seria tocado e o
+        # assert falha -- exatamente o defeito que a correcao elimina.
+        monkeypatch.setattr(fc_mod, "FactoryClient", _FakeFactory)
+        sp._validate_provider_key("factory", "", "alto")
+
+        assert usado.get("client") == "factory", (
+            "o botao Testar tem que usar o FactoryClient (droid), nao o ProviderClient HTTP"
+        )
 
 
 class TestConfigSpecDeclarado:

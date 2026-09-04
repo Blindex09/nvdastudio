@@ -124,7 +124,7 @@ class TestSettingsPanelQ8:
 
     def test_versao_settings_panel(self):
         from addon.globalPlugins.nvdastudio.gui.settings_panel import MODULE_VERSION
-        assert MODULE_VERSION == "6.10.0"
+        assert MODULE_VERSION == "6.11.0"
 
     def test_config_key_language_definido(self):
         from addon.globalPlugins.nvdastudio.gui.settings_panel import CONFIG_KEY_LANGUAGE

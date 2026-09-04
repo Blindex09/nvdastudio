@@ -12,7 +12,7 @@ from gui.guiHelper import BoxSizerHelper
 from ..utils.logger import get_logger
 from ..ai.model_registry import ALTO_MODEL, get_provider_step_models, registry
 
-MODULE_VERSION = "6.10.0"
+MODULE_VERSION = "6.11.0"
 _logger = get_logger("settings_panel")
 
 CONFIG_SECTION = "nvdastudio"
@@ -219,6 +219,15 @@ def _validate_provider_key(provider: str, key: str, model_id: str) -> None:
     if provider == "ollama":
         from ..ai.ollama_client import OllamaClient
         client: LLMClientProtocol = OllamaClient(api_key=key, model_id=concrete_model)
+    elif provider == "factory":
+        # Factory NAO e HTTP: fala pelo `droid` CLI (FactoryClient). O else
+        # abaixo usa ProviderClient (openai/anthropic/gemini/xai), que nao sabe
+        # o que e "factory" -- mandar a Factory pra la fazia o botao Testar
+        # falhar sempre. A chave e opcional (o droid autentica pelo proprio
+        # login); testar com chave vazia valida que o droid esta instalado e
+        # logado, que e exatamente o que precisa funcionar.
+        from ..ai.factory_client import FactoryClient
+        client = FactoryClient(api_key=key, model_id=concrete_model)
     else:
         from ..ai.provider_client import ProviderClient
         client = ProviderClient(provider=provider, api_key=key, model_id=concrete_model)
