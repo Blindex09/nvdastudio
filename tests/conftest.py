@@ -282,3 +282,22 @@ def _clear_sub_agent_client_cache():
         clear_client_cache()
     except Exception:
         pass
+
+
+@pytest.fixture(autouse=True)
+def _reset_saida_estruturada():
+    """Isola o disjuntor de saida estruturada (_provedores_indisponiveis) entre
+    testes -- e um singleton de processo. Um teste que marca o OpenCode Go
+    indisponivel (ex: create_llm_client sem chave, que agora degrada para a
+    Factory em vez de interromper a geracao) vazaria para o proximo, que
+    passaria a receber Factory de get_structured_output_model. Em producao isso
+    e resetado no inicio de cada pipeline (orchestrator.resetar_saida_estruturada)."""
+    def _reset():
+        try:
+            from nvdastudio.ai.model_registry import resetar_saida_estruturada
+            resetar_saida_estruturada()
+        except Exception:
+            pass
+    _reset()
+    yield
+    _reset()

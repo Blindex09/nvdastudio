@@ -4,7 +4,7 @@ from .llm_client import LLMClientError, LLMClientProtocol, LLMResponse
 from .model_registry import ALTO_MODEL, is_alto_model, resolve_alto_model
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "5.4.0"
+MODULE_VERSION = "5.5.0"
 _logger = get_logger("llm_factory")
 
 DEFAULT_MODEL = ALTO_MODEL
@@ -67,6 +67,21 @@ def create_llm_client(
 		from .opencode_go_client import OpenCodeGoClient, OpenCodeGoClientError, _DEFAULT_MODEL
 		api_key = get_api_key(provider)
 		if not api_key:
+			# Chave AUSENTE nao pode INTERROMPER a geracao. O OpenCode Go e o
+			# provedor de saida estruturada (Critic/Planner), nao o provedor
+			# ATIVO do usuario (que pode ser a Factory, sem chave). Marca ele
+			# indisponivel -- mesma degradacao que o disjuntor de 401/429 ja
+			# faz -- para que quem reconsulta get_structured_output_model caia
+			# na proxima perna da cadeia (Factory) em vez de estourar um
+			# dialogo de erro. resetar_saida_estruturada() no inicio de cada
+			# execucao volta a tentar o OpenCode Go, entao isto nao e permanente.
+			try:
+				from .model_registry import marcar_saida_estruturada_indisponivel
+				marcar_saida_estruturada_indisponivel(
+					motivo="chave nao configurada", provider="opencode_go",
+				)
+			except Exception:  # pragma: no cover - defesa
+				pass
 			raise LLMFactoryError(
 				f"Chave API para {provider} nao configurada. "
 				f"Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
