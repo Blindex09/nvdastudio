@@ -51,7 +51,7 @@ from ..core.orch_types import (
 )
 from ..core.planner import ExecutionPlan, STEP_TEST_GENERATION
 
-MODULE_VERSION = "5.49.0"
+MODULE_VERSION = "5.50.0"
 _logger = get_logger("studio_dialog")
 
 
@@ -1347,20 +1347,21 @@ class NVDAStudioDialog(wx.Dialog):
 				and (b.get("filename") or b.get("name") or "").lower().endswith(".py")
 				for b in blocks
 			)
-			# 5.50.0: controller_client (programa externo) nunca gera
-			# manifest.ini por design -- exigi-lo aqui rejeitaria toda
-			# criacao bem-sucedida desse tipo de projeto.
-			_is_ctrl_client_result = getattr(result, "project_type", "addon") == "controller_client"
-			manifest_ok = _is_ctrl_client_result or any(
-				(b.get("filename") or b.get("name") or "").replace("\\", "/").lower() == "manifest.ini"
-				for b in blocks
-			)
-			if not python_ok or not manifest_ok:
+			# manifest.ini AUSENTE nao e fatal: save_addon_files() gera o minimo
+			# deterministico (addon_builder._generate_minimal_manifest). E a MESMA
+			# decisao que o orchestrator ja tomou em _validate_minimum_addon_artifacts
+			# (5.75.0), e este gate da GUI era o par ESQUECIDO daquele: continuava
+			# derrubando uma entrega COMPLETA (todos os modulos Python gerados) so
+			# porque o step do manifest falhou. Foi exatamente o que o droid em modo
+			# read-only causou -- assembly e manifest_builder falharam por permissao,
+			# o manifest sumiu, e o addon inteiro (4 modulos prontos) foi recusado.
+			# So a ausencia de CODIGO PYTHON e irrecuperavel (manifest sem addon nao e
+			# addon; addon sem manifest ganha o minimo). controller_client tambem nunca
+			# teve manifest por design, entao a regra unica serve aos dois.
+			if not python_ok:
 				result.success = False
 				result.error = (
 					"A criação não produziu um addon completo: falta código Python válido."
-					if not python_ok else
-					"A criação não produziu um addon completo: falta o arquivo manifest.ini."
 				)
 				# 2026-08-09: antes, blocos parcialmente aprovados (ex: manifest.ini
 				# e design_review aprovados, so code_generation falhou) eram

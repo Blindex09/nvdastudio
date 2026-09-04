@@ -373,7 +373,7 @@ class TestOnPackageAvisaProblemasEstruturaisNaoResolvidos:
 
     def test_module_version_e_5_2_0(self):
         from nvdastudio.gui.studio_dialog import MODULE_VERSION
-        assert MODULE_VERSION == "5.49.0"
+        assert MODULE_VERSION == "5.50.0"
 
     def test_path_containment_rejeita_outra_unidade_windows(self):
         from nvdastudio.gui.studio_dialog import _is_path_within
@@ -1215,10 +1215,21 @@ class TestControllerClientNaoExigeManifest:
     manifest.ini por design -- o gate de completude e o empacotamento nao
     podem exigi-lo pra esse tipo de projeto."""
 
-    def test_display_result_pula_exigencia_de_manifest_pra_controller_client(self):
-        src = _method_src_helper("_display_result")
-        assert 'getattr(result, "project_type"' in src
-        assert '"controller_client"' in src
+    def test_gate_de_completude_nao_exige_manifest_de_ninguem(self):
+        """5.50.0: manifest ausente deixou de ser fatal no gate da GUI (era o par
+        ESQUECIDO do gate do orchestrator) -- save_addon_files gera o minimo. Antes
+        havia um caso especial de manifest so pra controller_client AQUI; agora nao
+        e preciso, porque NINGUEM e reprovado por manifest ausente (foi o que o droid
+        em read-only expos: manifest sumia e o addon inteiro era recusado). O
+        empacotamento (_on_package) continua sendo onde controller_client dispensa o
+        manifest."""
+        import inspect
+
+        from nvdastudio.gui import studio_dialog
+
+        assert "falta o arquivo manifest.ini" not in inspect.getsource(studio_dialog), (
+            "manifest ausente voltou a ser fatal na GUI -- save_addon_files ja gera o minimo"
+        )
 
     def test_on_package_tem_branch_controller_client(self):
         src = _method_src_helper("_on_package")

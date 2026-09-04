@@ -95,3 +95,44 @@ def test_fallback_respeita_a_politica_de_versao_do_projeto():
 	conteudo = _generate_minimal_manifest("X")
 	assert f"minimumNVDAVersion = {PROJECT_MIN_NVDA}" in conteudo
 	assert f"lastTestedNVDAVersion = {PROJECT_LAST_TESTED_NVDA}" in conteudo
+
+
+def test_o_gate_da_GUI_tambem_deixa_passar_manifest_ausente():
+	"""A decisao 'manifest ausente nao e fatal' vale nos DOIS gates: o do
+	orchestrator (_validate_minimum_addon_artifacts, testado acima) E o da GUI
+	(studio_dialog, ao coletar os blocos). O gate da GUI era o par ESQUECIDO --
+	derrubava a entrega COMPLETA (4 modulos gerados) quando o step do manifest
+	falhava (medido: droid em read-only, 2026-09-04). So falta de CODIGO PYTHON
+	pode ser fatal, porque save_addon_files() gera o manifest minimo."""
+	import inspect
+
+	from nvdastudio.gui import studio_dialog
+
+	src = inspect.getsource(studio_dialog)
+	assert "falta o arquivo manifest.ini" not in src, (
+		"manifest ausente voltou a ser fatal na GUI -- save_addon_files ja gera o "
+		"minimo deterministico; so falta de codigo Python e irrecuperavel"
+	)
+
+
+def test_save_addon_files_gera_o_manifest_minimo_quando_falta(tmp_path):
+	"""A rede de seguranca de verdade: dado codigo Python mas NENHUM manifest,
+	save_addon_files escreve o manifest minimo no disco -- e por isso o gate da
+	GUI pode deixar passar sem entregar uma casca."""
+	import os
+
+	from nvdastudio.builder.addon_builder import save_addon_files
+
+	blocos = [{
+		"language": "python",
+		"filename": "globalPlugins/X/__init__.py",
+		"code": (
+			"import globalPluginHandler" + NL
+			+ "class GlobalPlugin(globalPluginHandler.GlobalPlugin): pass" + NL
+		),
+	}]
+	pasta, _ = save_addon_files(blocos, str(tmp_path), "X", use_timestamp=False)
+
+	manifest = os.path.join(pasta, "manifest.ini")
+	assert os.path.exists(manifest), "manifest minimo nao foi gerado quando faltava"
+	assert open(manifest, encoding="utf-8").read().startswith("name = X")

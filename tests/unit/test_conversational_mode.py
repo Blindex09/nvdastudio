@@ -40,7 +40,7 @@ def _method_src(class_name: str, method_name: str) -> str:
 class TestStudioDialogVersao:
     def test_versao_e_5_2_0(self):
         from nvdastudio.gui.studio_dialog import MODULE_VERSION
-        assert MODULE_VERSION == "5.49.0"
+        assert MODULE_VERSION == "5.50.0"
 
 
 class TestChatQuickConfig:
