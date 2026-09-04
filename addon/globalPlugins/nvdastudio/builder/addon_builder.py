@@ -35,7 +35,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.23.0"
+MODULE_VERSION = "4.24.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -751,8 +751,12 @@ def extract_code_blocks(text: str) -> list[dict]:
 			canonical_dir = m.group(1)
 			break
 
-	for unnamed in unamed_python:
-		inferred = _infer_python_filename(unnamed["code"], canonical_dir)
+	for _n, unnamed in enumerate(unamed_python, start=1):
+		# fallback_counter distinto por bloco: dois blocos sem classe e sem
+		# anotacao caiam ambos em module_1.py e o segundo sobrescrevia o
+		# primeiro no disco. O parametro existia para desambiguar mas nunca
+		# era passado -- mecanismo morto ate aqui.
+		inferred = _infer_python_filename(unnamed["code"], canonical_dir, fallback_counter=_n)
 		if inferred:
 			unnamed["filename"] = inferred
 			blocks.append(unnamed)

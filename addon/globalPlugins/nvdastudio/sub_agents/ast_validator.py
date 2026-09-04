@@ -2,7 +2,7 @@ import ast
 from dataclasses import dataclass
 from dataclasses import field
 
-MODULE_VERSION = "1.4.0"
+MODULE_VERSION = "1.5.0"
 
 # Widgets wx que exigem SetName() logo apos instanciacao
 _WX_INTERACTIVE_WIDGETS: frozenset[str] = frozenset(
@@ -432,6 +432,29 @@ def extract_declared_gestures(codigo: str) -> set[str]:
                     canonico = normalize_gesture(chave.value)
                     if canonico:
                         encontrados.add(canonico)
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            # Binding PROGRAMATICO: self.bindGesture("kb:NVDA+h", "script") e
+            # self.bindGestures({"kb:a": "s"}) sao padroes VALIDOS do NVDA
+            # (ScriptableObject) que nem @script nem o dict __gestures cobrem.
+            # Sem isto, um addon que so amarra atalho por bindGesture era
+            # reprovado por "atalho ausente" -- recusa de entrega boa.
+            # bindGestures(self.__gestures) ja e coberto pelo ramo Assign acima
+            # (o dict e lido onde e definido), entao aqui so tratamos os
+            # literais inline.
+            if node.func.attr == "bindGesture" and node.args:
+                arg0 = node.args[0]
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    canonico = normalize_gesture(arg0.value)
+                    if canonico:
+                        encontrados.add(canonico)
+            elif node.func.attr == "bindGestures" and node.args:
+                arg0 = node.args[0]
+                if isinstance(arg0, ast.Dict):
+                    for chave in arg0.keys:
+                        if isinstance(chave, ast.Constant) and isinstance(chave.value, str):
+                            canonico = normalize_gesture(chave.value)
+                            if canonico:
+                                encontrados.add(canonico)
 
     return encontrados
 

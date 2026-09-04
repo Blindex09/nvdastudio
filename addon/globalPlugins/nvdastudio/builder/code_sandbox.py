@@ -1,3 +1,4 @@
+import ast
 import re
 import subprocess
 import sys
@@ -9,7 +10,7 @@ from dataclasses import dataclass
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.10.0"
+MODULE_VERSION = "1.11.0"
 _logger = get_logger("code_sandbox")
 
 _SANDBOX_TIMEOUT = 10  # segundos
@@ -326,6 +327,61 @@ def _result_evidence(result: SandboxResult) -> str:
 	return " | ".join(part for part in parts if part) or f"exit_code={result.exit_code}"
 
 
+# Operacoes de arquivo IRREVERSIVEIS. Varridas so no que roda ao CARREGAR o
+# addon (nivel de modulo + __init__): um `os.remove`/`shutil.rmtree` ali quase
+# nunca e legitimo e apagaria arquivos reais durante a validacao -- o subprocesso
+# roda com as permissoes do usuario (isolamento de processo, nao de blast
+# radius). Metodos de script (so rodam quando o usuario aciona o atalho) NAO sao
+# varridos: la o codigo nao roda na validacao, e reprovar seria falso positivo.
+_ATTR_DESTRUTIVOS_DE_ARQUIVO = {"rmtree", "unlink", "rmdir", "removedirs"}
+
+
+def _op_destrutiva_no_carregamento(files: dict[str, str]) -> str:
+	"""Descreve a 1a operacao destrutiva de arquivo que rodaria ao CARREGAR o
+	addon (nivel de modulo ou __init__), ou "" se nenhuma."""
+
+	def _perigo(call: ast.Call) -> str:
+		f = call.func
+		if not isinstance(f, ast.Attribute):
+			return ""
+		base = f.value.id if isinstance(f.value, ast.Name) else ""
+		if f.attr in _ATTR_DESTRUTIVOS_DE_ARQUIVO:
+			return f"{base + '.' if base else ''}{f.attr}"
+		if base == "os" and f.attr in ("remove", "system"):
+			return f"os.{f.attr}"
+		return ""
+
+	def _scan(stmts: list) -> str:
+		for st in stmts:
+			for node in ast.walk(st):
+				if isinstance(node, ast.Call):
+					achado = _perigo(node)
+					if achado:
+						return achado
+		return ""
+
+	for caminho, codigo in (files or {}).items():
+		if not caminho.endswith(".py"):
+			continue
+		try:
+			tree = ast.parse(codigo or "")
+		except SyntaxError:
+			continue  # sintaxe ja e reprovada por outro degrau, mais preciso
+		modulo = [
+			n for n in tree.body
+			if not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+		]
+		achado = _scan(modulo)
+		if achado:
+			return f"{achado} em nivel de modulo de {caminho}"
+		for node in ast.walk(tree):
+			if isinstance(node, ast.FunctionDef) and node.name == "__init__":
+				achado = _scan(node.body)
+				if achado:
+					return f"{achado} em __init__ de {caminho}"
+	return ""
+
+
 class CodeSandbox:
     """
     Sandbox para execucao segura de codigo Python.
@@ -477,6 +533,24 @@ class CodeSandbox:
             return SandboxResult(
                 success=True, stdout="", stderr="",
                 error="nenhum globalPlugins/*/__init__.py encontrado -- nada pra validar",
+            )
+
+        # 1.11.0 -- NAO executar codigo que apaga arquivos ao carregar.
+        #
+        # O subprocesso roda com as permissoes do usuario (isolamento de
+        # processo, nao de blast radius). Um os.remove/shutil.rmtree em nivel de
+        # modulo ou __init__ apagaria arquivos reais durante a validacao. Pular a
+        # execucao contem o dano; sintaxe/lint/Critic seguem julgando o codigo.
+        _perigo = _op_destrutiva_no_carregamento(files)
+        if _perigo:
+            _logger.warning(
+                "[Sandbox] Execucao de validacao PULADA por seguranca: %s", _perigo,
+            )
+            return SandboxResult(
+                success=True,
+                stdout=f"PULADO_POR_SEGURANCA: operacao destrutiva de arquivo no carregamento ({_perigo})",
+                stderr="",
+                error="",
             )
 
         tmpdir = tempfile.mkdtemp(prefix="nvdastudio_execcheck_")

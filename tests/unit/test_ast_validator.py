@@ -42,7 +42,7 @@ class TestModuloExiste:
 
     def test_module_version_existe(self):
         from nvdastudio.sub_agents.ast_validator import MODULE_VERSION
-        assert MODULE_VERSION == "1.4.0"
+        assert MODULE_VERSION == "1.5.0"
 
     def test_validate_wx_accelerator_existe(self):
         from nvdastudio.sub_agents.ast_validator import validate_wx_a11y_002_accelerators

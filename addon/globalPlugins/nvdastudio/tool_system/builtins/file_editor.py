@@ -12,7 +12,28 @@ from ..registry import registry, tool_error, tool_result
 from ...utils.logger import get_logger
 
 _logger = get_logger("tool_system.file_editor")
-_WORKSPACE_ROOT = Path(__file__).resolve().parents[5]
+
+
+def _default_workspace_root() -> Path:
+	"""Raiz do workspace das ferramentas de arquivo -- a pasta de saida dos
+	addons gerados, NUNCA a arvore de codigo do proprio NVDAStudio.
+
+	Ate aqui era `Path(__file__).resolve().parents[5]`, que em producao aponta
+	para a pasta `addons/` do NVDA (e em dev para a raiz do repo). Como o
+	`file_editor` e oferecido ao LLM de geracao (code_generator.py) e a
+	aprovacao e por caminho, aquele default deixava o LLM alcancar o codigo do
+	proprio NVDAStudio e TODOS os addons instalados -- e ao mesmo tempo deixava
+	o addon-alvo real (em addons_gerados/) FORA do workspace. Confinar na pasta
+	de saida corrige as duas pontas.
+	"""
+	try:
+		from ...gui.settings_panel import get_output_dir
+		return Path(get_output_dir()).expanduser().resolve()
+	except Exception:  # pragma: no cover - defesa (config do NVDA ausente)
+		return (Path.home() / "Documents" / "NVDAStudio" / "addons_gerados").resolve()
+
+
+_WORKSPACE_ROOT = _default_workspace_root()
 _DESCRIPTION = "Edita arquivos reais do workspace com histórico e operações atômicas."
 _HISTORY_LIMIT = 32
 _HISTORY: dict[str, dict] = {}
