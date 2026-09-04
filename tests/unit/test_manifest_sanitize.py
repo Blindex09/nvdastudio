@@ -3,7 +3,7 @@ from nvdastudio.builder.addon_builder import _sanitize_manifest, MODULE_VERSION
 
 class TestAddonBuilderVersao170:
     def test_versao_e_1_8_0(self):
-        assert MODULE_VERSION == "4.24.0"
+        assert MODULE_VERSION == "4.25.0"
 
 
 class TestSanitizeManifest:

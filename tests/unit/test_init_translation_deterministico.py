@@ -35,7 +35,7 @@ def _compila(code: str) -> bool:
 
 
 def test_versao():
-	assert MODULE_VERSION == "4.24.0"
+	assert MODULE_VERSION == "4.25.0"
 
 
 def test_modulo_com_gettext_recebe_inicializacao():

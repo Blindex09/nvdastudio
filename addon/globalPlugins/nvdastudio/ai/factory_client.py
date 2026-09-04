@@ -65,10 +65,11 @@ import subprocess
 import tempfile
 from typing import Any, Callable
 
+from ..utils.hidden_process import CREATE_NO_WINDOW
 from ..utils.logger import get_logger
 from .llm_client import LLMClientError, LLMResponse
 
-MODULE_VERSION = "1.1.0"
+MODULE_VERSION = "1.2.0"
 _logger = get_logger("factory_client")
 
 # Mesmo heavy que o projeto ja usa no Ollama -- trocar de provedor nao pode
@@ -220,6 +221,9 @@ class FactoryClient:
 				proc = subprocess.run(
 					cmd, capture_output=True, text=True, encoding="utf-8",
 					errors="replace", timeout=_TIMEOUT_PADRAO, env=env, cwd=trabalho,
+					# Sem isto o `droid` abre uma janela de console no Windows que
+					# rouba o foco do NVDA (0 fora do Windows -- portavel).
+					creationflags=CREATE_NO_WINDOW,
 				)
 			except subprocess.TimeoutExpired:
 				raise FactoryClientError(

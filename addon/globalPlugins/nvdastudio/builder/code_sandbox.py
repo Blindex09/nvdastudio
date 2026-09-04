@@ -8,10 +8,21 @@ import shutil
 import zipfile
 from dataclasses import dataclass
 
+from ..utils.hidden_process import CREATE_NO_WINDOW
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.11.0"
+MODULE_VERSION = "1.12.0"
 _logger = get_logger("code_sandbox")
+
+
+def _run_hidden(*args, **kwargs):
+	"""subprocess.run com a janela de console suprimida no Windows -- senao
+	cada validacao/pytest/pip abre um terminal que rouba o foco do NVDA
+	(ver utils/hidden_process.py). Chama o subprocess.run DESTE modulo de
+	proposito: os testes que dao patch em code_sandbox.subprocess.run
+	continuam valendo."""
+	kwargs["creationflags"] = kwargs.get("creationflags", 0) | CREATE_NO_WINDOW
+	return subprocess.run(*args, **kwargs)
 
 _SANDBOX_TIMEOUT = 10  # segundos
 _TEST_SUITE_TIMEOUT = 25  # segundos — varios arquivos/imports, mais folga que uma checagem simples
@@ -439,7 +450,7 @@ class CodeSandbox:
     def _run_subprocess(self, script_path: str, timeout: int) -> SandboxResult:
         """Executa script em subprocesso com timeout."""
         try:
-            proc = subprocess.run(
+            proc = _run_hidden(
                 [sys.executable, script_path],
                 capture_output=True,
                 text=True,
@@ -569,7 +580,7 @@ class CodeSandbox:
                 env = {"PYTHONPATH": tmpdir, "PATH": os.environ.get("PATH", "")}
                 if fault_scenario:
                     env["NVDASTUDIO_FAULT_SCENARIO"] = fault_scenario
-                proc = subprocess.run(
+                proc = _run_hidden(
                     [sys.executable, "_sandbox_runner.py"],
                     capture_output=True, text=True, timeout=timeout, cwd=tmpdir,
                     env=env,
@@ -768,7 +779,7 @@ class CodeSandbox:
             # deixam de autocarregar.
             env = os.environ.copy()
             env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
-            proc = subprocess.run(
+            proc = _run_hidden(
                 [sys.executable, "-m", "pytest", "-q", "--no-header", *test_relpaths],
                 capture_output=True, text=True, timeout=timeout, cwd=cwd,
                 # Diferente de _run_subprocess() (que zera PYTHONPATH de proposito
@@ -801,7 +812,7 @@ class CodeSandbox:
         if not modules:
             return SandboxResult(success=True, stdout="", stderr="", error="sem modulo de teste valido")
         try:
-            proc = subprocess.run(
+            proc = _run_hidden(
                 [sys.executable, "-m", "unittest", *modules, "-v"],
                 capture_output=True, text=True, timeout=timeout, cwd=cwd,
                 env=os.environ.copy(),
@@ -932,7 +943,7 @@ class CodeSandbox:
             with open(cfg, "w", encoding="utf-8") as f:
                 f.write(_GENERATED_RUFF_CONFIG)
             try:
-                proc = subprocess.run(
+                proc = _run_hidden(
                     [sys.executable, "-m", "ruff", "check", "--fix", "--no-cache",
                      "--select", "F401", "--config", cfg,
                      "--stdin-filename", apelido, "-"],
@@ -954,7 +965,7 @@ class CodeSandbox:
             with open(cfg, "w", encoding="utf-8") as f:
                 f.write(_GENERATED_RUFF_CONFIG)
             try:
-                proc = subprocess.run(
+                proc = _run_hidden(
                     [sys.executable, "-m", "ruff", "check", "--no-cache",
                      "--config", cfg, "--select", "F821,F823",
                      "--output-format=concise", "--stdin-filename", rel, "-"],
@@ -981,7 +992,7 @@ class CodeSandbox:
             with open(cfg, "w", encoding="utf-8") as f:
                 f.write(_GENERATED_RUFF_CONFIG)
             try:
-                proc = subprocess.run(
+                proc = _run_hidden(
                     [sys.executable, "-m", "ruff", "check", "--fix", "--no-cache",
                      "--config", cfg, "--stdin-filename", rel, "-"],
                     input=conteudo, capture_output=True, text=True,
@@ -1095,7 +1106,7 @@ class CodeSandbox:
                     f.write(config_content)
 
             try:
-                proc = subprocess.run(
+                proc = _run_hidden(
                     [sys.executable, *tool_argv],
                     capture_output=True, text=True, timeout=timeout, cwd=tmpdir,
                     # Ambiente REAL herdado, mesmo motivo ja documentado em

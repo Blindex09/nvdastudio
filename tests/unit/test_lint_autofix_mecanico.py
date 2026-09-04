@@ -33,7 +33,7 @@ CERCA = chr(96) * 3
 
 
 def test_versao():
-	assert MODULE_VERSION == "4.24.0"
+	assert MODULE_VERSION == "4.25.0"
 
 
 class TestAutofix:
