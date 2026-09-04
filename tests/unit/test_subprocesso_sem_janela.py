@@ -69,3 +69,50 @@ def test_code_sandbox_nao_tem_subprocess_run_nu():
 	assert src.count("subprocess.run(") == 1, (
 		"code_sandbox deve chamar subprocess.run so dentro de _run_hidden"
 	)
+
+
+def test_find_python_nunca_devolve_o_nvda():
+	"""O nvda.exe nao e interpretador -- roda-lo como python da WinError 740."""
+	from nvdastudio.utils.hidden_process import find_python
+
+	achado = find_python()
+	assert achado is None or "nvda" not in achado.lower()
+
+
+class TestValidacaoDeExecucaoDegradaSemPython:
+	"""Regressao do loop de 'Erro de execucao real: [WinError 740]': DENTRO do
+	NVDA, sys.executable e o nvda.exe (nao roda como python, pede elevacao). A
+	validacao de execucao tem que PULAR nesse caso -- ausencia de interpretador
+	e infra, nao defeito do codigo. Tratar como falha jogava o step num loop de
+	retry infinito (o que o usuario viu ao vivo)."""
+
+	_ADDON = (
+		"import globalPluginHandler\n"
+		"class GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
+		"\tpass\n"
+	)
+
+	def test_sem_python_real_pula_em_vez_de_reprovar(self, monkeypatch):
+		from nvdastudio.builder import code_sandbox
+
+		monkeypatch.setattr(code_sandbox, "_PYTHON", None)
+		r = code_sandbox.CodeSandbox().validate_addon_execution(
+			{"globalPlugins/X/__init__.py": self._ADDON}
+		)
+		assert r.success is True, "sem python, tem que PULAR, nao reprovar (senao loop)"
+		assert "PULADO_SEM_PYTHON" in r.stdout
+
+	def test_winerror_740_ao_lancar_pula(self, monkeypatch):
+		from nvdastudio.builder import code_sandbox
+
+		monkeypatch.setattr(code_sandbox, "_PYTHON", "python.exe")
+
+		def _lanca_740(*a, **k):
+			raise OSError(740, "A operacao solicitada requer elevacao")
+
+		monkeypatch.setattr(code_sandbox, "_run_hidden", _lanca_740)
+		r = code_sandbox.CodeSandbox().validate_addon_execution(
+			{"globalPlugins/X/__init__.py": self._ADDON}
+		)
+		assert r.success is True, "740 ao lancar o interpretador tem que PULAR"
+		assert "PULADO_SUBPROCESSO_INDISPONIVEL" in r.stdout

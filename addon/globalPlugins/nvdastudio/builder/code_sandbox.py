@@ -8,11 +8,18 @@ import shutil
 import zipfile
 from dataclasses import dataclass
 
-from ..utils.hidden_process import CREATE_NO_WINDOW
+from ..utils.hidden_process import CREATE_NO_WINDOW, find_python
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.12.0"
+MODULE_VERSION = "1.13.0"
 _logger = get_logger("code_sandbox")
+
+# Interpretador Python REAL para os subprocessos de validacao. DENTRO do NVDA,
+# sys.executable e o nvda.exe -- rodar ele como python falha com WinError 740
+# (requer elevacao), e era isso que jogava a validacao de execucao num loop de
+# "Erro de execucao real". None => nao ha python usavel: as validacoes por
+# subprocesso PULAM (ausencia de interpretador nao e defeito do codigo gerado).
+_PYTHON = find_python()
 
 
 def _run_hidden(*args, **kwargs):
@@ -451,7 +458,7 @@ class CodeSandbox:
         """Executa script em subprocesso com timeout."""
         try:
             proc = _run_hidden(
-                [sys.executable, script_path],
+                [(_PYTHON or sys.executable), script_path],
                 capture_output=True,
                 text=True,
                 timeout=timeout,
@@ -478,7 +485,7 @@ class CodeSandbox:
                 error=f"Timeout: codigo excedeu {timeout}s",
                 timed_out=True,
             )
-        except FileNotFoundError:
+        except OSError:
             return SandboxResult(
                 success=False,
                 stdout="",
@@ -564,6 +571,17 @@ class CodeSandbox:
                 error="",
             )
 
+        # Sem python real nao da para executar -- pula (ver _PYTHON). Ausencia
+        # de interpretador nao e defeito do codigo: tratar como falha jogava o
+        # step no loop de "Erro de execucao real" (WinError 740 dentro do NVDA,
+        # onde sys.executable e o nvda.exe).
+        if _PYTHON is None:
+            return SandboxResult(
+                success=True,
+                stdout="PULADO_SEM_PYTHON: nenhum interpretador Python real para validar a execucao",
+                stderr="", error="",
+            )
+
         tmpdir = tempfile.mkdtemp(prefix="nvdastudio_execcheck_")
         try:
             self._write_files(tmpdir, files)
@@ -581,7 +599,7 @@ class CodeSandbox:
                 if fault_scenario:
                     env["NVDASTUDIO_FAULT_SCENARIO"] = fault_scenario
                 proc = _run_hidden(
-                    [sys.executable, "_sandbox_runner.py"],
+                    [_PYTHON, "_sandbox_runner.py"],
                     capture_output=True, text=True, timeout=timeout, cwd=tmpdir,
                     env=env,
                 )
@@ -590,8 +608,15 @@ class CodeSandbox:
                     success=False, stdout="", stderr="",
                     error=f"Timeout: validacao de execucao excedeu {timeout}s", timed_out=True,
                 )
-            except FileNotFoundError:
-                return SandboxResult(success=False, stdout="", stderr="", error="Python nao encontrado no PATH")
+            except OSError as exc:
+                # Nao conseguiu LANCAR o interpretador (ausente, ou WinError 740/
+                # elevacao dentro do NVDA). Infra, nao defeito do codigo -- pula
+                # em vez de reprovar o step (que viraria o loop de retry).
+                _logger.warning("[Sandbox] execucao pulada (interpretador indisponivel): %s", exc)
+                return SandboxResult(
+                    success=True, stdout=f"PULADO_SUBPROCESSO_INDISPONIVEL: {exc}",
+                    stderr="", error="",
+                )
 
             stdout, stderr = proc.stdout[:5000], proc.stderr[:5000]
             return SandboxResult(
@@ -780,7 +805,7 @@ class CodeSandbox:
             env = os.environ.copy()
             env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
             proc = _run_hidden(
-                [sys.executable, "-m", "pytest", "-q", "--no-header", *test_relpaths],
+                [(_PYTHON or sys.executable), "-m", "pytest", "-q", "--no-header", *test_relpaths],
                 capture_output=True, text=True, timeout=timeout, cwd=cwd,
                 # Diferente de _run_subprocess() (que zera PYTHONPATH de proposito
                 # pra higiene de import), aqui herdamos o ambiente REAL completo:
@@ -794,7 +819,7 @@ class CodeSandbox:
         except subprocess.TimeoutExpired:
             return SandboxResult(success=False, stdout="", stderr="",
                                   error=f"Timeout: testes excederam {timeout}s", timed_out=True)
-        except FileNotFoundError:
+        except OSError:
             return SandboxResult(success=False, stdout="", stderr="", error="Python nao encontrado no PATH")
 
         stdout, stderr = proc.stdout[:5000], proc.stderr[:5000]
@@ -813,14 +838,14 @@ class CodeSandbox:
             return SandboxResult(success=True, stdout="", stderr="", error="sem modulo de teste valido")
         try:
             proc = _run_hidden(
-                [sys.executable, "-m", "unittest", *modules, "-v"],
+                [(_PYTHON or sys.executable), "-m", "unittest", *modules, "-v"],
                 capture_output=True, text=True, timeout=timeout, cwd=cwd,
                 env=os.environ.copy(),
             )
         except subprocess.TimeoutExpired:
             return SandboxResult(success=False, stdout="", stderr="",
                                   error=f"Timeout: testes excederam {timeout}s", timed_out=True)
-        except FileNotFoundError:
+        except OSError:
             return SandboxResult(success=False, stdout="", stderr="", error="Python nao encontrado no PATH")
 
         return SandboxResult(
@@ -944,7 +969,7 @@ class CodeSandbox:
                 f.write(_GENERATED_RUFF_CONFIG)
             try:
                 proc = _run_hidden(
-                    [sys.executable, "-m", "ruff", "check", "--fix", "--no-cache",
+                    [(_PYTHON or sys.executable), "-m", "ruff", "check", "--fix", "--no-cache",
                      "--select", "F401", "--config", cfg,
                      "--stdin-filename", apelido, "-"],
                     input=conteudo, capture_output=True, text=True,
@@ -966,7 +991,7 @@ class CodeSandbox:
                 f.write(_GENERATED_RUFF_CONFIG)
             try:
                 proc = _run_hidden(
-                    [sys.executable, "-m", "ruff", "check", "--no-cache",
+                    [(_PYTHON or sys.executable), "-m", "ruff", "check", "--no-cache",
                      "--config", cfg, "--select", "F821,F823",
                      "--output-format=concise", "--stdin-filename", rel, "-"],
                     input=conteudo, capture_output=True, text=True,
@@ -993,7 +1018,7 @@ class CodeSandbox:
                 f.write(_GENERATED_RUFF_CONFIG)
             try:
                 proc = _run_hidden(
-                    [sys.executable, "-m", "ruff", "check", "--fix", "--no-cache",
+                    [(_PYTHON or sys.executable), "-m", "ruff", "check", "--fix", "--no-cache",
                      "--config", cfg, "--stdin-filename", rel, "-"],
                     input=conteudo, capture_output=True, text=True,
                     timeout=timeout or _LINT_TIMEOUT,
@@ -1107,7 +1132,7 @@ class CodeSandbox:
 
             try:
                 proc = _run_hidden(
-                    [sys.executable, *tool_argv],
+                    [(_PYTHON or sys.executable), *tool_argv],
                     capture_output=True, text=True, timeout=timeout, cwd=tmpdir,
                     # Ambiente REAL herdado, mesmo motivo ja documentado em
                     # _run_pytest(): ruff/mypy costumam estar instalados como
@@ -1122,7 +1147,7 @@ class CodeSandbox:
                     success=True, stdout="", stderr="",
                     error=f"analise estatica excedeu {timeout}s", timed_out=True,
                 )
-            except FileNotFoundError:
+            except OSError:
                 return SandboxResult(success=True, stdout="", stderr="", error=missing_error)
 
             stdout, stderr = proc.stdout[:5000], proc.stderr[:5000]
