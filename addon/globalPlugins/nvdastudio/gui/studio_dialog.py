@@ -5,6 +5,7 @@ import queue
 import re
 import threading
 import time
+from collections import deque
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
@@ -51,7 +52,25 @@ from ..core.orch_types import (
 )
 from ..core.planner import ExecutionPlan, STEP_TEST_GENERATION
 
-MODULE_VERSION = "5.50.0"
+MODULE_VERSION = "5.51.0"
+
+# Janela curta (nao unicidade global): uma frase legitima pode reaparecer
+# muito depois numa sessao longa -- so o eco PROXIMO, das retentativas de um
+# mesmo step, e ruido a descartar.
+_JANELA_NARRACAO = 8
+
+
+def _narracao_e_eco(message: str, janela: deque[str]) -> bool:
+	"""True se `message` (normalizado: espacos colapsados, casefold) ja aparece
+	na janela recente de narracoes -- eco a descartar. Se NAO for eco, registra
+	a chave na janela e devolve False (pode exibir). Helper puro para permitir
+	teste sem instanciar o dialogo (a classe herda de wx.Dialog, mockado na
+	suite)."""
+	chave = " ".join(message.split()).casefold()
+	if chave in janela:
+		return True
+	janela.append(chave)
+	return False
 _logger = get_logger("studio_dialog")
 
 
@@ -833,6 +852,20 @@ class NVDAStudioDialog(wx.Dialog):
 		"""
 		message = sanitize_user_visible_text(message)
 		if not message:
+			return
+		# Dedup de narracao repetida (5.51.0): cada retentativa de um step
+		# re-narra a MESMA frase ("Estou pensando na estrutura do addon...")
+		# e todas eram emitidas, empilhando texto identico no historico. A
+		# dedup de _chat_append() so olhava a linha fisica imediatamente
+		# anterior e NUNCA casava pro formato multilinha "Assistente:\n{msg}"
+		# (sanitize preserva o \n). _narracao_e_eco() guarda uma janela curta
+		# das ultimas narracoes normalizadas e descarta a repeticao -- a
+		# narracao volta a fluir sem eco.
+		janela: deque[str] | None = getattr(self, "_status_recentes", None)
+		if janela is None:
+			janela = deque(maxlen=_JANELA_NARRACAO)
+			self._status_recentes = janela
+		if _narracao_e_eco(message, janela):
 			return
 		self._chat_append(f"Assistente:\n{message}")
 		self._set_status(message)

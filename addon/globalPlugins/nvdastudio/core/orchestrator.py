@@ -51,7 +51,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.87.0"
+MODULE_VERSION = "5.88.0"
 _logger = get_logger("orchestrator")
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
@@ -1110,9 +1110,21 @@ class Orchestrator:
 			# lista curta de fontes tem valor de confianca/verificacao pro
 			# usuario. emit_content() (nao narrate()) pra nao arriscar o LLM
 			# reescrevendo/errando as URLs.
-			if domain_ctx.research_sources:
+			# 5.88.0: research_sources carrega placeholders INTERNOS
+			# ("conhecimento estatico", "conhecimento estatico + LLM") quando
+			# nenhuma busca externa real rodou (domain_researcher.py). Emitir
+			# isso como "Fontes consultadas: - conhecimento estatico" nao diz
+			# nada ao usuario -- e ruido interno vazando pra conversa. So
+			# emitimos fontes que sejam referencias reais; se sobrar so
+			# placeholder, nao ha bloco de fontes a mostrar.
+			_FONTES_PLACEHOLDER = {"conhecimento estatico", "conhecimento estatico + llm"}
+			fontes_reais = [
+				s for s in domain_ctx.research_sources
+				if s and s.strip().casefold() not in _FONTES_PLACEHOLDER
+			]
+			if fontes_reais:
 				sources_text = "Fontes consultadas:\n" + "\n".join(
-					f"- {url}" for url in domain_ctx.research_sources
+					f"- {url}" for url in fontes_reais
 				)
 				conversation.emit_content(sources_text)
 			self._check_cancel()

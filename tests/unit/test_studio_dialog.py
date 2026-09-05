@@ -373,7 +373,7 @@ class TestOnPackageAvisaProblemasEstruturaisNaoResolvidos:
 
     def test_module_version_e_5_2_0(self):
         from nvdastudio.gui.studio_dialog import MODULE_VERSION
-        assert MODULE_VERSION == "5.50.0"
+        assert MODULE_VERSION == "5.51.0"
 
     def test_path_containment_rejeita_outra_unidade_windows(self):
         from nvdastudio.gui.studio_dialog import _is_path_within

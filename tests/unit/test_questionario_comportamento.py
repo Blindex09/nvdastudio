@@ -172,7 +172,7 @@ class TestStudioDialogQ5Q13:
 
     def test_versao_studio_dialog(self):
         from addon.globalPlugins.nvdastudio.gui.studio_dialog import MODULE_VERSION
-        assert MODULE_VERSION == "5.50.0"
+        assert MODULE_VERSION == "5.51.0"
 
     def test_save_instrucoes_txt_existe(self):
         import addon.globalPlugins.nvdastudio.gui.studio_dialog as sd
