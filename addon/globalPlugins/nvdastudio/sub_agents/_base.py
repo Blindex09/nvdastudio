@@ -19,23 +19,6 @@ _tl = threading.local()
 _PROMPT_CACHE_TTL_SECONDS = 1800
 _PROMPT_CACHE_MAX_ENTRIES = 64
 
-_NARRATE_SYSTEM = """Voce e a voz interna do NVDAStudio, narrando pro usuario em tempo real o que voce esta fazendo agora -- como um pensamento em voz alta, natural e caloroso, em portugues do Brasil.
-
-Regras:
-- Responda com 1 frase curta so (max 100 caracteres), primeira pessoa, tempo presente.
-- SEMPRE use os detalhes concretos fornecidos na mensagem (nome de arquivo, pacote,
-  numero, erro especifico, resultado real) -- nunca fique so na frase generica tipo
-  "revisando o codigo" ou "verificando tudo" quando um dado especifico foi passado
-  pra voce. A narracao tem que ser um registro do que REALMENTE aconteceu, nao um
-  enfeite vago -- se nao tem detalhe concreto disponivel, tudo bem ser mais simples,
-  mas nunca invente detalhe que nao foi passado.
-- Nunca use jargao tecnico, nomes internos de funcao/classe/step_type, ou termos de
-  programacao que um usuario leigo nao entenderia -- traduza pra linguagem natural,
-  mas mantendo os fatos concretos (nome de arquivo esta OK, "step_type=X" nao esta).
-- Nunca use Markdown, emojis, aspas ou pontuacao decorativa.
-- Cada frase e um passo novo, nao repita o que ja foi dito.
-- Responda APENAS com a frase em si, nada mais."""
-
 _TOOL_PREAMBLE_INSTRUCTION = """
 NARRACAO EM TEMPO REAL (estilo "tool preamble"):
 Antes de comecar e entre cada uso de ferramenta, escreva uma frase curta e
@@ -71,13 +54,49 @@ def get_last_tokens() -> int:
 	return getattr(_tl, "last_tokens", 0)
 
 
-def _narrate_light_model() -> str:
-	try:
-		from ..gui.settings_panel import get_llm_provider
-		from ..ai.model_registry import resolve_provider_tier_model
-		return resolve_provider_tier_model(get_llm_provider(), "light")
-	except Exception:
-		return "alto"
+# Marcadores de plural "de codigo" que os call-sites de narrate() usam (a
+# frase e montada em runtime com um numero: "3 ponto(s)"). Resolvidos aqui,
+# deterministicamente, pelo numero que antecede -- irregulares do portugues
+# ("item(ns)" -> "itens", "secao(oes)" -> "secoes") entram explicitos porque
+# nao dao pra derivar por regra generica.
+_PLURAIS_NARRACAO = {
+	"ponto(s)": ("ponto", "pontos"),
+	"arquivo(s)": ("arquivo", "arquivos"),
+	"problema(s)": ("problema", "problemas"),
+	"caso(s)": ("caso", "casos"),
+	"item(ns)": ("item", "itens"),
+	"secao(oes)": ("secao", "secoes"),
+}
+# Sufixo tecnico ", status searched/cached" que um call-site anexava cru --
+# valor interno da tool de busca, sem significado pro usuario.
+_STATUS_JARGAO_RE = re.compile(r",?\s*status\s+\w+\s*$", re.IGNORECASE)
+
+
+def _expandir_plural(texto: str, marcador: str, singular: str, plural: str) -> str:
+	def _sub(m: "re.Match[str]") -> str:
+		n = m.group(1)
+		return f"{n} {singular if n == '1' else plural}"
+	return re.sub(rf"(\d+)\s+{re.escape(marcador)}", _sub, texto)
+
+
+def _limpar_narracao(action_desc: str) -> str:
+	"""Limpa a frase de narracao que o call-site JA escreveu (PT-BR, primeira
+	pessoa, tempo presente), sem reescrever via uma segunda IA.
+
+	Ate aqui narrate() disparava um modelo leve so pra "naturalizar" a frase:
+	custava tokens e, por vir de um segundo modelo generico, soava
+	enlatado/robotico -- exatamente a queixa do usuario ("essa narracao idiota
+	de robo"). Os call-sites ja passam frase natural; a reescrita nao agregava.
+	A limpeza restante e deterministica e de graca: colapsa espacos, resolve os
+	marcadores de plural de codigo pelo numero ("3 ponto(s)" -> "3 pontos",
+	"1 arquivo(s)" -> "1 arquivo") e remove o sufixo ", status X" interno.
+	"""
+	texto = " ".join(action_desc.split())
+	texto = _STATUS_JARGAO_RE.sub("", texto)
+	for marcador, (singular, plural) in _PLURAIS_NARRACAO.items():
+		if marcador in texto:
+			texto = _expandir_plural(texto, marcador, singular, plural)
+	return texto.strip()
 
 
 def _truncate_at_word(text: str, max_chars: int) -> str:
@@ -100,36 +119,24 @@ def _truncate_at_word(text: str, max_chars: int) -> str:
 
 def narrate(action_desc: str) -> None:
 	"""
-	Narra em tempo real, em linguagem natural, uma acao que o agente esta
-	fazendo agora (pensando, pesquisando, executando, editando). Dispara uma
-	chamada de IA curta (modelo leve do provedor ativo) em thread separada
-	-- nao bloqueia a tarefa real -- e emite via conversation.emit_status()
-	quando a frase fica pronta.
+	Narra em tempo real, em linguagem natural, uma acao que o agente acabou de
+	fazer ou vai fazer (pensando, pesquisando, executando, editando). Emite a
+	frase DIRETO via conversation.emit_status() -- o call-site ja a escreve em
+	PT-BR, primeira pessoa, tempo presente; aqui so aplicamos uma limpeza
+	deterministica (_limpar_narracao). NAO ha mais uma segunda IA reescrevendo:
+	isso custava tokens e soava robotico (a queixa concreta do usuario).
 
-	action_desc: descricao tecnica curta da acao em curso (ex: "pesquisando
-	o pacote google-generativeai na web"). O modelo reescreve isso numa
-	frase natural e conversacional antes de chegar ao usuario.
+	action_desc: a frase ja pronta da narracao (ex: "terminei a auditoria,
+	encontrei 3 ponto(s) de atencao de acessibilidade").
 
-	Silenciosa em teste (pytest/unittest) para nao gerar chamadas de rede
-	nem threads soltas na suite.
+	Silenciosa em teste (pytest/unittest) para nao poluir asserts de
+	emit_status de outros testes; a limpeza e testada via _limpar_narracao.
 	"""
 	if not action_desc or not action_desc.strip():
 		return
 	if "pytest" in sys.modules or "unittest" in sys.modules:
 		return
-	threading.Thread(target=_narrate_work, args=(action_desc,), daemon=True).start()
-
-
-def _narrate_work(action_desc: str) -> None:
-	"""Corpo real de narrate(), rodado em thread separada (ou direto em teste)."""
-	try:
-		client = create_llm_client(model_id=_narrate_light_model())
-		resp = client.chat(action_desc, system_override=_NARRATE_SYSTEM)
-		text = (resp.content or "").strip()
-		if text:
-			conversation.emit_status(text)
-	except Exception as exc:
-		_logger.debug("[DEBUG] narrate() falhou: %s", exc)
+	conversation.emit_status(_limpar_narracao(action_desc))
 
 
 _REASONING_CHUNK_MIN_CHARS = 60

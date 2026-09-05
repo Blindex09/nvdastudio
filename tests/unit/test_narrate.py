@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 
 class TestTruncateAtWord:
@@ -32,78 +32,88 @@ class TestTruncateAtWord:
 
 
 class TestNarrateGuardDeTeste:
-    def test_narrate_nao_faz_nada_sob_pytest(self):
-        """narrate() e silenciosa em teste -- nao gera chamada de rede nem thread solta."""
+    def test_narrate_e_silenciosa_sob_pytest(self):
+        """narrate() nao emite em teste -- o guard evita poluir asserts de
+        emit_status de outros testes. A limpeza e testada via _limpar_narracao."""
         from nvdastudio.sub_agents._base import narrate
-        with patch("nvdastudio.sub_agents._base.create_llm_client") as mock_create:
-            narrate("pesquisando algo")
-        mock_create.assert_not_called()
+        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+            narrate("terminei a auditoria")
+        mock_conv.emit_status.assert_not_called()
 
     def test_narrate_vazio_nao_faz_nada(self):
         from nvdastudio.sub_agents._base import narrate
-        with patch("nvdastudio.sub_agents._base.threading.Thread") as mock_thread:
+        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
             narrate("")
             narrate("   ")
-        mock_thread.assert_not_called()
-
-
-class TestNarrateWork:
-    """Testa o corpo real de narrate() diretamente (bypassa o guard de teste)."""
-
-    def test_narrate_work_chama_client_com_modelo_leve(self):
-        from nvdastudio.sub_agents._base import _narrate_work
-
-        mock_resp = MagicMock()
-        mock_resp.content = "Pesquisando a versao mais recente do pacote."
-
-        with patch("nvdastudio.sub_agents._base.create_llm_client") as mock_create, \
-             patch("nvdastudio.sub_agents._base._narrate_light_model", return_value="deepseek-v4-flash"), \
-             patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
-            mock_create.return_value.chat.return_value = mock_resp
-            _narrate_work("pesquisando pacote google-generativeai")
-
-        mock_create.assert_called_once_with(model_id="deepseek-v4-flash")
-        mock_conv.emit_status.assert_called_once_with("Pesquisando a versao mais recente do pacote.")
-
-    def test_narrate_work_usa_system_override_conversacional(self):
-        from nvdastudio.sub_agents._base import _narrate_work, _NARRATE_SYSTEM
-
-        mock_resp = MagicMock()
-        mock_resp.content = "Verificando se o pacote existe."
-
-        with patch("nvdastudio.sub_agents._base.create_llm_client") as mock_create, \
-             patch("nvdastudio.sub_agents._base.conversation"):
-            mock_create.return_value.chat.return_value = mock_resp
-            _narrate_work("verificando pacote x")
-
-        _, kwargs = mock_create.return_value.chat.call_args
-        assert kwargs.get("system_override") == _NARRATE_SYSTEM
-
-    def test_narrate_work_nao_emite_se_resposta_vazia(self):
-        from nvdastudio.sub_agents._base import _narrate_work
-
-        mock_resp = MagicMock()
-        mock_resp.content = "   "
-
-        with patch("nvdastudio.sub_agents._base.create_llm_client") as mock_create, \
-             patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
-            mock_create.return_value.chat.return_value = mock_resp
-            _narrate_work("algo")
-
         mock_conv.emit_status.assert_not_called()
 
-    def test_narrate_work_engole_excecao_sem_propagar(self):
-        from nvdastudio.sub_agents._base import _narrate_work
 
-        with patch("nvdastudio.sub_agents._base.create_llm_client", side_effect=RuntimeError("falhou")):
-            _narrate_work("algo")  # nao deve levantar
+class TestNarrateSemSegundaIA:
+    """O corte pedido pelo usuario: narrate() NAO dispara mais um modelo leve
+    pra reescrever a frase (custava tokens e, por vir de um segundo modelo
+    generico, soava robotico). Emite direto a frase que o call-site ja escreve,
+    so com limpeza deterministica."""
+
+    def test_narrate_nao_tem_mais_segunda_ia(self):
+        from nvdastudio.sub_agents import _base
+        assert not hasattr(_base, "_narrate_work"), "a segunda IA de narracao devia ter sido removida"
+        assert not hasattr(_base, "_NARRATE_SYSTEM")
+        assert not hasattr(_base, "_narrate_light_model")
+
+    def test_narrate_emite_frase_limpa_sem_chamar_llm(self):
+        """Fora do guard de teste: narrate() -> emit_status(_limpar_narracao),
+        e nunca cria um cliente LLM."""
+        import sys
+
+        import nvdastudio.sub_agents._base as base
+        with patch.object(base, "conversation") as mock_conv, \
+             patch.object(base, "create_llm_client") as mock_llm, \
+             patch.dict(sys.modules):
+            sys.modules.pop("pytest", None)
+            sys.modules.pop("unittest", None)
+            base.narrate("terminei a auditoria, encontrei 3 ponto(s) de atencao")
+
+        mock_llm.assert_not_called()
+        mock_conv.emit_status.assert_called_once_with(
+            "terminei a auditoria, encontrei 3 pontos de atencao"
+        )
 
 
-class TestNarrateSystemPromptConversacional:
-    def test_system_prompt_pede_frase_curta_sem_jargao(self):
-        from nvdastudio.sub_agents._base import _NARRATE_SYSTEM
-        assert "jargao" in _NARRATE_SYSTEM.lower() or "jargão" in _NARRATE_SYSTEM.lower()
-        assert "markdown" in _NARRATE_SYSTEM.lower()
+class TestLimparNarracao:
+    """A limpeza deterministica que substituiu a segunda IA: colapsa espacos,
+    resolve os marcadores de plural de codigo pelo numero, e remove o sufixo
+    tecnico ', status X' que vazava cru."""
+
+    def test_colapsa_espacos(self):
+        from nvdastudio.sub_agents._base import _limpar_narracao
+        assert _limpar_narracao("terminei   o   manifesto") == "terminei o manifesto"
+
+    def test_plural_com_numero_maior_que_um(self):
+        from nvdastudio.sub_agents._base import _limpar_narracao
+        assert _limpar_narracao("encontrei 3 ponto(s) de atencao") == "encontrei 3 pontos de atencao"
+
+    def test_singular_com_um_nao_pluraliza(self):
+        from nvdastudio.sub_agents._base import _limpar_narracao
+        assert _limpar_narracao("escrevi 1 arquivo(s)") == "escrevi 1 arquivo"
+
+    def test_plural_irregular_itens(self):
+        from nvdastudio.sub_agents._base import _limpar_narracao
+        assert _limpar_narracao("faltou 2 item(ns)") == "faltou 2 itens"
+        assert _limpar_narracao("faltou 1 item(ns)") == "faltou 1 item"
+
+    def test_plural_irregular_secoes(self):
+        from nvdastudio.sub_agents._base import _limpar_narracao
+        assert _limpar_narracao("o template tem 4 secao(oes)") == "o template tem 4 secoes"
+
+    def test_remove_status_jargao_no_fim(self):
+        from nvdastudio.sub_agents._base import _limpar_narracao
+        assert _limpar_narracao("encontrei resultados sobre gemini, status searched") == "encontrei resultados sobre gemini"
+        assert _limpar_narracao("encontrei resultados sobre x status cached") == "encontrei resultados sobre x"
+
+    def test_frase_ja_limpa_passa_intacta(self):
+        from nvdastudio.sub_agents._base import _limpar_narracao
+        frase = "navegando na web procurando informacao sobre a api do nvda"
+        assert _limpar_narracao(frase) == frase
 
 
 class TestNarrateWiredNosSubAgentes:
