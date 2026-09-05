@@ -380,3 +380,40 @@ class TestSemToolUseFalhaAlto:
 		assert i_guarda < i_prompt, (
 			"a guarda tem que vir antes de montar prompt e gastar subprocesso"
 		)
+
+
+class TestInstrucaoSoTexto:
+	"""O `droid` e um AGENTE: sem instrucao explicita ele as vezes escreve
+	arquivos e devolve so um RESUMO em vez do codigo (medido 2026-09-04: 2 de 5
+	rodadas viraram agenticas, uma a 36.002 creditos). A instrucao 'so texto' no
+	TOPO do prompt zerou isso (5/5 devolveram texto) e corta custo."""
+
+	def test_prompt_do_droid_comeca_com_a_instrucao(self, monkeypatch):
+		import nvdastudio.ai.factory_client as fc
+
+		capturado = {}
+
+		def fake_run(cmd, **kwargs):
+			# o prompt vai no arquivo apontado por -f; le ANTES do rmtree do finally
+			i = cmd.index("-f")
+			with open(cmd[i + 1], encoding="utf-8") as fh:
+				capturado["prompt"] = fh.read()
+
+			class _R:
+				returncode = 0
+				stdout = json.dumps(_ENVELOPE_OK)
+				stderr = ""
+
+			return _R()
+
+		monkeypatch.setattr(fc.subprocess, "run", fake_run)
+		_cliente().chat("monte o addon final", system_override="voce e o assembler")
+
+		prompt = capturado["prompt"]
+		assert prompt.startswith(fc._INSTRUCAO_SO_TEXTO), (
+			"a instrucao 'so texto' tem que vir no TOPO do prompt do droid"
+		)
+		assert "NAO crie" in prompt and "NAO use" in prompt
+		# a instrucao nao pode engolir o pedido real do step
+		assert "voce e o assembler" in prompt
+		assert "monte o addon final" in prompt

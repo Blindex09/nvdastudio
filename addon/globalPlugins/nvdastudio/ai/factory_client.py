@@ -69,7 +69,7 @@ from ..utils.hidden_process import CREATE_NO_WINDOW
 from ..utils.logger import get_logger
 from .llm_client import LLMClientError, LLMResponse
 
-MODULE_VERSION = "1.2.0"
+MODULE_VERSION = "1.3.0"
 _logger = get_logger("factory_client")
 
 # Mesmo heavy que o projeto ja usa no Ollama -- trocar de provedor nao pode
@@ -82,6 +82,25 @@ _DEFAULT_MODEL = "kimi-k2.7-code"
 _TIMEOUT_PADRAO = 600
 
 _NOMES_DO_BINARIO = ("droid", "droid.cmd", "droid.exe")
+
+# O `droid` e um AGENTE, nao um endpoint de completions. Sem esta instrucao no
+# TOPO do prompt ele intermitentemente decide AGIR -- escreve arquivos, roda
+# comandos, ate empacota o .nvda-addon -- e devolve so um RESUMO em vez do
+# codigo, o que a extracao nao aproveita. Medido em 2026-09-04, 5 rodadas de um
+# prompt estilo montagem/retentativa: SEM esta instrucao 2/5 viraram agenticas
+# (uma custou 36.002 creditos, 18x uma resposta normal); COM ela, 5/5 devolveram
+# o codigo como TEXTO, com a correcao aplicada, a ~2.000 creditos. Nao e so
+# correcao de bug: corta o custo das chamadas que o droid resolvia "trabalhar".
+# Read-only NAO basta (o agente as vezes escreve mesmo assim) -- a instrucao e
+# que segura. Prefixada, nunca embutida no meio, para maxima primazia de atencao.
+_INSTRUCAO_SO_TEXTO = (
+	"MODO DE SAIDA: TEXTO PURO. Voce NAO tem permissao para agir. NAO crie, "
+	"escreva, mova ou modifique nenhum arquivo. NAO rode comandos. NAO use "
+	"nenhuma ferramenta. Sua UNICA saida e o TEXTO da resposta, contendo os "
+	"blocos de codigo. Se voce tentar criar arquivos ou empacotar qualquer "
+	"coisa, a tarefa FALHA. Apenas ESCREVA o conteudo completo, como blocos de "
+	"codigo anotados, nada mais."
+)
 
 
 class FactoryClientError(LLMClientError):
@@ -190,7 +209,7 @@ class FactoryClient:
 				"de um provedor com tool use nativo."
 			)
 
-		prompt = "\n\n".join(
+		prompt = _INSTRUCAO_SO_TEXTO + "\n\n" + "\n\n".join(
 			p for p in (system_override, user_message) if p
 		) + _instrucao_de_schema(response_format)
 
