@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from ..ai.factory_client import _achar_droid, FactoryClientError
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.1.0"
+MODULE_VERSION = "0.2.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -85,8 +85,39 @@ class AgenticBuildResult:
 	error: str = ""
 
 
-def _build_system_prompt(extra_context: str = "") -> str:
+def _build_nvda_context(request: str) -> str:
+	"""Contexto NVDA real -- Slice 1. O MESMO conhecimento que o pipeline staged
+	injeta no code_generation (nvda_context + rule_registry + engineering_principles),
+	escopado pelos topicos do pedido, para um A/B justo: mesmo conhecimento, loop
+	diferente. Import tardio: os modulos NVDA sao pesados, so puxa quando pedido.
+	"""
+	from .nvda_context import (
+		NVDA_SYSTEM_PROMPT, get_docs_code_generation, extract_nvda_topics,
+	)
+	from ..rule_registry import RULE_REGISTRY_PROMPT_TEXT
+	from ..utils.engineering_principles import ENGINEERING_CODEGEN_PROMPT_TEXT
+
+	docs = get_docs_code_generation(topics=extract_nvda_topics(request))
+	return "\n\n".join((
+		NVDA_SYSTEM_PROMPT,
+		RULE_REGISTRY_PROMPT_TEXT,
+		ENGINEERING_CODEGEN_PROMPT_TEXT,
+		docs,
+	))
+
+
+def _build_system_prompt(
+	request: str = "", *, use_nvda_context: bool = True, extra_context: str = "",
+) -> str:
 	partes = [_NVDA_SPEC]
+	if use_nvda_context:
+		try:
+			partes.append(_build_nvda_context(request))
+		except Exception as exc:  # pragma: no cover - defesa
+			# Contexto faltando degrada pro spec compacto, nunca derruba a build.
+			_logger.warning(
+				"[AGENTIC] contexto NVDA indisponivel, seguindo com spec compacto: %s", exc,
+			)
 	if extra_context.strip():
 		partes.append(extra_context.strip())
 	return "\n\n".join(partes)
@@ -134,6 +165,7 @@ def run_agentic_build(
 	model_id: str = "kimi-k2.7-code",
 	autonomy: str = "medium",
 	timeout: int = _DEFAULT_TIMEOUT,
+	use_nvda_context: bool = True,
 	extra_context: str = "",
 ) -> AgenticBuildResult:
 	"""Roda UMA build agentica do addon via droid e valida basico.
@@ -165,7 +197,9 @@ def run_agentic_build(
 	prompt_path = os.path.join(workdir, "prompt.txt")
 	try:
 		with open(sp_path, "w", encoding="utf-8") as fh:
-			fh.write(_build_system_prompt(extra_context))
+			fh.write(_build_system_prompt(
+				request, use_nvda_context=use_nvda_context, extra_context=extra_context,
+			))
 		with open(prompt_path, "w", encoding="utf-8") as fh:
 			fh.write(request)
 	except OSError as exc:

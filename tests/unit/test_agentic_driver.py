@@ -11,7 +11,7 @@ from unittest.mock import patch
 from nvdastudio.builder import agentic_driver as ad
 from nvdastudio.builder.agentic_driver import MODULE_VERSION, run_agentic_build
 
-assert MODULE_VERSION == "0.1.0"
+assert MODULE_VERSION == "0.2.0"
 
 
 def _fake_proc(returncode=0, stdout="ok", stderr=""):
@@ -34,7 +34,7 @@ class TestConstrucaoDoComando:
 
 		with patch.object(ad, "_achar_droid", return_value="droid"), \
 			patch.object(ad.subprocess, "run", side_effect=fake_run):
-			r = run_agentic_build("crie um addon", workdir=str(tmp_path))
+			r = run_agentic_build("crie um addon", workdir=str(tmp_path), use_nvda_context=False)
 
 		cmd = capturado["cmd"]
 		assert cmd[0] == "droid" and cmd[1] == "exec"
@@ -64,7 +64,7 @@ class TestParsingDoResultado:
 
 		with patch.object(ad, "_achar_droid", return_value="droid"), \
 			patch.object(ad.subprocess, "run", side_effect=fake_run):
-			r = run_agentic_build("x", workdir=str(tmp_path))
+			r = run_agentic_build("x", workdir=str(tmp_path), use_nvda_context=False)
 		assert r.success is False  # sem manifest.ini
 		assert r.has_manifest is False
 
@@ -78,7 +78,7 @@ class TestParsingDoResultado:
 
 		with patch.object(ad, "_achar_droid", return_value="droid"), \
 			patch.object(ad.subprocess, "run", side_effect=fake_run):
-			r = run_agentic_build("x", workdir=str(tmp_path))
+			r = run_agentic_build("x", workdir=str(tmp_path), use_nvda_context=False)
 		assert r.py_syntax_ok is False and r.success is False
 
 	def test_timeout_degrada_sem_excecao(self, tmp_path):
@@ -89,7 +89,7 @@ class TestParsingDoResultado:
 
 		with patch.object(ad, "_achar_droid", return_value="droid"), \
 			patch.object(ad.subprocess, "run", side_effect=fake_run):
-			r = run_agentic_build("x", workdir=str(tmp_path), timeout=5)
+			r = run_agentic_build("x", workdir=str(tmp_path), timeout=5, use_nvda_context=False)
 		assert r.success is False and "excedeu" in r.error
 
 	def test_droid_ausente_degrada_sem_excecao(self, tmp_path):
@@ -98,6 +98,29 @@ class TestParsingDoResultado:
 		with patch.object(ad, "_achar_droid", side_effect=FactoryClientError("droid nao encontrado")):
 			r = run_agentic_build("x", workdir=str(tmp_path))
 		assert r.success is False and "droid nao encontrado" in r.error
+
+
+class TestContextoNVDA:
+	"""Slice 1: injeta o MESMO contexto NVDA do pipeline staged como system prompt."""
+
+	def test_sem_contexto_e_so_o_spec_compacto(self):
+		sp = ad._build_system_prompt("addon de relogio", use_nvda_context=False)
+		assert "COMPLEMENTO" in sp  # do _NVDA_SPEC embutido
+		# Sem o contexto real, e curto (so o spec compacto).
+		assert len(sp) < 5000
+
+	def test_com_contexto_injeta_conhecimento_nvda_real(self):
+		compacto = ad._build_system_prompt("addon de relogio", use_nvda_context=False)
+		completo = ad._build_system_prompt("addon de relogio", use_nvda_context=True)
+		# O contexto real (nvda_context + regras + principios + docs) e muito maior.
+		assert len(completo) > len(compacto) * 3
+		assert "COMPLEMENTO" in completo  # o spec de autoria continua presente
+
+	def test_contexto_indisponivel_degrada_pro_spec(self):
+		# Se o contexto NVDA explodir, a build NAO cai -- volta pro spec compacto.
+		with patch.object(ad, "_build_nvda_context", side_effect=RuntimeError("boom")):
+			sp = ad._build_system_prompt("x", use_nvda_context=True)
+		assert "COMPLEMENTO" in sp  # seguiu com o spec, sem levantar
 
 
 class TestColetaDeArquivos:
