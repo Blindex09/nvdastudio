@@ -160,45 +160,6 @@ def _linhas_de_codigo(code: str) -> set[int] | None:
 	return linhas
 
 
-def substituir_codigo_dos_blocos(output: str, correcoes: dict) -> str:
-	"""
-	Troca o corpo dos blocos anotados de `output` pelo conteudo de `correcoes`.
-
-	Existe para que uma correcao mecanica feita sobre os arquivos EXTRAIDOS
-	volte para o texto que segue no pipeline -- e o `output` do step que e
-	armazenado, passado ao assembly e finalmente gravado em disco. Corrigir so
-	a copia extraida deixaria o addon entregue com o defeito.
-
-	So mexe em bloco com caminho anotado (```python:caminho/arquivo.py) e cujo
-	caminho esteja em `correcoes`. Bloco que nao der para localizar com certeza
-	fica exatamente como estava: nao aplicar a correcao custa uma tentativa,
-	corromper o output custa o addon.
-	"""
-	if not output or not correcoes:
-		return output
-	cerca = chr(96) * 3
-	resultado = output
-	for caminho, novo_codigo in correcoes.items():
-		alvos = [caminho, caminho.replace("/", chr(92))]
-		for alvo in alvos:
-			abertura = cerca + "python:" + alvo
-			inicio = resultado.find(abertura)
-			if inicio == -1:
-				continue
-			corpo_inicio = resultado.find(chr(10), inicio)
-			if corpo_inicio == -1:
-				continue
-			corpo_inicio += 1
-			fim = resultado.find(chr(10) + cerca, corpo_inicio)
-			if fim == -1:
-				continue
-			resultado = (
-				resultado[:corpo_inicio]
-				+ novo_codigo.rstrip(chr(10))
-				+ resultado[fim:]
-			)
-			break
-	return resultado
 
 
 def renomear_descarte_que_sombreia_traducao(code: str) -> str:
@@ -823,16 +784,6 @@ def validate_python_structure(code: str) -> list[str]:
 	return warnings
 
 
-def validate_python_syntax(code: str) -> str | None:
-	"""
-	Valida sintaxe Python via ast.parse. Nao executa o codigo (Regra 9).
-	Returns None se ok, mensagem de erro se invalido.
-	"""
-	try:
-		ast.parse(code)
-		return None
-	except SyntaxError as exc:
-		return f"Erro de sintaxe na linha {exc.lineno}: {exc.msg}"
 
 
 # Modulos sempre disponiveis no ambiente NVDA

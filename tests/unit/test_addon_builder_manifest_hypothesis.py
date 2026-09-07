@@ -1,11 +1,8 @@
-import keyword
-
 from hypothesis import given, settings, strategies as st
 
 from nvdastudio.builder.addon_builder import (
 	validate_manifest,
 	validate_python_structure,
-	validate_python_syntax,
 	_MANIFEST_REQUIRED_FIELDS,
 )
 
@@ -58,27 +55,3 @@ class TestValidatePythonStructureNuncaLevantaExcecao:
 	def test_nunca_levanta_excecao_e_retorna_lista(self, codigo):
 		resultado = validate_python_structure(codigo)
 		assert isinstance(resultado, list)
-
-
-class TestValidatePythonSyntaxNuncaLevantaExcecao:
-	@given(codigo=_ARBITRARY_TEXT)
-	@settings(max_examples=200, deadline=None)
-	def test_nunca_levanta_excecao(self, codigo):
-		resultado = validate_python_syntax(codigo)
-		assert resultado is None or isinstance(resultado, str)
-
-	@given(codigo=st.text(alphabet=st.characters(whitelist_categories=("L", "N", "Zs")), max_size=50))
-	@settings(max_examples=100, deadline=None)
-	def test_codigo_python_valido_gerado_retorna_none(self, codigo):
-		"""Atribuicoes simples de identificador->identificador sao sempre
-		sintaticamente validas em Python (quando ambos os lados sao
-		identificadores nao-vazios comecando por letra)."""
-		nome = "".join(c for c in codigo if c.isidentifier() or c == "_")
-		if not nome or not nome[0].isalpha():
-			return
-		if keyword.iskeyword(nome) or keyword.issoftkeyword(nome):
-			return
-		valor = "1"
-		snippet = f"{nome} = {valor}"
-		resultado = validate_python_syntax(snippet)
-		assert resultado is None

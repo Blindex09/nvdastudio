@@ -28,7 +28,6 @@ import pytest
 
 from nvdastudio.builder.addon_builder import (
 	validate_python_imports,
-	validate_python_syntax,
 )
 from nvdastudio.builder.code_sandbox import CodeSandbox
 from nvdastudio.core.orchestrator import Orchestrator
@@ -92,11 +91,6 @@ _ARQUIVOS = {f"{_PKG}/__init__.py": _INIT, f"{_PKG}/servico.py": _SERVICO}
 
 def _detalhe(r):
 	return (r.stdout or r.stderr or r.error or "")[:400]
-
-
-@pytest.mark.parametrize("rel", sorted(_ARQUIVOS))
-def test_portao_sintaxe(rel):
-	assert not validate_python_syntax(_ARQUIVOS[rel])
 
 
 def test_portao_imports_declarados():

@@ -380,41 +380,6 @@ class TestPackageAddon:
 
 
 # -----------------------------------------------------------------------
-# validate_python_syntax
-# -----------------------------------------------------------------------
-
-class TestValidatePythonSyntax:
-
-    def test_codigo_valido_retorna_none(self):
-        from nvdastudio.builder.addon_builder import validate_python_syntax
-        code = "import os\nx = 1\n"
-        assert validate_python_syntax(code) is None
-
-    def test_erro_de_sintaxe_retorna_mensagem(self):
-        from nvdastudio.builder.addon_builder import validate_python_syntax
-        code = "def foo(\n"
-        result = validate_python_syntax(code)
-        assert result is not None
-        assert isinstance(result, str)
-        assert len(result) > 0
-
-    def test_mensagem_contem_numero_de_linha(self):
-        from nvdastudio.builder.addon_builder import validate_python_syntax
-        code = "x = (\n\n\nbad syntax here =="
-        result = validate_python_syntax(code)
-        assert result is not None
-        assert "linha" in result or "line" in result.lower()
-
-    def test_nao_executa_codigo(self):
-        from nvdastudio.builder.addon_builder import validate_python_syntax
-        import os
-        marker = os.path.join(os.path.expanduser("~"), "_nvdastudio_exec_test.txt")
-        code = f"open(r'{marker}', 'w').write('EXECUTED')"
-        validate_python_syntax(code)
-        assert not os.path.exists(marker), "validate_python_syntax executou codigo"
-
-
-# -----------------------------------------------------------------------
 # validate_python_imports
 # -----------------------------------------------------------------------
 

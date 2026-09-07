@@ -6,16 +6,14 @@ como AGENTE dentro de trilhos: `droid exec --auto medium` num workdir isolado,
 onde o droid EDITA arquivos, RODA comandos e ITERA ate produzir o addon -- o
 loop das ferramentas de ponta (Cursor/Claude Code), com o droid como motor.
 
-Escopo do Slice 0 (deliberadamente estreito, ver
+Estado atual (pos-demolicao do staged, 2026-09-06, ver
 docs/arquitetura-agentica-caminho3-2026-09-06.md):
-  - NAO toca o pipeline staged atual (planner/orchestrator/sub_agents). E um
-    modulo standalone, sem chamador de producao ainda -- registrado como orfao
-    ACEITO em tests/unit/test_mecanismos_orfaos.py::_ORFAOS_ACEITOS.
-  - Injecao do contexto NVDA completo (nvda_context) e o Slice 1; aqui vai so um
-    spec compacto embutido, suficiente pra responder a pergunta do spike:
-    "o loop agentico produz um addon plausivel?".
-  - Validacao pesada pelos gates (code_sandbox etc.) e o Slice 2; aqui a
-    validacao e basica (sintaxe + estrutura presente).
+  - Este e o UNICO caminho de geracao. O orchestrator (_run_pipeline_agentic) o
+    consome de verdade -- planner/sub_agents/pipeline staged foram removidos.
+  - Injeta o contexto NVDA completo (nvda_context.get_docs_code_generation +
+    NVDA_SYSTEM_PROMPT) no system-prompt.
+  - Validacao pelos gates: _run_gates roda sintaxe/estrutura + code_sandbox
+    (execucao real) + gate de acessibilidade (ast_validator).
 
 Blast radius: workdir descartavel + `--auto medium` (edita/roda/build/git local,
 NUNCA push/sudo/producao). Nunca usa --skip-permissions-unsafe.
@@ -28,9 +26,10 @@ import time
 from dataclasses import dataclass, field
 
 from ..ai.factory_client import _achar_droid, FactoryClientError
+from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.5.0"
+MODULE_VERSION = "0.6.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -192,6 +191,22 @@ def _droid_once(
 	if workdir is None:
 		workdir = tempfile.mkdtemp(prefix="nvdastudio_agentic_")
 	os.makedirs(workdir, exist_ok=True)
+
+	# Guarda de injecao no request (doc 3, blast radius): o droid roda com
+	# ferramentas de edicao + terminal, entao o texto que vira instrucao para ele
+	# e uma fronteira que importa. Diferente de um bloco de DADO externo (que o
+	# injection_guard envolveria como inerte), o request E a instrucao legitima do
+	# usuario -- nao da pra trata-lo como dado. Por isso
+	# aqui e deteccao NAO-bloqueante: se o request tras padrao de injecao conhecido
+	# (ex.: conteudo colado de uma pagina/email pedindo "ignore previous
+	# instructions"), registramos para visibilidade e seguimos -- o `--auto medium`
+	# ja contem o estrago (sem push/sudo/producao).
+	if detect_injection(request):
+		_logger.warning(
+			"[AGENTIC][INJECTION_GUARD] padrao de injecao detectado no request -- "
+			"seguindo sob --auto %s (blast radius contido), registrado para auditoria.",
+			autonomy,
+		)
 
 	sp_path = os.path.join(workdir, "system-prompt.txt")
 	prompt_path = os.path.join(workdir, "prompt.txt")

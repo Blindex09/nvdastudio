@@ -50,9 +50,6 @@ _ORFAOS_ACEITOS: dict[str, str] = {
 	"skills_hub.disable_skill": "idem list_skills",
 	"skills_hub.get_skill_registry": "idem list_skills",
 	"skills_hub.get_skill_definitions": "idem list_skills",
-	"cost_tracker.format_cost": "custo e computado mas nunca exibido -- achado ja registrado no changelog 97.34.0",
-	"cost_tracker.get_model_cost_per_token": "idem format_cost",
-	"cost_tracker.is_discounted": "idem format_cost",
 	"pricing.estimate_cost_brl": "conversao BRL sem consumidor; a exibicao usa USD",
 	# --- getters de timeout com politica divergente da usada em producao ---
 	# ACHADO 2026-08-30, NAO corrigido de proposito: `get_api_timeout()` aplica
@@ -78,28 +75,19 @@ _ORFAOS_ACEITOS: dict[str, str] = {
 	"model_registry.clear_model_resolution_cache": "gancho de teste para invalidar cache entre casos",
 	"llm_factory.get_available_backends": "introspeccao usada so por diagnostico",
 	"clarifier.get_clarifier_model": "resolvido inline em analyze_query; getter mantido para teste",
+	# Primitivo de seguranca CORRETO e testado (test_adversarial_robustness),
+	# deliberadamente nao conectado: envolve um bloco de DADO externo como inerte,
+	# e o consumidor real era o wrapping de resultado de busca web (web_researcher/
+	# external_search), removido com o staged. No caminho agentico o request do
+	# usuario e INSTRUCAO, nao dado -- envolve-lo como dado seria errado; a fronteira
+	# de injecao que o request precisa (deteccao nao-bloqueante) usa detect_injection,
+	# ja conectada em builder/agentic_driver.py. Mantido para quando conteudo externo
+	# (busca web) voltar a entrar no prompt.
+	"injection_guard.sanitize_untrusted_block": "primitivo de seguranca correto; consumidor (wrapping de busca web) saiu com o staged; ver comentario acima",
 	# Caminho 3: agentic_driver.run_agentic_build SAIU da lista no Slice 3 --
 	# o orchestrator (_run_pipeline_agentic) passou a consumi-lo de verdade,
 	# atras da flag NVDASTUDIO_AGENTIC_MODE. A fitness function pegou a
 	# transicao de orfao->consumido sozinha, exatamente o proposito dela.
-	"addon_builder.substituir_codigo_dos_blocos": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"addon_builder.validate_python_syntax": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"addon_versioning.changelog_is_uninformative": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"addon_versioning.enforce_version_bump": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"addon_versioning.extract_previous_version": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"anthropic_memory_tool.handle_memory_command": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"cost_tracker.estimate_pipeline_cost": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"external_search.format_results_for_prompt": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"external_search.search_external": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"injection_guard.sanitize_untrusted_block": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"nvda_context.get_docs_accessibility_audit": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"nvda_context.get_docs_agent_runner": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"nvda_context.get_docs_agent_template": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"nvda_context.get_docs_assembler": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"nvda_context.get_docs_design_review": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"nvda_context.get_docs_doc_generator": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"nvda_context.get_docs_test_generator": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"nvda_context.nvda_topics_marker": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 }
 
 
@@ -146,10 +134,6 @@ _CONSTANTES_ACEITAS: dict[str, str] = {
 		"tabela de versoes; a politica de baseline aplicada de fato vive em "
 		"utils/project_policy.py (PROJECT_MIN_NVDA), que a producao le"
 	),
-	"controller_client_context.CTRL_CLIENT_RULE_IDS": (
-		"lista de IDs derivada de CTRL_CLIENT_RULES para consulta e teste; as "
-		"regras aplicadas vem do texto completo em CTRL_CLIENT_RULES"
-	),
 	"rule_registry.COMMUNITY_ACCESS_SOURCES": (
 		"procedencia das regras, para auditoria humana e citacao; nao entra em "
 		"decisao de execucao"
@@ -167,12 +151,6 @@ _CONSTANTES_ACEITAS: dict[str, str] = {
 	"rule_registry.UPDATED_AT": "data da ultima revisao do catalogo de regras",
 	"project_policy.ABSOLUTE_MIN_NVDA_TUPLE": "forma em tupla, para comparacao futura",
 	"project_policy.PROJECT_LAST_TESTED_NVDA_TUPLE": "forma em tupla, para comparacao futura",
-	"addon_versioning.ADDON_LIFECYCLE_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"controller_client_context.CTRL_CLIENT_CRITIC_ADDENDUM": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"controller_client_context.CTRL_CLIENT_SYSTEM_PROMPT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"engineering_principles.ENGINEERING_CRITIC_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"engineering_principles.ENGINEERING_PLANNING_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"engineering_principles.ENGINEERING_REVIEW_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 }
 
 

@@ -132,30 +132,6 @@ sem pressao de desempenho medida sao complexidade sem beneficio."""
 # ---------------------------------------------------------------------------
 # LENTE DE PLANEJAMENTO (planner): como decompor e em que ordem verificar.
 # ---------------------------------------------------------------------------
-ENGINEERING_PLANNING_PROMPT_TEXT = """ENGENHARIA NO PLANEJAMENTO
-
-Decomponha por FRONTEIRA DE RESPONSABILIDADE, nunca por tamanho de arquivo.
-Um step deve ter uma responsabilidade nomeavel numa frase e uma saida
-verificavel isoladamente. Se a descricao do step precisa da palavra "e" para
-listar coisas nao relacionadas, sao dois steps.
-
-Ordene a verificacao do mais barato para o mais caro. Analise estatica (nao
-executa nada, custo quase zero) vem antes de teste unitario; teste unitario
-vem antes de execucao real; execucao real vem antes de qualquer validacao que
-dependa de servico externo. Descobrir num degrau caro um defeito que um
-degrau barato pegaria de graca e desperdicio -- o degrau caro serve para
-CONFIRMAR, nao para DESCOBRIR.
-
-Isso e heuristica de custo, nao ordem rigida: um addon que lida com chave de
-API, gravacao em disco ou entrada de usuario justifica antecipar a
-verificacao de seguranca, mesmo antes de esgotar os degraus baratos.
-
-Quando um addon tem 2 ou mais features substanciais, garanta que quem AVALIA
-o resultado saiba que existem partes -- nao so quem gera. Avaliar uma parte
-como se fosse o addon inteiro reprova codigo correto.
-
-Um step so esta concluido com EVIDENCIA: verificacao passou, saida existe,
-contrato conferido. "Parece certo" nunca fecha um step."""
 
 
 # ---------------------------------------------------------------------------
@@ -163,42 +139,8 @@ contrato conferido. "Parece certo" nunca fecha um step."""
 # Deliberadamente curta -- o critic ja carrega o catalogo de regras inteiro,
 # e o risco aqui e dilucao, nao falta de material.
 # ---------------------------------------------------------------------------
-ENGINEERING_CRITIC_PROMPT_TEXT = """QUALIDADE DE ENGENHARIA (alem das regras catalogadas)
-
-As regras NVDA/WX/ARCH acima cobrem o que e catalogavel. Avalie tambem os
-defeitos que nenhum ID descreve, e que valem CORRIGIR quando presentes:
-
-- Falha que o usuario cego nao tem como perceber: excecao engolida sem log e
-  sem retorno em voz; acao que nao acontece e nao avisa.
-- Operacao externa sem limite de tempo explicito -- pendura em vez de falhar.
-- Recurso criado sem contrapartida em terminate(): thread, timer, arquivo,
-  registro em extension point, item de menu.
-- Segredo literal no codigo, ou credencial indo para o log.
-- Complexidade que o addon nao precisa: abstracao com um unico uso, camada de
-  indirecao sem segundo caso real, configuracao que ninguem le.
-- Logica de decisao amarrada a borda (fala/rede/disco) de um jeito que torna
-  o comportamento impossivel de testar sem o NVDA real.
-
-Nao invente defeito para preencher a lista, e nao reporte estilo, formatacao
-ou indentacao -- TAB e o padrao oficial e o lint roda separado. Codigo
-correto e simples deve ser APROVADO sem ressalva inventada."""
 
 
 # ---------------------------------------------------------------------------
 # LENTE DE REVISAO (engineering_reviewer): nucleo + foco em consequencia.
 # ---------------------------------------------------------------------------
-ENGINEERING_REVIEW_PROMPT_TEXT = (
-	ENGINEERING_CORE_PRINCIPLES
-	+ """
-
-AO REVISAR
-
-Julgue o codigo que existe, nao o addon que voce teria escrito. Uma escolha
-diferente da sua nao e defeito; uma escolha que quebra um dos principios
-acima e.
-
-Para cada achado, nomeie a consequencia observavel: o que o usuario cego
-perde, em que situacao. Se voce nao consegue descrever a situacao concreta em
-que o defeito se manifesta, provavelmente nao e um defeito -- e uma
-preferencia, e preferencia nao entra na revisao."""
-)
