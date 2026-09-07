@@ -2078,7 +2078,7 @@ class NVDAStudioDialog(wx.Dialog):
 			_logger.info('[OK] dependencias recusadas pelo usuario: %s', lista)
 			return False
 
-		def _pronto(sucesso: bool, instalados: list, falhas: dict) -> None:
+		def _pronto(_sucesso: bool, instalados: list, falhas: dict) -> None:
 			self._deps_ja_tratadas = True
 			if falhas:
 				detalhe = ', '.join(sorted(falhas))
