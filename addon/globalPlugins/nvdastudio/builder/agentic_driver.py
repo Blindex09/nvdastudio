@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from ..ai.factory_client import _achar_droid, FactoryClientError
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.2.0"
+MODULE_VERSION = "0.3.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -83,6 +83,10 @@ class AgenticBuildResult:
 	stdout_tail: str = ""
 	stderr_tail: str = ""
 	error: str = ""
+	# Slice 2 -- gate de execucao pos-loop (code_sandbox) + ciclo de correcao.
+	execution_ok: bool = False
+	gate_report: str = ""
+	rounds: int = 1
 
 
 def _build_nvda_context(request: str) -> str:
@@ -158,7 +162,7 @@ def _validar_basico(workdir: str, files: list[str]) -> tuple[bool, bool, bool]:
 	return has_manifest, has_entry_point, py_syntax_ok
 
 
-def run_agentic_build(
+def _droid_once(
 	request: str,
 	workdir: str | None = None,
 	*,
@@ -168,16 +172,11 @@ def run_agentic_build(
 	use_nvda_context: bool = True,
 	extra_context: str = "",
 ) -> AgenticBuildResult:
-	"""Roda UMA build agentica do addon via droid e valida basico.
+	"""UMA rodada do droid agentico + validacao BASICA (manifest/entry/sintaxe).
 
 	Nunca levanta excecao de execucao: degrada para AgenticBuildResult(success=
-	False, error=...) -- mesma doutrina de code_sandbox.
-
-	request: o pedido do usuario em linguagem natural.
-	workdir: diretorio de trabalho (isolado). None cria um tempdir (o chamador
-	         decide quando limpar -- o spike quer inspecionar o resultado).
-	autonomy: nivel --auto do droid. 'medium' = edita/roda/build local, sem
-	          push/sudo/producao. 'high' e producao -- nao usar aqui.
+	False, error=...) -- mesma doutrina de code_sandbox. E o tijolo que o ciclo
+	de correcao (Slice 2) repete a cada rodada.
 	"""
 	if autonomy not in _AUTONOMIAS_VALIDAS:
 		return AgenticBuildResult(
@@ -257,3 +256,121 @@ def run_agentic_build(
 		stderr_tail=(proc.stderr or "")[-2000:],
 		error="" if success else "build agentica nao passou na validacao basica do Slice 0",
 	)
+
+
+def _read_files_dict(workdir: str, files: list[str]) -> dict[str, str]:
+	"""{caminho_relativo: conteudo} para o code_sandbox ler."""
+	out: dict[str, str] = {}
+	for f in files:
+		try:
+			with open(os.path.join(workdir, f), encoding="utf-8", errors="replace") as fh:
+				out[f] = fh.read()
+		except OSError:
+			pass
+	return out
+
+
+def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
+	"""Gate DETERMINISTICO pos-loop (Slice 2) -> (passou, relatorio_de_falha).
+
+	1. Estrutural: manifest + ponto de entrada + sintaxe (_validar_basico).
+	2. Execucao real: code_sandbox.validate_addon_execution importa e instancia
+	   a classe principal num subprocesso com stubs NVDA -- pega NameError,
+	   assinatura de construtor errada, import que nao resolve (horizon: "se nao
+	   executou, nao esta verificado"). Import tardio (code_sandbox e pesado).
+
+	O gate e do NVDAStudio (determinismo fora do modelo), nunca do droid -- e a
+	tese central dos 7 projetos auditados: o executor nao e o juiz.
+	"""
+	has_manifest, has_entry, syntax_ok = _validar_basico(workdir, files)
+	problemas: list[str] = []
+	if not has_manifest:
+		problemas.append("- Falta o manifest.ini na raiz do addon.")
+	if not has_entry:
+		problemas.append(
+			"- Falta o ponto de entrada (globalPlugins/<Nome>/__init__.py "
+			"ou appModules/<nome>.py)."
+		)
+	if not syntax_ok:
+		problemas.append("- Ha erro de SINTAXE em algum arquivo .py.")
+	if has_entry and syntax_ok:
+		try:
+			from .code_sandbox import CodeSandbox
+
+			res = CodeSandbox(timeout_sec=15).validate_addon_execution(
+				_read_files_dict(workdir, files),
+			)
+			if not res.success:
+				detalhe = (res.error or res.stderr or "").strip().replace("\n", " ")
+				problemas.append(
+					f"- Erro de EXECUCAO real ao importar/instanciar o addon: {detalhe[:400]}"
+				)
+		except Exception as exc:  # pragma: no cover - defesa
+			# Gate indisponivel nao derruba a build -- degrada (fica sem o gate
+			# de execucao, mas o estrutural/sintaxe ja rodou).
+			_logger.warning("[AGENTIC] gate de execucao indisponivel: %s", exc)
+	return (not problemas), "\n".join(problemas)
+
+
+def run_agentic_build(
+	request: str,
+	workdir: str | None = None,
+	*,
+	model_id: str = "kimi-k2.7-code",
+	autonomy: str = "medium",
+	timeout: int = _DEFAULT_TIMEOUT,
+	use_nvda_context: bool = True,
+	extra_context: str = "",
+	correction_rounds: int = 0,
+) -> AgenticBuildResult:
+	"""Ponto de entrada publico do driver agentico.
+
+	Roda a build e, se `correction_rounds` > 0, fecha o ciclo 'editar -> rodar ->
+	corrigir' do Slice 2: apos cada build, roda os gates DETERMINISTICOS
+	(code_sandbox + estrutura) e, se reprovarem, reinjeta os problemas no droid
+	na MESMA pasta (que ja tem os arquivos) para ele corrigir -- ate passar ou
+	esgotar as rodadas. `correction_rounds=0` (padrao) mantem o comportamento dos
+	Slices 0/1 (build unica + validacao basica).
+	"""
+	# Resolve o workdir UMA vez -- todas as rodadas de correcao compartilham a
+	# mesma pasta (o droid corrige os arquivos que ja existem la).
+	if workdir is None:
+		workdir = tempfile.mkdtemp(prefix="nvdastudio_agentic_")
+
+	result = _droid_once(
+		request, workdir, model_id=model_id, autonomy=autonomy, timeout=timeout,
+		use_nvda_context=use_nvda_context, extra_context=extra_context,
+	)
+	if correction_rounds <= 0 or not result.files:
+		return result
+
+	for rodada in range(1, correction_rounds + 1):
+		passou, relatorio = _run_gates(result.workdir, result.files)
+		result.execution_ok = passou
+		result.gate_report = relatorio
+		result.rounds = rodada
+		if passou:
+			result.success = result.success and passou
+			return result
+		_logger.info(
+			"[AGENTIC] gate reprovou (rodada %d/%d), reinjetando no droid.",
+			rodada, correction_rounds,
+		)
+		correcao = (
+			"O addon que voce gerou no diretorio de trabalho atual NAO passou na "
+			"verificacao. Problemas encontrados:\n" + relatorio +
+			"\n\nCorrija os arquivos EXISTENTES (nao recomece do zero) ate que o "
+			"addon importe e instancie sem erro. Rode os arquivos para confirmar."
+		)
+		result = _droid_once(
+			correcao, result.workdir, model_id=model_id, autonomy=autonomy,
+			timeout=timeout, use_nvda_context=use_nvda_context, extra_context=extra_context,
+		)
+		result.rounds = rodada + 1
+
+	# Gate final apos a ultima rodada de correcao.
+	passou, relatorio = _run_gates(result.workdir, result.files)
+	result.execution_ok = passou
+	result.gate_report = relatorio
+	result.success = result.success and passou
+	return result

@@ -9,9 +9,11 @@ import types
 from unittest.mock import patch
 
 from nvdastudio.builder import agentic_driver as ad
-from nvdastudio.builder.agentic_driver import MODULE_VERSION, run_agentic_build
+from nvdastudio.builder.agentic_driver import (
+	MODULE_VERSION, run_agentic_build, AgenticBuildResult,
+)
 
-assert MODULE_VERSION == "0.2.0"
+assert MODULE_VERSION == "0.3.0"
 
 
 def _fake_proc(returncode=0, stdout="ok", stderr=""):
@@ -121,6 +123,73 @@ class TestContextoNVDA:
 		with patch.object(ad, "_build_nvda_context", side_effect=RuntimeError("boom")):
 			sp = ad._build_system_prompt("x", use_nvda_context=True)
 		assert "COMPLEMENTO" in sp  # seguiu com o spec, sem levantar
+
+
+class TestCicloDeCorrecaoSlice2:
+	"""Slice 2: gate determinístico pós-loop + reinjeção do erro no droid."""
+
+	def _res(self, **kw):
+		base = dict(success=True, workdir="/w", files=["manifest.ini", "globalPlugins/X/__init__.py"])
+		base.update(kw)
+		return AgenticBuildResult(**base)
+
+	def test_correction_rounds_zero_nao_roda_gate(self):
+		with patch.object(ad, "_droid_once", return_value=self._res()) as m_once, \
+			patch.object(ad, "_run_gates") as m_gates:
+			run_agentic_build("x", workdir="/w", correction_rounds=0)
+		m_gates.assert_not_called()
+		assert m_once.call_count == 1
+
+	def test_gate_passa_de_primeira_nao_corrige(self):
+		with patch.object(ad, "_droid_once", return_value=self._res()) as m_once, \
+			patch.object(ad, "_run_gates", return_value=(True, "")):
+			r = run_agentic_build("x", workdir="/w", correction_rounds=2)
+		assert r.execution_ok is True and r.success is True and r.rounds == 1
+		assert m_once.call_count == 1  # nao precisou reinjetar
+
+	def test_gate_falha_depois_passa_reinjeta_o_erro(self):
+		gates = [(False, "- Erro de EXECUCAO real: NameError: foo"), (True, "")]
+		with patch.object(ad, "_droid_once", return_value=self._res()) as m_once, \
+			patch.object(ad, "_run_gates", side_effect=gates):
+			r = run_agentic_build("x", workdir="/w", correction_rounds=2)
+		assert r.execution_ok is True and r.success is True
+		assert m_once.call_count == 2  # build inicial + 1 correcao
+		correcao = m_once.call_args_list[1][0][0]
+		assert "NameError" in correcao and "Corrija os arquivos EXISTENTES" in correcao
+
+	def test_gate_sempre_falha_esgota_rodadas_e_reprova(self):
+		with patch.object(ad, "_droid_once", return_value=self._res()) as m_once, \
+			patch.object(ad, "_run_gates", return_value=(False, "- Erro")):
+			r = run_agentic_build("x", workdir="/w", correction_rounds=2)
+		assert r.execution_ok is False and r.success is False
+		assert m_once.call_count == 3  # inicial + 2 correcoes
+
+	def test_run_gates_reporta_erro_de_execucao_real(self, tmp_path, monkeypatch):
+		(tmp_path / "manifest.ini").write_text("name = X\n", encoding="utf-8")
+		plug = tmp_path / "globalPlugins" / "X"
+		plug.mkdir(parents=True)
+		(plug / "__init__.py").write_text("import globalPluginHandler\n", encoding="utf-8")
+		files = ["manifest.ini", "globalPlugins/X/__init__.py"]
+
+		class _FakeSandbox:
+			def __init__(self, *a, **k):
+				pass
+
+			def validate_addon_execution(self, d):
+				return types.SimpleNamespace(success=False, error="NameError: foo", stderr="")
+
+		monkeypatch.setattr("nvdastudio.builder.code_sandbox.CodeSandbox", _FakeSandbox)
+		passou, rel = ad._run_gates(str(tmp_path), files)
+		assert passou is False
+		assert "EXECUCAO real" in rel and "NameError" in rel
+
+	def test_run_gates_estrutura_faltando_reprova_sem_sandbox(self, tmp_path):
+		# So um .py solto, sem manifest nem entry -> reprova na estrutura, nem
+		# chega no gate de execucao.
+		(tmp_path / "solto.py").write_text("x = 1\n", encoding="utf-8")
+		passou, rel = ad._run_gates(str(tmp_path), ["solto.py"])
+		assert passou is False
+		assert "manifest.ini" in rel and "ponto de entrada" in rel
 
 
 class TestColetaDeArquivos:
