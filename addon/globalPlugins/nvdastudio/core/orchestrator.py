@@ -317,6 +317,11 @@ class Orchestrator:
 		self._on_clarify: ClarifyCallback | None = None
 		self._running = False
 		self._cancel_requested = False
+		# Direcao ao vivo do build agentico: Event que o driver checa para
+		# INTERROMPER, e um buffer para o usuario REDIRECIONAR na proxima rodada.
+		self._agentic_cancel = threading.Event()
+		self._steer_lock = threading.Lock()
+		self._pending_steer = ""
 		self._outputs_lock = threading.Lock()
 		self._tokens_by_model: dict[str, tuple[int, int]] = {}
 		self._previous_issues: list[str] = []  # v2.1.0 fix: inicializado para agentic_loop
@@ -422,6 +427,25 @@ class Orchestrator:
 		"""Cancela a execucao do pipeline em andamento."""
 		_logger.info("[CANCEL] Solicitacao de cancelamento recebida.")
 		self._cancel_requested = True
+		# Direcao ao vivo: sinaliza o driver agentico a matar o processo em curso.
+		self._agentic_cancel.set()
+
+	def steer_pipeline(self, texto: str):
+		"""Direcao ao vivo: enfileira um ajuste que o usuario digitou durante a
+		geracao. O driver agentico o incorpora na PROXIMA rodada de correcao (o
+		droid exec e one-shot -- redirecionar acontece na fronteira da rodada, com
+		o workdir preservado). Chamadas se acumulam ate serem consumidas."""
+		if not texto or not texto.strip():
+			return
+		with self._steer_lock:
+			self._pending_steer = (self._pending_steer + "\n" + texto.strip()).strip()
+		_logger.info("[STEER] ajuste do usuario enfileirado para a proxima rodada.")
+
+	def _drenar_steer(self) -> str:
+		"""Devolve e LIMPA o ajuste pendente (consumido por rodada)."""
+		with self._steer_lock:
+			texto, self._pending_steer = self._pending_steer, ""
+		return texto
 
 	def _check_cancel(self):
 		if getattr(self, "_cancel_requested", False):
@@ -700,6 +724,11 @@ class Orchestrator:
 		self._emit("PLANEJANDO", "")
 		self._emit("EXECUTANDO", "code_generation")
 
+		# Direcao ao vivo: zera o sinal de cancelamento e qualquer ajuste antigo
+		# antes de comecar (uma execucao nao herda o estado da anterior).
+		self._agentic_cancel.clear()
+		self._drenar_steer()
+
 		def _ao_vivo(linha: str) -> None:
 			# Progresso do motor agentico em tempo real -- best-effort.
 			self._emit("EXECUTANDO", linha)
@@ -710,10 +739,26 @@ class Orchestrator:
 				correction_rounds=_AGENTIC_CORRECTION_ROUNDS,
 				use_nvda_context=True,
 				progress_callback=_ao_vivo,
+				cancel_event=self._agentic_cancel,
+				steer_provider=self._drenar_steer,
 			)
 		except Exception as exc:  # pragma: no cover - defesa
 			_logger.error("[AGENTIC] falha inesperada: %s", exc)
 			return False
+
+		if getattr(build, "cancelled", False):
+			# O usuario INTERROMPEU -- nao e falha; erro honesto e claro.
+			_logger.info("[AGENTIC] build interrompida pelo usuario.")
+			self._emit("CANCELADO", "")
+			result = OrchestrationResult(
+				plan_id="agentic", query=user_query, step_results=[],
+				final_output="", success=False,
+				error="Geracao interrompida pelo usuario.",
+			)
+			self._last_result = result
+			if self._on_complete and not self._suppress_complete_callback:
+				self._on_complete(result)
+			return True
 
 		if not build.files:
 			_logger.warning("[AGENTIC] nenhum arquivo produzido -- erro honesto.")

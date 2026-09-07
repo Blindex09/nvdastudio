@@ -13,7 +13,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.7.0"
+assert MODULE_VERSION == "0.8.0"
 
 
 def _fake_proc(returncode=0, stdout="ok", stderr=""):
@@ -440,7 +440,7 @@ class TestStreamingAoVivo:
 		# o callback passado ao run_agentic_build chega ao _run_streaming.
 		recebidas = []
 
-		def fake_stream(cmd, *, workdir, timeout, progress_callback=None):
+		def fake_stream(cmd, *, workdir, timeout, progress_callback=None, **kwargs):
 			if progress_callback:
 				progress_callback("gerando manifest.ini")
 				progress_callback("gerando __init__.py")
@@ -457,3 +457,100 @@ class TestStreamingAoVivo:
 				progress_callback=recebidas.append,
 			)
 		assert "gerando manifest.ini" in recebidas and "gerando __init__.py" in recebidas
+
+
+class TestDirecaoAoVivo:
+	"""Interromper (matar o build em curso) e Redirecionar (dobrar um ajuste na
+	proxima rodada). O droid exec e one-shot, entao redirecionar acontece na
+	fronteira da rodada -- o comportamento honesto e possivel, nao mid-token."""
+
+	def _cria_addon(self, tmp_path):
+		plug = tmp_path / "globalPlugins" / "Ola"
+		plug.mkdir(parents=True, exist_ok=True)
+		(plug / "__init__.py").write_text("import globalPluginHandler\n", encoding="utf-8")
+		(tmp_path / "manifest.ini").write_text("name = Ola\n", encoding="utf-8")
+
+	def test_run_streaming_cancela_processo_real(self, tmp_path):
+		# subprocesso real dormindo; outro thread seta o cancel -> _BuildCancelled.
+		import sys
+		import threading as _th
+		import pytest
+		ev = _th.Event()
+		_th.Timer(0.3, ev.set).start()
+		with pytest.raises(ad._BuildCancelled):
+			ad._run_streaming(
+				[sys.executable, "-c", "import time; time.sleep(30)"],
+				workdir=str(tmp_path), timeout=60, cancel_event=ev,
+			)
+
+	def test_cancelamento_vira_resultado_nao_excecao(self, tmp_path):
+		import threading as _th
+		ev = _th.Event()
+		ev.set()  # ja cancelado antes de comecar a rodada
+
+		def fake_stream(cmd, *, workdir, timeout, progress_callback=None, cancel_event=None, **kw):
+			# simula o driver detectando o cancelamento e levantando
+			if cancel_event is not None and cancel_event.is_set():
+				raise ad._BuildCancelled()
+			self._cria_addon(tmp_path)
+			return _fake_proc()
+
+		with patch("nvdastudio.builder.agentic_backends._achar_droid", return_value="droid"), \
+			patch.object(ad, "_run_streaming", side_effect=fake_stream):
+			r = run_agentic_build(
+				"x", workdir=str(tmp_path), use_nvda_context=False, cancel_event=ev,
+			)
+		assert r.cancelled is True and r.success is False
+
+	def test_cancelamento_entre_rodadas_para_o_loop(self, tmp_path):
+		import threading as _th
+		ev = _th.Event()
+		chamadas = {"n": 0}
+
+		def fake_stream(cmd, *, workdir, timeout, progress_callback=None, cancel_event=None, **kw):
+			chamadas["n"] += 1
+			self._cria_addon(tmp_path)
+			ev.set()  # usuario cancela logo apos a 1a rodada
+			return _fake_proc()
+
+		with patch("nvdastudio.builder.agentic_backends._achar_droid", return_value="droid"), \
+			patch.object(ad, "_run_streaming", side_effect=fake_stream), \
+			patch.object(ad, "_run_gates", return_value=(False, "- erro")):
+			r = run_agentic_build(
+				"x", workdir=str(tmp_path), use_nvda_context=False,
+				correction_rounds=3, cancel_event=ev,
+			)
+		# so a build inicial rodou; o loop parou antes de gastar outra rodada.
+		assert r.cancelled is True
+		assert chamadas["n"] == 1
+
+	def test_redirecionamento_dobra_o_ajuste_na_proxima_rodada(self, tmp_path):
+		import os as _os
+		prompts = []
+
+		def fake_stream(cmd, *, workdir, timeout, progress_callback=None, cancel_event=None, **kw):
+			# captura o que foi mandado ao motor nesta rodada (prompt.txt existe agora)
+			try:
+				with open(_os.path.join(workdir, "prompt.txt"), encoding="utf-8") as fh:
+					prompts.append(fh.read())
+			except OSError:
+				prompts.append("")
+			self._cria_addon(tmp_path)
+			return _fake_proc()
+
+		# gate falha na 1a, passa na 2a -> uma rodada de correcao acontece
+		gates = [(False, "- erro de execucao"), (True, "")]
+		steer = iter(["adicione um botao Limpar"])
+
+		with patch("nvdastudio.builder.agentic_backends._achar_droid", return_value="droid"), \
+			patch.object(ad, "_run_streaming", side_effect=fake_stream), \
+			patch.object(ad, "_run_gates", side_effect=gates):
+			r = run_agentic_build(
+				"crie um addon de notas", workdir=str(tmp_path), use_nvda_context=False,
+				correction_rounds=2, steer_provider=lambda: next(steer, ""),
+			)
+		assert r.success is True
+		# a 2a chamada (correcao) levou o ajuste do usuario dobrado no prompt.
+		assert len(prompts) == 2
+		assert "adicione um botao Limpar" in prompts[1]
+		assert "AJUSTE PEDIDO PELO USUARIO" in prompts[1]

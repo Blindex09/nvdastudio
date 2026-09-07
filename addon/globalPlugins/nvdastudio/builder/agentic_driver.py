@@ -37,7 +37,7 @@ from ..utils.logger import get_logger
 # agentic_driver._parse_droid_tokens.
 _parse_droid_tokens = parse_droid_tokens
 
-MODULE_VERSION = "0.7.0"
+MODULE_VERSION = "0.8.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -95,6 +95,8 @@ class AgenticBuildResult:
 	execution_ok: bool = False
 	gate_report: str = ""
 	rounds: int = 1
+	# Direcao ao vivo: True quando o usuario INTERROMPEU o build (nao e falha).
+	cancelled: bool = False
 
 
 def _build_nvda_context(request: str) -> str:
@@ -170,9 +172,15 @@ def _validar_basico(workdir: str, files: list[str]) -> tuple[bool, bool, bool]:
 	return has_manifest, has_entry_point, py_syntax_ok
 
 
+class _BuildCancelled(Exception):
+	"""O usuario pediu para INTERROMPER o build em andamento (direcao ao vivo).
+	Distinta de timeout/erro: nao e falha do agente, e escolha do usuario."""
+
+
 def _run_streaming(
 	cmd: list[str], *, workdir: str, timeout: int,
 	progress_callback: Callable[[str], None] | None = None,
+	cancel_event: "threading.Event | None" = None,
 ) -> tuple[int, str, str]:
 	"""Roda o processo agentico TRANSMITINDO o stdout ao vivo (linha a linha) para
 	`progress_callback`, enquanto acumula stdout/stderr completos e respeita o
@@ -181,6 +189,12 @@ def _run_streaming(
 	um build agentico complexo leva minutos, e o silencio total nesse tempo e a
 	maior diferenca de UX pro usuario. Levanta subprocess.TimeoutExpired/OSError
 	como subprocess.run faria (o chamador ja trata).
+
+	`cancel_event` (direcao ao vivo): se o usuario sinalizar durante a execucao, o
+	processo e MORTO limpo e _BuildCancelled e levantada. O droid exec e one-shot
+	(nao aceita input mid-run), entao INTERROMPER e o que da pra fazer de verdade
+	no meio de uma rodada; REDIRECIONAR acontece na fronteira da proxima rodada
+	(run_agentic_build), com o workdir preservado.
 
 	As duas streams sao drenadas em paralelo (senao o buffer cheio de uma trava a
 	outra). Erros do callback nunca derrubam a build -- progresso e best-effort.
@@ -214,12 +228,29 @@ def _run_streaming(
 	t_err = threading.Thread(target=_drain, args=(proc.stderr, err_lines, False), daemon=True)
 	t_out.start()
 	t_err.start()
-	try:
-		proc.wait(timeout=timeout)
-	except subprocess.TimeoutExpired:
+
+	# Espera cooperativa: fatia o wait em janelas curtas para poder atender o
+	# cancelamento do usuario e ainda respeitar o deadline do timeout.
+	deadline = time.time() + timeout
+	cancelado = False
+	while True:
+		try:
+			proc.wait(timeout=0.5)
+			break  # processo terminou sozinho
+		except subprocess.TimeoutExpired:
+			if cancel_event is not None and cancel_event.is_set():
+				cancelado = True
+				break
+			if time.time() >= deadline:
+				proc.kill()
+				proc.wait()
+				raise subprocess.TimeoutExpired(cmd, timeout)
+
+	if cancelado:
 		proc.kill()
 		proc.wait()
-		raise
+		raise _BuildCancelled()
+
 	# Deixa as threads terminarem de drenar o que sobrou no buffer.
 	t_out.join(timeout=5)
 	t_err.join(timeout=5)
@@ -237,12 +268,14 @@ def _droid_once(
 	extra_context: str = "",
 	backend: AgenticBackend | None = None,
 	progress_callback: Callable[[str], None] | None = None,
+	cancel_event: "threading.Event | None" = None,
 ) -> AgenticBuildResult:
 	"""UMA rodada do motor agentico + validacao BASICA (manifest/entry/sintaxe).
 
 	Nunca levanta excecao de execucao: degrada para AgenticBuildResult(success=
 	False, error=...) -- mesma doutrina de code_sandbox. E o tijolo que o ciclo
-	de correcao (Slice 2) repete a cada rodada.
+	de correcao (Slice 2) repete a cada rodada. Cancelamento do usuario tambem vira
+	resultado (cancelled=True), nao excecao.
 
 	`backend` (lacuna #3): o motor agentico. None resolve o padrao (droid, ou o
 	que NVDASTUDIO_AGENTIC_BACKEND pedir). Injetar um backend fake e o que prova,
@@ -304,6 +337,12 @@ def _droid_once(
 	try:
 		returncode, stdout, stderr = _run_streaming(
 			cmd, workdir=workdir, timeout=timeout, progress_callback=progress_callback,
+			cancel_event=cancel_event,
+		)
+	except _BuildCancelled:
+		return AgenticBuildResult(
+			success=False, workdir=workdir, duration_seconds=time.time() - t0,
+			cancelled=True, error="build interrompida pelo usuario",
 		)
 	except subprocess.TimeoutExpired:
 		return AgenticBuildResult(
@@ -458,6 +497,8 @@ def run_agentic_build(
 	correction_rounds: int = 0,
 	backend: AgenticBackend | None = None,
 	progress_callback: Callable[[str], None] | None = None,
+	cancel_event: "threading.Event | None" = None,
+	steer_provider: Callable[[], str] | None = None,
 ) -> AgenticBuildResult:
 	"""Ponto de entrada publico do driver agentico.
 
@@ -467,6 +508,14 @@ def run_agentic_build(
 	na MESMA pasta (que ja tem os arquivos) para ele corrigir -- ate passar ou
 	esgotar as rodadas. `correction_rounds=0` (padrao) mantem o comportamento dos
 	Slices 0/1 (build unica + validacao basica).
+
+	DIRECAO AO VIVO:
+	- `cancel_event`: se setado durante uma rodada, o processo e morto e a build
+	  para (result.cancelled=True). Tambem e checado ENTRE rodadas.
+	- `steer_provider`: chamado no inicio de cada rodada de correcao; se devolver
+	  texto (um ajuste que o usuario digitou durante a geracao), ele e dobrado no
+	  prompt da proxima rodada. O droid exec e one-shot, entao redirecionar
+	  acontece na FRONTEIRA da rodada, com o workdir preservado -- nada se perde.
 	"""
 	# Resolve o workdir UMA vez -- todas as rodadas de correcao compartilham a
 	# mesma pasta (o droid corrige os arquivos que ja existem la).
@@ -480,13 +529,18 @@ def run_agentic_build(
 	result = _droid_once(
 		request, workdir, model_id=model_id, autonomy=autonomy, timeout=timeout,
 		use_nvda_context=use_nvda_context, extra_context=extra_context, backend=backend,
-		progress_callback=progress_callback,
+		progress_callback=progress_callback, cancel_event=cancel_event,
 	)
 	tokens_acumulados = result.tokens  # soma o custo de TODAS as rodadas
-	if correction_rounds <= 0 or not result.files:
+	if result.cancelled or correction_rounds <= 0 or not result.files:
 		return result
 
 	for rodada in range(1, correction_rounds + 1):
+		# Cancelamento pedido ENTRE rodadas: para antes de gastar outra.
+		if cancel_event is not None and cancel_event.is_set():
+			result.cancelled = True
+			result.tokens = tokens_acumulados
+			return result
 		passou, relatorio = _run_gates(result.workdir, result.files)
 		result.execution_ok = passou
 		result.gate_report = relatorio
@@ -496,7 +550,7 @@ def run_agentic_build(
 			result.success = result.success and passou
 			return result
 		_logger.info(
-			"[AGENTIC] gate reprovou (rodada %d/%d), reinjetando no droid.",
+			"[AGENTIC] gate reprovou (rodada %d/%d), reinjetando no motor.",
 			rodada, correction_rounds,
 		)
 		correcao = (
@@ -505,13 +559,28 @@ def run_agentic_build(
 			"\n\nCorrija os arquivos EXISTENTES (nao recomece do zero) ate que o "
 			"addon importe e instancie sem erro. Rode os arquivos para confirmar."
 		)
+		# Direcao ao vivo: dobra o ajuste que o usuario digitou durante a rodada.
+		if steer_provider is not None:
+			try:
+				ajuste = (steer_provider() or "").strip()
+			except Exception:  # pragma: no cover - steer e best-effort
+				ajuste = ""
+			if ajuste:
+				_logger.info("[AGENTIC] ajuste do usuario dobrado na rodada %d.", rodada + 1)
+				correcao = (
+					"AJUSTE PEDIDO PELO USUARIO (prioridade -- incorpore agora):\n"
+					+ ajuste + "\n\n" + correcao
+				)
 		result = _droid_once(
 			correcao, result.workdir, model_id=model_id, autonomy=autonomy,
 			timeout=timeout, use_nvda_context=use_nvda_context, extra_context=extra_context,
-			backend=backend, progress_callback=progress_callback,
+			backend=backend, progress_callback=progress_callback, cancel_event=cancel_event,
 		)
 		tokens_acumulados += result.tokens
 		result.rounds = rodada + 1
+		if result.cancelled:
+			result.tokens = tokens_acumulados
+			return result
 
 	# Gate final apos a ultima rodada de correcao.
 	passou, relatorio = _run_gates(result.workdir, result.files)

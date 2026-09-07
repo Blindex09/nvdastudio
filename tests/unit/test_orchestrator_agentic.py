@@ -82,6 +82,54 @@ class TestRunPipelineAgentico:
 		o._on_complete.assert_not_called()
 
 
+class TestDirecaoAoVivoNoOrchestrator:
+	"""Interromper/redirecionar do orchestrator chegam ao driver agentico."""
+
+	def test_cancelamento_vira_entrega_honesta(self, tmp_path):
+		recebidos = []
+		o = Orchestrator()
+		o._on_complete = lambda r: recebidos.append(r)
+		o._suppress_complete_callback = False
+		build = _fake_build(tmp_path, cancelled=True, success=False)
+		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", return_value=build):
+			ok = o._run_pipeline_agentic("x")
+		assert ok is True
+		assert recebidos[0].success is False
+		assert "interrompida" in (recebidos[0].error or "").lower()
+
+	def test_passa_cancel_event_e_steer_provider_ao_driver(self, tmp_path):
+		_prep(tmp_path)
+		o = Orchestrator()
+		o._on_complete = lambda r: None
+		o._suppress_complete_callback = False
+		m = MagicMock(return_value=_fake_build(tmp_path))
+		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", m):
+			o._run_pipeline_agentic("crie um addon")
+		kwargs = m.call_args.kwargs
+		assert kwargs["cancel_event"] is o._agentic_cancel
+		assert kwargs["steer_provider"] == o._drenar_steer
+
+	def test_cancel_pipeline_seta_o_event(self):
+		o = Orchestrator()
+		assert not o._agentic_cancel.is_set()
+		o.cancel_pipeline()
+		assert o._agentic_cancel.is_set()
+
+	def test_steer_pipeline_enfileira_e_drena(self):
+		o = Orchestrator()
+		o.steer_pipeline("adicione um botao Limpar")
+		o.steer_pipeline("e um atalho")
+		drenado = o._drenar_steer()
+		assert "adicione um botao Limpar" in drenado and "e um atalho" in drenado
+		# consumido: a proxima drenagem vem vazia.
+		assert o._drenar_steer() == ""
+
+	def test_steer_vazio_e_ignorado(self):
+		o = Orchestrator()
+		o.steer_pipeline("   ")
+		assert o._drenar_steer() == ""
+
+
 class TestPipelinesDelegamAoAgente:
 	def test_run_pipeline_e_agentico(self):
 		o = Orchestrator()
