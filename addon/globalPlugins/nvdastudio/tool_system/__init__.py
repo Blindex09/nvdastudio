@@ -1,6 +1,10 @@
 from .registry import ToolRegistry, ToolEntry, ToolResult, registry, tool_error, tool_result
 from .approval import ApprovalWorkflow, ApprovalRequest
-from .executor import ToolExecutor
+# 2026-09-06: ToolExecutor removido. Era o gemeo redundante de
+# tools/tool_gateway.py (o executor VIVO em producao) -- sem nenhuma
+# instanciacao fora de teste (ver comentario 5.72.0 do orchestrator). O
+# caminho de producao e tool_gateway.call(); este pacote segue exportando os
+# builtins e o ApprovalWorkflow, que continuam vivos e compartilhados.
 
 # Auto-registra builtins (side-effect: registry.register() chamado no import)
 from .builtins.file_reader import read_file as read_file
@@ -23,7 +27,6 @@ __all__ = [
     "tool_result",
     "ApprovalWorkflow",
     "ApprovalRequest",
-    "ToolExecutor",
     "file_reader_tool",
     "ast_parser_tool",
     "nvda_validator_tool",

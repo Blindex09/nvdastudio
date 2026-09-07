@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ..utils.logger import get_logger
-from ..utils.timeouts import get_tool_timeout
+from ..utils.timeouts import get_tool_timeout, calculate_backoff_delay
 
 _logger = get_logger("tool_gateway")
-MODULE_VERSION = "3.3.0"
+MODULE_VERSION = "3.4.0"
 
 # Limites
 _MAX_CALLS_PER_MINUTE = 10
@@ -65,10 +65,15 @@ class ToolGateway:
         self._call_history: List[ToolCall] = []          # Historico de chamadas
         self._rate_tracker: Dict[str, List[float]] = {}  # tool -> timestamps
         self._lock = threading.Lock()
-        # Pool dedicado para aplicar TIMEOUT por tool. Threads daemon: em
-        # timeout a tool travada continua viva ate terminar sozinha, mas nao
-        # impede o NVDA de fechar -- o que importa e o pipeline seguir.
-        self._pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="gateway_tool")
+        # 3.4.0: pool COMPARTILHADO removido. `future.cancel()` e no-op quando a
+        # task ja esta rodando (garantia do concurrent.futures), entao uma tool
+        # travada ocupava para sempre um dos 4 workers deste pool -- 4 tools
+        # presas esgotavam o pool e TODA chamada seguinte ficava enfileirada
+        # indefinidamente (o pipeline pendura em silencio, pior falha para o
+        # usuario cego). Cada chamada agora usa seu proprio pool descartavel de
+        # 1 worker em _execute_with_retry: o vazamento fica isolado nesse pool e
+        # nunca prende uma chamada futura. Mesma protecao que o ToolExecutor
+        # (removido em 2026-09-06) garantia; agora vive no executor que roda.
 
         # Callbacks de UI
         self._on_tool_start: Optional[Callable[[str], None]] = None
@@ -317,8 +322,13 @@ class ToolGateway:
         timeout_s = get_tool_timeout(tool_name) if tool_name else get_tool_timeout("")
         last_error = None
         for attempt in range(_MAX_RETRIES + 1):
+            # 3.4.0: pool descartavel de 1 worker por tentativa. Se o handler
+            # travar, `future.cancel()` nao o interrompe (a task ja roda) -- mas
+            # a thread vazada fica isolada NESTE pool, jamais consumindo um slot
+            # compartilhado de uma chamada futura. Ver comentario em __init__.
+            call_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gateway_tool")
             try:
-                future = self._pool.submit(handler, **args)
+                future = call_pool.submit(handler, **args)
                 result = future.result(timeout=timeout_s)
                 return result, None
             except FuturesTimeout:
@@ -330,14 +340,19 @@ class ToolGateway:
                 )
                 if attempt >= _MAX_RETRIES:
                     break
-                time.sleep(0.5)
+                time.sleep(calculate_backoff_delay(attempt + 1))
             except Exception as e:
                 last_error = str(e)
                 if attempt < _MAX_RETRIES:
                     _logger.debug("[GATEWAY] Retry %d apos erro: %s", attempt + 1, last_error)
-                    time.sleep(0.5)
+                    time.sleep(calculate_backoff_delay(attempt + 1))
                 else:
                     break
+            finally:
+                # Nao esperar a thread travada (wait=False) -- pendurar aqui
+                # reintroduziria exatamente a falha que este fix elimina. O pool
+                # descartavel e coletado quando a thread eventualmente termina.
+                call_pool.shutdown(wait=False)
         return None, last_error
 
     # -------------------------------------------------------------------------

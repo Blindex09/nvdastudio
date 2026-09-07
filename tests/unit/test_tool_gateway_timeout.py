@@ -19,15 +19,17 @@ como saber se deve esperar ou desistir. Viola o principio nº3 que o proprio
 projeto ensina ao gerador ("toda operacao externa tem limite de tempo
 explicito").
 
-A PROVA de que era defeito e nao decisao: existem DOIS executores de tool no
+A PROVA de que era defeito e nao decisao: existiam DOIS executores de tool no
 projeto, e o outro (tool_system/executor.py) sempre fez certo -- ThreadPool com
-timeout, stale detection e backoff, consumindo `utils/timeouts`. Mesma
-responsabilidade, qualidades diferentes.
+timeout, stale detection e backoff, consumindo `utils/timeouts`. Esse executor
+gemeo foi removido em 2026-09-06 (morto em producao) e sua protecao de pool
+descartavel foi portada para o gateway (3.4.0) -- ver TestPoolDescartavelNaoVaza.
 
 A constante local foi REMOVIDA em vez de ligada: `utils/timeouts` ja e a fonte
 de verdade, e manter um terceiro numero seria repor a duplicacao (Regra 5).
 """
 
+import threading
 import time
 
 import pytest
@@ -35,7 +37,7 @@ import pytest
 from nvdastudio.tools import tool_gateway as gw_mod
 from nvdastudio.tools.tool_gateway import MODULE_VERSION, ToolGateway
 
-assert MODULE_VERSION == "3.3.0"
+assert MODULE_VERSION == "3.4.0"
 
 
 @pytest.fixture
@@ -91,6 +93,51 @@ class TestTimeoutPorTool:
 		assert "1s" in str(erro)
 
 
+class TestPoolDescartavelNaoVaza:
+	"""Regressao 3.4.0: uma tool travada nunca pode prender uma chamada futura.
+
+	Antes, o gateway usava um pool COMPARTILHADO de max_workers=4 e
+	`future.cancel()` (no-op quando a task ja roda). 4 tools travadas ocupavam
+	os 4 workers para sempre e TODA chamada seguinte enfileirava sem fim -- o
+	pipeline pendurava em silencio, o pior tipo de falha para o usuario cego.
+	Esta cobertura vivia so contra o ToolExecutor (removido em 2026-09-06); o
+	executor VIVO -- o gateway -- nao a tinha. Ver auditoria-confirmacao-2026-09-06.
+	"""
+
+	def test_tools_travadas_nao_esgotam_o_gateway(self, monkeypatch):
+		monkeypatch.setattr(gw_mod, "get_tool_timeout", lambda nome: 0.3)
+		# Backoff instantaneo: o retry por timeout nao deve inflar o teste.
+		monkeypatch.setattr(gw_mod, "calculate_backoff_delay", lambda tentativa: 0.0)
+		gw = ToolGateway()
+
+		liberar = threading.Event()
+
+		def travada():
+			liberar.wait(timeout=10)
+
+		# 5 tools travadas -- estritamente MAIS que os 4 workers do pool antigo.
+		# Com o bug, a 5a ja enfileiraria; aqui cada uma isola seu proprio pool.
+		for _ in range(5):
+			resultado, erro = gw._execute_with_retry(travada, {}, "travada")
+			assert resultado is None
+			assert erro is not None and "timeout" in erro.lower()
+
+		# O ponto: depois de 5 travamentos, uma tool rapida responde NA HORA.
+		# Com o pool compartilhado esgotado, ela ficaria presa atras das
+		# travadas ate `liberar.set()` -- e este assert falharia por tempo.
+		inicio = time.time()
+		resultado, erro = gw._execute_with_retry(lambda: "ok", {}, "rapida")
+		decorrido = time.time() - inicio
+
+		liberar.set()  # solta as threads travadas antes de encerrar o teste
+
+		assert resultado == "ok" and erro is None
+		assert decorrido < 2.0, (
+			"a tool rapida ficou presa atras das travadas -- o pool esgotou, "
+			"o vazamento de thread voltou"
+		)
+
+
 class TestFonteUnicaDoTimeout:
 	def test_constante_local_foi_removida(self):
 		"""Um terceiro numero local reporia a duplicacao que a Regra 5 proibe --
@@ -104,13 +151,8 @@ class TestFonteUnicaDoTimeout:
 
 		src = inspect.getsource(gw_mod)
 		assert "from ..utils.timeouts import get_tool_timeout" in src
-
-	def test_os_dois_executores_usam_a_mesma_fonte(self):
-		"""tool_system/executor.py e tools/tool_gateway.py fazem a mesma coisa;
-		divergir na politica de timeout foi o que criou este defeito."""
-		import inspect
-
-		from nvdastudio.tool_system import executor as exec_mod
-
-		assert "get_tool_timeout" in inspect.getsource(exec_mod)
-		assert "get_tool_timeout" in inspect.getsource(gw_mod)
+		# 2026-09-06: antes havia aqui um test_os_dois_executores_usam_a_mesma_fonte
+		# que importava tool_system/executor.py e exigia que os DOIS executores
+		# usassem get_tool_timeout. O executor gemeo foi removido (morto em
+		# producao); resta um so executor -- o gateway -- e a assercao acima ja
+		# garante que ele consome a fonte unica de timeout.
