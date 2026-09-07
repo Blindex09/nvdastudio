@@ -216,7 +216,7 @@ class TestOrchestratorFeedbackTipado:
 
     def test_versao_e_2_9_0(self):
         from addon.globalPlugins.nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.88.0"
+        assert MODULE_VERSION == "5.89.0"
 
     def test_code_generation_passa_step_type(self):
         from unittest.mock import patch

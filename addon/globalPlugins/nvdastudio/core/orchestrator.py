@@ -11,6 +11,7 @@ from .planner import (
 	Planner, ExecutionPlan, ExecutionStep, STEP_USER_CLARIFICATION,
 	STEP_SYNTAX_VALIDATION, STEP_TEST_GENERATION, STEP_WEB_RESEARCH,
 	STEP_ASSEMBLY, STEP_ENGINEERING_REVIEW, STEP_DESIGN_REVIEW,
+	STEP_CODE_GENERATION,  # Slice 3: caminho agentico rotula o step de geracao
 	format_expected_files_for_prompt,
 	# tests/unit/test_syntax_validator.py::test_step_syntax_validation_importado
 	# depende dele como re-export deste modulo (ver changelog v5.12.0 acima:
@@ -51,8 +52,49 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.88.0"
+MODULE_VERSION = "5.89.0"
 _logger = get_logger("orchestrator")
+
+# ---------------------------------------------------------------------------
+# Caminho 3 (arquitetura agentica) -- Slice 3: roteia a geracao para o driver
+# agentico (builder/agentic_driver.py) ATRAS DE FEATURE FLAG, com o pipeline
+# staged como fallback. Default DESLIGADO -- sem a env var, nada muda.
+# Ver docs/arquitetura-agentica-caminho3-2026-09-06.md.
+# ---------------------------------------------------------------------------
+_AGENTIC_ENV = "NVDASTUDIO_AGENTIC_MODE"
+_AGENTIC_CORRECTION_ROUNDS = 2
+
+
+def _agentic_mode_enabled() -> bool:
+	"""True se a flag da arquitetura agentica esta ligada (opt-in explicito)."""
+	return os.environ.get(_AGENTIC_ENV, "").strip().lower() in ("1", "true", "on", "yes")
+
+
+def _agentic_files_to_blocks(workdir: str, files: list[str]) -> str:
+	"""Converte os arquivos que o driver agentico produziu no disco para o
+	formato de bloco cercado que builder/addon_builder.extract_code_blocks()
+	consome -- assim a GUI empacota o resultado agentico pelo MESMO caminho
+	(save_addon_files + portao final) do pipeline staged, sem duplicar entrega.
+	"""
+	partes: list[str] = []
+	for rel in files:
+		nome = rel.rsplit("/", 1)[-1].lower()
+		if nome.endswith(".py"):
+			lang = "python"
+		elif nome.endswith(".ini"):
+			lang = "ini"
+		elif nome.endswith((".html", ".htm")):
+			lang = "html"
+		else:
+			lang = "text"
+		try:
+			with open(os.path.join(workdir, rel), encoding="utf-8", errors="replace") as fh:
+				conteudo = fh.read()
+		except OSError:
+			continue
+		partes.append(f"```{lang}:{rel}\n{conteudo}\n```")
+	return "\n\n".join(partes)
+
 
 _HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
 
@@ -1671,6 +1713,67 @@ class Orchestrator:
 	# Pipeline principal
 	# ------------------------------------------------------------------
 
+	def _run_pipeline_agentic(self, user_query: str) -> bool:
+		"""Slice 3 do Caminho 3: gera o addon pelo driver AGENTICO (droid dirige
+		editar->rodar->corrigir) em vez do pipeline staged.
+
+		Retorna True se ENTREGOU (disparou on_complete), False se nao conseguiu
+		produzir nada -- ai o chamador (_run_pipeline) cai no staged (fallback).
+		So roda com a flag NVDASTUDIO_AGENTIC_MODE ligada. O gate deterministico
+		(code_sandbox) e a auto-correcao vivem DENTRO de run_agentic_build
+		(Slice 2); aqui o resultado agentico vira o formato de blocos que a GUI
+		ja empacota -- mesma entrega + portao final do staged, sem duplicar.
+		"""
+		self._running = True
+		self._last_result = None
+		try:
+			from ..builder.agentic_driver import run_agentic_build
+		except Exception as exc:  # pragma: no cover - defesa
+			_logger.error("[AGENTIC] driver indisponivel (%s) -- caindo pro staged.", exc)
+			return False
+
+		self._emit("PLANEJANDO", "")
+		self._emit("EXECUTANDO", "code_generation")
+		try:
+			build = run_agentic_build(
+				user_query,
+				correction_rounds=_AGENTIC_CORRECTION_ROUNDS,
+				use_nvda_context=True,
+			)
+		except Exception as exc:  # pragma: no cover - defesa
+			_logger.error("[AGENTIC] falha inesperada (%s) -- caindo pro staged.", exc)
+			return False
+
+		if not build.files:
+			_logger.warning("[AGENTIC] nenhum arquivo produzido -- caindo pro staged.")
+			return False
+
+		blocks = _agentic_files_to_blocks(build.workdir, build.files)
+		step = StepResult(
+			step_id="agentic",
+			step_type=STEP_CODE_GENERATION,
+			output=blocks,
+			approved=build.execution_ok,
+			score=100 if build.execution_ok else 0,
+			issues=[build.gate_report] if build.gate_report else [],
+			model_used="factory::agentic",
+		)
+		orch_result = OrchestrationResult(
+			plan_id="agentic",
+			query=user_query,
+			step_results=[step],
+			final_output=blocks,
+			success=build.execution_ok,
+			error=None if build.execution_ok else (build.gate_report or "gate de execucao nao passou"),
+			total_retries=max(build.rounds - 1, 0),
+		)
+		self._emit("MONTANDO", "")
+		self._emit("CONCLUIDO", "")
+		self._last_result = orch_result
+		if self._on_complete and not self._suppress_complete_callback:
+			self._on_complete(orch_result)
+		return True
+
 	def _run_pipeline(
 		self,
 		user_query: str,
@@ -1692,6 +1795,14 @@ class Orchestrator:
 		setado na tentativa anterior, entao ficam bloqueados ate isso rodar de
 		novo aqui).
 		"""
+		# Slice 3 (Caminho 3): com a flag ligada e fora de retomada, tenta o
+		# caminho AGENTICO primeiro. So segue pro staged abaixo se ele nao
+		# produzir nada (fallback seguro -- o staged e o default comprovado).
+		if resume_plan is None and _agentic_mode_enabled():
+			if self._run_pipeline_agentic(user_query):
+				return
+			_logger.info("[AGENTIC] fallback: seguindo pelo pipeline staged.")
+
 		self._tokens_by_model = {}
 		self._last_result = None
 		self._running = True
