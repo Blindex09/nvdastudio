@@ -737,11 +737,11 @@ class Orchestrator:
 			self._on_complete(orch_result)
 		return True
 
-	def _run_pipeline(self, user_query, resume_plan=None, resume_completed=None):
-		"""Caminho 3 (staged removido): a geracao e 100% AGENTICA. `resume_plan`/
-		`resume_completed` eram conceitos do FSM staged (retomada/replan); ficam na
-		assinatura so por compatibilidade e sao ignorados. Sem fallback staged: se o
-		agente nao produzir nada, erro honesto."""
+	def _run_pipeline(self, user_query):
+		"""Caminho 3 (staged removido): a geracao e 100% AGENTICA. Os antigos
+		`resume_plan`/`resume_completed` (retomada/replan do FSM staged) saíram da
+		assinatura com a demolicao -- nenhum chamador os passava. Sem fallback
+		staged: se o agente nao produzir nada, erro honesto."""
 		if self._run_pipeline_agentic(user_query):
 			return
 		result = OrchestrationResult(
