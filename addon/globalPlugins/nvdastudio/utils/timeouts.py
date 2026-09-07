@@ -24,13 +24,9 @@ _DEFAULT_SANDBOX_TIMEOUT = 10.0  # 10 segundos
 _DEFAULT_SANDBOX_TIMEOUT_COMPLEX = 30.0  # 30 segundos
 
 # Pipeline
-_DEFAULT_STEP_TIMEOUT = 180.0  # 3 minutos por step
-_DEFAULT_STEP_TIMEOUT_LONG = 600.0  # 10 minutos: le o addon inteiro de uma vez
-# 20 minutos: sub-agente + critic EM SERIE, e o critic tambem usa o timeout HTTP
-# estendido para estes tipos (critic.py 3.9.0). Confirmado ao vivo: 600s era menor
-# que uma UNICA chamada HTTP interna podia legitimamente levar, e o step morria
-# antes do necessario para sub-agente+critic completarem.
-_DEFAULT_STEP_TIMEOUT_XLONG = 1200.0
+# Os timeouts POR STEP saíram com a demolição do pipeline staged (2026-09-06):
+# o caminho agêntico tem UM só passo (o driver do droid) e usa o timeout próprio
+# de builder/agentic_driver.run_agentic_build. Sobrou só o grace period global.
 _DEFAULT_PIPELINE_GRACE_PERIOD = 60.0  # 1 minuto de graça após timeout
 
 # Retry backoff
@@ -42,35 +38,6 @@ _DEFAULT_BACKOFF_JITTER = 0.5  # 50% jitter
 # =============================================================================
 # Configuração por tipo de operação
 # =============================================================================
-
-# FONTE UNICA dos timeouts por tipo de step.
-#
-# Ate 2026-09-01 havia DUAS tabelas: esta e uma copia em core/orchestrator.py,
-# com valores DIFERENTES (600 aqui, 1200 la). A do orchestrator vencia, entao
-# quem lesse este arquivo acreditava num numero que nao era o aplicado --
-# duplicacao de regra, README Regra 5.
-#
-# Tres faixas, cada uma pelo que o step realmente le:
-#
-# padrao (180s): steps que olham um recorte pequeno.
-# LONG (600s): steps que consomem o addon INTEIRO de uma vez. Medido nos
-#   relatorios E2E: 9 steps mortos no default de 180s -- documentation 5 vezes,
-#   accessibility_audit 2, test_generation 1, assembly 1. Dois deles em addons
-#   SIMPLES (DocAddon_e2e, FixAAddon_e2e, 1 code_generation cada) que falharam
-#   por causa disso. E documentation e BLOQUEANTE: morre ela, morre a entrega
-#   de um addon que ja estava pronto.
-# XLONG (1200s): sub-agente + critic em serie, ambos com timeout HTTP estendido.
-_STEP_TYPE_TIMEOUT_OVERRIDE = {
-    "design_review":       _DEFAULT_STEP_TIMEOUT_XLONG,
-    "code_generation":     _DEFAULT_STEP_TIMEOUT_XLONG,
-    "agent_runner":        _DEFAULT_STEP_TIMEOUT_XLONG,
-    "assembly":            _DEFAULT_STEP_TIMEOUT_XLONG,
-    "engineering_review":  _DEFAULT_STEP_TIMEOUT_LONG,
-    "documentation":       _DEFAULT_STEP_TIMEOUT_LONG,
-    "accessibility_audit": _DEFAULT_STEP_TIMEOUT_LONG,
-    "test_generation":     _DEFAULT_STEP_TIMEOUT_LONG,
-    "web_research":        _DEFAULT_STEP_TIMEOUT_LONG,
-}
 
 _TOOL_TIMEOUT_OVERRIDE = {
     "file_reader": _DEFAULT_TOOL_TIMEOUT,
@@ -164,23 +131,6 @@ def get_ttfb_timeout() -> float:
             return coerced
 
     return _DEFAULT_TTFB_TIMEOUT
-
-
-def get_step_timeout(step_type: str) -> float:
-    """
-    Retorna timeout para tipo de step.
-
-    Args:
-        step_type: Tipo do step (code_generation, manifest, etc.)
-
-    Returns:
-        Timeout em segundos
-    """
-    # Override por tipo de step
-    if step_type in _STEP_TYPE_TIMEOUT_OVERRIDE:
-        return _STEP_TYPE_TIMEOUT_OVERRIDE[step_type]
-
-    return _DEFAULT_STEP_TIMEOUT
 
 
 def get_tool_timeout(tool_name: str) -> float:

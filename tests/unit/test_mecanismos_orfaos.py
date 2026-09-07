@@ -100,11 +100,6 @@ _ORFAOS_ACEITOS: dict[str, str] = {
 	"nvda_context.get_docs_doc_generator": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 	"nvda_context.get_docs_test_generator": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 	"nvda_context.nvda_topics_marker": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._adaptive_max_workers": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._alvos_nao_entregues": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._get_step_timeout": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._modelo_de_outro_provedor": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._sandbox_failure_evidence": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 }
 
 
@@ -170,9 +165,6 @@ _CONSTANTES_ACEITAS: dict[str, str] = {
 	"engineering_principles.SOURCE_DOCS": "procedencia dos 3 documentos de metodologia",
 	"engineering_principles.UPDATED_AT": "data da ultima revisao do conteudo destilado",
 	"rule_registry.UPDATED_AT": "data da ultima revisao do catalogo de regras",
-	"orchestrator._ESCALATION_REASONING": (
-		"alias de _ESCALATION_REASONING_BY_TYPE, que e o consultado; mantido porque o nome curto aparece em comentarios e consumidores antigos"
-	),
 	"project_policy.ABSOLUTE_MIN_NVDA_TUPLE": "forma em tupla, para comparacao futura",
 	"project_policy.PROJECT_LAST_TESTED_NVDA_TUPLE": "forma em tupla, para comparacao futura",
 	"addon_versioning.ADDON_LIFECYCLE_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
@@ -181,25 +173,6 @@ _CONSTANTES_ACEITAS: dict[str, str] = {
 	"engineering_principles.ENGINEERING_CRITIC_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 	"engineering_principles.ENGINEERING_PLANNING_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 	"engineering_principles.ENGINEERING_REVIEW_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._ERRO_DE_AUTENTICACAO_RE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._ESCALATION_ELIGIBLE_STEP_TYPES": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._FALLBACK_REASONING": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._GRACE_PERIOD_SECONDS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._HEARTBEAT_INTERVAL_SECONDS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._IS_SUBAGENT_ERROR_RE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._MAX_CONTEXT_CHARS_CODIGO": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._MAX_CONTEXT_CHARS_PER_STEP": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._MAX_ISSUES_ACUMULADOS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._MAX_REPLANS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._MAX_TOTAL_CONTEXT_CHARS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._MODULO_PENDENTE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._NON_BLOCKING_STEP_TYPES": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._PLAN_COMPLEXITY_TO_METRIC_LEVEL": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._SCORE_MIN_ACEITACAO_POR_PORTOES": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._SEM_SALDO_RE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._STEPS_QUE_PRODUZEM_ARQUIVO": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._STEP_TYPES_DE_ENTREGA": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
-	"orchestrator._SYNTAX_VALIDATOR_RESULTADO_RE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 }
 
 

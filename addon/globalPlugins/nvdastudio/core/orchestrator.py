@@ -1,5 +1,4 @@
 import os
-import re
 import threading
 from typing import Callable
 
@@ -58,31 +57,12 @@ def _agentic_files_to_blocks(workdir: str, files: list[str]) -> str:
 	return "\n\n".join(partes)
 
 
-_HEARTBEAT_INTERVAL_SECONDS = 2.5  # progresso periodico durante steps longos
 
 # Timeout maximo por step (segundos)
 # v2.1.0 (2026-06-09): Usar timeouts.py centralizado (Hermes-inspired)
 # Periodo de graca depois do timeout global do as_completed (segundos).
-_GRACE_PERIOD_SECONDS = 60
 
 
-def _get_step_timeout(step_type: str) -> int:
-	"""
-	Timeout individual para o tipo de step. Fonte unica: utils/timeouts.py.
-
-	5.68.0 -- havia aqui uma copia da tabela de timeouts.py com valores
-	DIFERENTES (1200 aqui, 600 la). Esta copia era consultada DEPOIS e vencia,
-	entao quem lesse timeouts.py acreditava num numero que nao era o aplicado.
-	Duas tabelas para a mesma regra e a Regra 5 do README ao contrario, e a
-	divergencia tinha consequencia: `documentation` -- que le o addon inteiro e
-	e BLOQUEANTE -- nao estava em nenhuma das duas e morria no default de 180s.
-	Medido nos relatorios: 9 steps mortos assim, incluindo dois addons SIMPLES
-	que falharam so por isso.
-
-	Os valores de la agora sao os que eram aplicados aqui; nada afrouxou.
-	"""
-	from ..utils.timeouts import get_step_timeout as _get_timeout
-	return int(_get_timeout(step_type))
 
 
 # Steps nao-bloqueantes: falha nao impede dependentes
@@ -94,50 +74,18 @@ def _get_step_timeout(step_type: str) -> int:
 # manifest_builder: assembly pode regenerar manifest se necessario; armazenar output mesmo
 #   quando rejeitado permite que assembly receba contexto e execute sempre.
 # test_generation e documentation: sao BLOQUEANTES — IA retentar ate passar (decisao usuario).
-_NON_BLOCKING_STEP_TYPES = {
-	"accessibility_audit", "design_review", "syntax_validation", "web_research",
-	"agent_template", "manifest_builder",
-	# 5.80.0 -- engineering_review estava declarado CONSULTIVO no planner
-	# (_STEPS_CONSULTIVOS, 2.42.0: o assembly nao depende dele) e ao mesmo
-	# tempo BLOQUEANTE aqui. Duas listas descrevendo o mesmo conceito e
-	# discordando -- a duplicacao de regra que a Regra 5 proibe. Introduzida
-	# por mim em ef8a97b; ele julga engenharia e nao produz arquivo nenhum.
-	"engineering_review",
-	# 5.81.0 -- documentation deixa de bloquear a entrega.
-	#
-	# REVERSAO DELIBERADA de uma decisao anterior do usuario ("Q8.3: falha
-	# em documentation agora BLOQUEIA o pipeline"), aprovada por ele em
-	# 2026-09-02 depois da evidencia abaixo. Nao mexer sem falar com ele.
-	#
-	# Medido na rodada AssistenteEscrita: doc1 reprovado 3x deixou o assembly
-	# eternamente nao-pronto (ele depende de documentation), e o codigo do
-	# addon inteiro -- ja gerado e aprovado -- foi descartado por causa do
-	# guia do usuario.
-	#
-	# So e seguro afrouxar porque agora existe rede deterministica:
-	# addon_builder 4.22.0 injeta um guia minimo quando nenhum HTML chega aos
-	# blocos -- mesmo criterio que ja tornava manifest_builder nao-bloqueante
-	# (_generate_minimal_manifest). Quando o usuario decidiu pelo bloqueio,
-	# essa rede NAO existia, e afrouxar teria trocado "nao entrega" por
-	# "entrega sem ajuda nenhuma". Agora a troca e por "entrega com ajuda
-	# simples", que e estritamente melhor que nao entregar.
-	"documentation",
-}
 
 # Steps cujo output E arquivo do addon: sem eles nao ha o que entregar.
 # Conceito diferente de _STEP_TYPES_DE_ENTREGA (reserva de orcamento) e de
 # _CRITICAL_STEP_TYPES (dispara replanejamento) -- por isso set proprio, e
 # nao reuso de um deles com outro significado (Regra 5).
-_STEPS_QUE_PRODUZEM_ARQUIVO = {"code_generation"}
 
 # Piso para aceitar por portoes verdes. 60 e o mesmo limite que o Critic ja
 # usa para separar CORRIGIR (60-89) de REJEITAR (<60), em critic.py: abaixo
 # disso ele esta dizendo que o output e irrecuperavel, e nao ha portao
 # determinístico que compense isso.
-_SCORE_MIN_ACEITACAO_POR_PORTOES = 60
 
 # Steps que PRODUZEM a entrega -- so eles enxergam a reserva de orcamento.
-_STEP_TYPES_DE_ENTREGA = {"assembly"}
 
 # Steps criticos: falha dispara replanejamento e escalacao.
 _CRITICAL_STEP_TYPES = {"code_generation", "agent_runner"}
@@ -152,7 +100,6 @@ _CRITICAL_STEP_TYPES = {"code_generation", "agent_runner"}
 # (_needs_replan/_diversify_failed_models) e web_research e projetado pra
 # NUNCA bloquear o pipeline (ver _NON_BLOCKING_STEP_TYPES acima). Um set
 # separado da a escalacao de modelo sem herdar o comportamento bloqueante.
-_ESCALATION_ELIGIBLE_STEP_TYPES = _CRITICAL_STEP_TYPES | {"web_research"}
 
 # Modelo de escalacao: resolvido dinamicamente por _get_resilience_model()
 # (tier heavy do provider atual via model_registry). _ESCALATION_MODEL como
@@ -185,21 +132,12 @@ _ESCALATION_ELIGIBLE_STEP_TYPES = _CRITICAL_STEP_TYPES | {"web_research"}
 # "think" nativo dele por baixo (com suporte a nivel, nao so booleano, ver
 # MODULE_VERSION anterior "Support Ollama think levels"), e os outros 4
 # clients ja usam esse nome real na propria assinatura de chat().
-_ESCALATION_REASONING_BY_TYPE: dict[str, dict] = {
-	"code_generation": {"reasoning_effort": "high"},
-	"agent_runner":    {},
-}
-# Alias compativel com contratos antigos/tests que ainda referenciam
-# _ESCALATION_REASONING diretamente.
-_ESCALATION_REASONING = _ESCALATION_REASONING_BY_TYPE
-
 # Modelo de fallback para erros transitorios (503, timeout persistente) E
 # ultimo recurso de _get_resilience_model() se a resolucao dinamica falhar.
 # Quando o modelo original falha com erro de infraestrutura (nao logica),
 # retenta com este modelo antes de marcar como REJECTED.
 # Regra 5: fallback deterministico — nao usa LLM para decidir.
 _FALLBACK_MODEL = "kimi-k2.7-code"
-_FALLBACK_REASONING: dict = {}
 
 # 5.54.0: BUG REAL achado ao vivo (test_e38, pedido do Felipe apos rodar
 # contra a API real do Ollama: "corrija esses erros que deu nesse teste").
@@ -218,7 +156,6 @@ _FALLBACK_REASONING: dict = {}
 # tokens do pipeline inteiro. Regra 5 (roteamento/decisao deterministica
 # nunca e trabalho de LLM): parseia o contrato PASS/FAIL/SKIP diretamente,
 # SEM chamar o critic -- mais rapido, mais barato, 100% confiavel.
-_SYNTAX_VALIDATOR_RESULTADO_RE = re.compile(r"^RESULTADO:\s*(PASS|FAIL|SKIP)\b", re.MULTILINE)
 
 
 
@@ -236,57 +173,13 @@ _SYNTAX_VALIDATOR_RESULTADO_RE = re.compile(r"^RESULTADO:\s*(PASS|FAIL|SKIP)\b",
 # {"type":"CreditsError","message":"Insufficient balance"}. O correto seria 402,
 # e sem esta deteccao o usuario ouviria 'chave invalida' e iria trocar uma chave
 # que esta certa.
-_ERRO_DE_AUTENTICACAO_RE = re.compile(
-	r"401|403|unauthorized|forbidden|invalid.{0,12}(api.?key|token)"
-	r"|api.?key.{0,20}invalid|insufficient.{0,10}balance|creditserror|quota",
-	re.IGNORECASE,
-)
 
 
 # Falta de saldo, separada de chave invalida: sao acoes DIFERENTES para o
 # usuario (recarregar credito x trocar a chave), e dizer a errada faz ele
 # perder tempo no lugar errado.
-_SEM_SALDO_RE = re.compile(
-	r"insufficient.{0,10}balance|creditserror|quota.{0,20}exceeded|billing",
-	re.IGNORECASE,
-)
 
 
-def _modelo_de_outro_provedor(provedor_atual: str) -> str:
-	"""
-	Modelo de um provedor DIFERENTE, para quando a CONTA atual nao atende.
-
-	Delega para model_router.select_model_and_provider(), que ja existia e faz
-	isto melhor do que uma lista propria: pontua candidatos de todos os
-	provedores com chave, e -- quando o provedor principal do usuario e o
-	ollama -- restringe o resgate a _OLLAMA_RESCUE_PROVIDERS, para nao cair num
-	provedor pago em que ele pode nao ter assinatura.
-
-	A primeira versao desta funcao percorria uma lista fixa de provedores
-	escrita a mao. Era duplicacao de fluxo (Regra 5) e pior que o que ja
-	existia -- ignorava pontuacao e podia escolher um provedor pago sem
-	assinatura.
-
-	Devolve "" quando nenhum outro provedor tem chave: ai nao ha o que tentar,
-	e o erro segue como estava.
-	"""
-	try:
-		from ..ai.model_router import select_model_and_provider
-	except Exception:  # pragma: no cover - defesa
-		return ""
-	try:
-		escolha = select_model_and_provider(
-			step_type="code_generation",
-			complexity="medium",
-			exclude_provider=provedor_atual,
-			active_provider=provedor_atual,
-		)
-	except Exception:  # pragma: no cover - defesa
-		return ""
-	if not escolha:
-		return ""
-	_provedor, modelo = escolha
-	return modelo
 
 
 def _get_resilience_model(step_type: str = "", complexity: str = "medium") -> str:
@@ -321,12 +214,9 @@ def _get_resilience_model(step_type: str = "", complexity: str = "medium") -> st
 # quando a API falha. Detectamos APENAS essas strings de erro — nunca aplicamos
 # a regex ao codigo gerado, que pode conter "timeout=30", "status == 503", etc.
 # v4.1.1 fix: regex restrita ao prefixo [ERRO], eliminando falsos positivos.
-_IS_SUBAGENT_ERROR_RE = re.compile(r'^\s*\[ERRO\]\s', re.IGNORECASE)
 
 # Maximo de replanos por pipeline (evita loop infinito)
-_MAX_REPLANS = 2
 
-_MAX_CONTEXT_CHARS_PER_STEP = 3000
 # Achado de auditoria full-stack 2026-08-04 (rastreamento de addons grandes/
 # complexos, "addons de qualquer magnitude"): _MAX_CONTEXT_CHARS_PER_STEP
 # limitava cada dependencia INDIVIDUAL, mas nao existia teto AGREGADO --
@@ -335,7 +225,6 @@ _MAX_CONTEXT_CHARS_PER_STEP = 3000
 # final sem nenhum orcamento de tamanho antes de chegar no LLM. ~12000 chars
 # cobre confortavelmente 4 dependencias no teto individual; alem disso,
 # comprime o AGREGADO com a mesma ferramenta (context_compressor).
-_MAX_TOTAL_CONTEXT_CHARS = 12000
 
 # Steps cujo TRABALHO e julgar ou montar o codigo dos outros. Para eles,
 # resumir o contexto nao economiza: destroi o objeto da avaliacao.
@@ -357,46 +246,10 @@ _MAX_TOTAL_CONTEXT_CHARS = 12000
 # Quem JULGA codigo recebe o codigo. Quem recebe resumo, resume palpite.
 # Teto proprio, e alto: um addon complexo inteiro cabe. Nao e ausencia de
 # orcamento -- e orcamento dimensionado para o que o step precisa ver.
-_MAX_CONTEXT_CHARS_CODIGO = 60000
-_MAX_PARALLEL_WORKERS = 3
-
-# Paralelismo adaptativo por provider.
-# Cada provider tem seu proprio limite de concorrencia. Quando varios steps
-# paralelos usam o mesmo modelo, reduzimos workers para evitar rate limit 429.
-_PROVIDER_MAX_CONCURRENCY: dict[str, int] = {
-	"kimi-k2.7-code":    3,  # Kimi K2.7-code: mesma familia/capacidade do K2.6
-	"kimi-k2.6":         3,  # Kimi K2.6: 232K downloads — alta capacidade
-	"deepseek-v4-flash": 4,  # DeepSeek V4 Flash: 140GB, otimizado para velocidade
-}
 
 
-def _adaptive_max_workers(steps: list) -> int:
-	"""
-	Calcula o numero otimo de workers paralelos baseado nos modelos usados.
-
-	Se todos os steps usam o mesmo modelo, o max_workers e o menor entre
-	_MAX_PARALLEL_WORKERS e o limite de concorrencia do provider.
-	Se usam modelos diferentes, o limite e _MAX_PARALLEL_WORKERS.
-	"""
-	if len(steps) <= 1:
-		return 1
-	models = {s.model_id for s in steps}
-	if len(models) == 1:
-		provider_limit = _PROVIDER_MAX_CONCURRENCY.get(
-			next(iter(models)), _MAX_PARALLEL_WORKERS
-		)
-		return min(_MAX_PARALLEL_WORKERS, provider_limit)
-	return _MAX_PARALLEL_WORKERS
 
 
-def _sandbox_failure_evidence(result) -> str:
-	"""Consolida toda evidência disponível de uma falha de subprocesso."""
-	parts = [
-		getattr(result, "error", ""),
-		getattr(result, "stderr", ""),
-		getattr(result, "stdout", ""),
-	]
-	return " | ".join(part for part in parts if part) or "subprocesso retornou falha sem detalhes"
 
 
 # 5.55.0: Existia um SEGUNDO classificador de complexidade aqui, baseado em
@@ -412,9 +265,6 @@ def _sandbox_failure_evidence(result) -> str:
 # a regra do projeto de fonte unica por decisao. Fix: reusa a complexidade
 # JA decidida pelo Planner (self._current_complexity()) como fonte unica,
 # mapeada para o vocabulario esperado pelas metricas existentes.
-_PLAN_COMPLEXITY_TO_METRIC_LEVEL: dict[str, str] = {
-	"low": "simple", "medium": "medium", "high": "complex",
-}
 
 
 
@@ -430,35 +280,10 @@ ClarifyCallback = Callable[[list[str]], list[str]]
 # ver tudo que ja foi apontado num step de addon multi-arquivo, baixo o
 # bastante para o prompt do retry nao virar um despejo que dilui a atencao --
 # o proprio motivo pelo qual conhecimento em prompt tem retorno decrescente.
-_MAX_ISSUES_ACUMULADOS = 25
 
 
 
 
-def _alvos_nao_entregues(step: object, py_files: dict) -> list[str]:
-	"""
-	Arquivos que o step declarou em `target_files` e nao apareceram na saida.
-
-	Comparacao por nome de arquivo: o caminho errado e problema de colocacao,
-	que `addon_builder` ja resolve, e bloquear por isso seria falso positivo. O
-	que nao da para recuperar e o arquivo que simplesmente nao foi escrito.
-
-	Step sem alvo declarado nao e cobrado -- e o caso de todo plano antigo, e
-	exigir entrega sem ter pedido nada especifico nao ajudaria ninguem.
-	"""
-	if getattr(step, "step_type", "") not in ("code_generation", "agent_runner"):
-		return []
-	alvos = getattr(step, "target_files", []) or []
-	if not alvos:
-		return []
-	entregues = {
-		nome.replace("\\", "/").rsplit("/", 1)[-1].lower()
-		for nome in py_files
-	}
-	return [
-		alvo for alvo in alvos
-		if alvo.replace("\\", "/").rsplit("/", 1)[-1].lower() not in entregues
-	]
 
 
 # Conteudo do modulo que representa um arquivo que OUTRO step do plano ainda vai
@@ -469,22 +294,6 @@ def _alvos_nao_entregues(step: object, py_files: dict) -> list[str]:
 # cg_core foi reprovado assim mesmo com o placeholder ja no lugar. O
 # `__getattr__` de modulo (PEP 562) faz qualquer nome importar, que e o que se
 # espera de um contrato ainda nao implementado.
-_MODULO_PENDENTE = chr(10).join((
-	"# Placeholder: outro step do plano ainda vai gerar este arquivo.",
-	"# Aceita qualquer nome para que o import do contrato resolva.",
-	"",
-	"",
-	"class _Pendente:",
-	"	def __call__(self, *a, **k): return self",
-	"	def __getattr__(self, _n): return self",
-	"	def __iter__(self): return iter(())",
-	"	def __bool__(self): return False",
-	"",
-	"",
-	"def __getattr__(_nome):",
-	"	return _Pendente()",
-	"",
-))
 
 
 

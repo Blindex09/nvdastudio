@@ -270,29 +270,3 @@ class TestPortaoFinalSobreOPacote:
 		assert resultado.success is True, (
 			f"pacote correto barrado: {resultado.error!r} {resultado.stdout!r}"
 		)
-
-
-class TestSmokePorStepNaoAcusaArquivoQueAindaNaoExiste:
-	"""Costura com o orchestrator: durante `code_generation`, os arquivos que
-	OUTROS steps ainda vao gerar entram como `_MODULO_PENDENTE`.
-
-	Se o smoke acusasse contra esses placeholders, TODO code_generation de
-	addon multi-arquivo reprovaria 3x e queimaria o orcamento -- o defeito
-	seria pior que o que ele conserta. Este teste usa o placeholder REAL do
-	orchestrator, nao uma copia: se ele mudar, este teste tem que saber.
-	"""
-
-	def test_placeholder_de_step_futuro_nao_vira_defeito(self):
-		from nvdastudio.core.orchestrator import _MODULO_PENDENTE
-
-		resultado = _rodar({
-			"globalPlugins/MeuAddon/__init__.py": _plugin(_CHAMADA_ENGOLIDA),
-			# servico.py ainda nao foi gerado: e o placeholder que o
-			# orchestrator injeta para o import resolver.
-			"globalPlugins/MeuAddon/servico.py": _MODULO_PENDENTE,
-		})
-
-		assert resultado.success is True, (
-			"o smoke acusou contra um arquivo que outro step ainda vai gerar -- "
-			f"todo addon multi-arquivo reprovaria: {resultado.stdout!r}"
-		)
