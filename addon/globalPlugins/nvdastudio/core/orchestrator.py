@@ -919,6 +919,7 @@ class Orchestrator:
 			success=build.execution_ok,
 			error=None if build.execution_ok else (build.gate_report or "gate de execucao nao passou"),
 			total_retries=max(build.rounds - 1, 0),
+			total_tokens=getattr(build, "tokens", 0),
 		)
 		self._emit("MONTANDO", "")
 		self._emit("CONCLUIDO", "")

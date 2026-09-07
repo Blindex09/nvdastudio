@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from ..ai.factory_client import _achar_droid, FactoryClientError
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.3.0"
+MODULE_VERSION = "0.5.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -80,6 +80,7 @@ class AgenticBuildResult:
 	py_syntax_ok: bool = False
 	returncode: int = -1
 	duration_seconds: float = 0.0
+	tokens: int = 0  # tokens novos (input+output+cache-creation) somados nas rodadas
 	stdout_tail: str = ""
 	stderr_tail: str = ""
 	error: str = ""
@@ -206,6 +207,7 @@ def _droid_once(
 
 	cmd = [
 		droid, "exec",
+		"-o", "json",  # envelope com usage -- captura tokens (comparacao de custo)
 		"--auto", autonomy,
 		"--cwd", workdir,
 		"-m", model_id,
@@ -252,10 +254,38 @@ def _droid_once(
 		py_syntax_ok=syntax_ok,
 		returncode=proc.returncode,
 		duration_seconds=dur,
+		tokens=_parse_droid_tokens(proc.stdout),
 		stdout_tail=(proc.stdout or "")[-2000:],
 		stderr_tail=(proc.stderr or "")[-2000:],
 		error="" if success else "build agentica nao passou na validacao basica do Slice 0",
 	)
+
+
+def _parse_droid_tokens(stdout: str) -> int:
+	"""Soma tokens NOVOS (input + output + criacao de cache) do envelope JSON do
+	`droid exec -o json`. A leitura de cache (cache_read_input_tokens) fica de
+	fora -- e fracao do preco; somar a peso cheio penalizaria o mecanismo que
+	barateia. Mesma conta que ai/factory_client.py::_ler_envelope. Robusto: pega
+	a ULTIMA linha que parseia como JSON com `usage` (o droid pode logar antes)."""
+	import json
+	total = 0
+	for linha in reversed((stdout or "").splitlines()):
+		linha = linha.strip()
+		if not linha.startswith("{"):
+			continue
+		try:
+			env = json.loads(linha)
+		except (json.JSONDecodeError, ValueError):
+			continue
+		uso = env.get("usage") if isinstance(env, dict) else None
+		if isinstance(uso, dict):
+			total = (
+				int(uso.get("input_tokens") or 0)
+				+ int(uso.get("output_tokens") or 0)
+				+ int(uso.get("cache_creation_input_tokens") or 0)
+			)
+			break
+	return total
 
 
 def _read_files_dict(workdir: str, files: list[str]) -> dict[str, str]:
@@ -270,14 +300,56 @@ def _read_files_dict(workdir: str, files: list[str]) -> dict[str, str]:
 	return out
 
 
+def _run_accessibility_gate(files_dict: dict[str, str]) -> list[str]:
+	"""Gate de ACESSIBILIDADE deterministico -- roda os validadores AST do
+	ast_validator (o unico sub_agent que sobreviveu a demolicao do staged) em
+	cada .py do addon. Reintroduz a checagem de acessibilidade que saiu com o
+	accessibility_audit staged, mas MELHOR: deterministica (AST, nao LLM), o
+	que casa com a tese do gate (o juiz nao e probabilistico).
+
+	Cobre NVDA-019 (Translators em toda _()), acessibilidade wx (accelerators,
+	eventos de teclado), controlTypes e MessageDialog em thread. Import tardio.
+	"""
+	violacoes: list[str] = []
+	try:
+		from ..sub_agents.ast_validator import (
+			validate_nvda019, validate_wx_a11y, validate_wx_a11y_002_accelerators,
+			validate_wx_a11y_013_key_events, validate_nvda060_controltypes,
+			validate_nvda056_messagedialog_thread,
+		)
+	except Exception as exc:  # pragma: no cover - defesa
+		_logger.warning("[AGENTIC] gate de acessibilidade indisponivel: %s", exc)
+		return violacoes
+
+	checagens = (
+		validate_nvda019, validate_wx_a11y, validate_wx_a11y_002_accelerators,
+		validate_wx_a11y_013_key_events, validate_nvda060_controltypes,
+		validate_nvda056_messagedialog_thread,
+	)
+	for rel, codigo in files_dict.items():
+		if not rel.endswith(".py"):
+			continue
+		for check in checagens:
+			try:
+				res = check(codigo)
+			except Exception:  # pragma: no cover - fail-open por checagem
+				continue
+			if not res.ok:
+				for v in res.violacoes:
+					violacoes.append(f"{rel}: {v}")
+	return violacoes[:15]  # cap: o essencial, sem inundar o prompt de correcao
+
+
 def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
-	"""Gate DETERMINISTICO pos-loop (Slice 2) -> (passou, relatorio_de_falha).
+	"""Gate DETERMINISTICO pos-loop -> (passou, relatorio_de_falha).
 
 	1. Estrutural: manifest + ponto de entrada + sintaxe (_validar_basico).
 	2. Execucao real: code_sandbox.validate_addon_execution importa e instancia
 	   a classe principal num subprocesso com stubs NVDA -- pega NameError,
 	   assinatura de construtor errada, import que nao resolve (horizon: "se nao
 	   executou, nao esta verificado"). Import tardio (code_sandbox e pesado).
+	3. Acessibilidade: _run_accessibility_gate roda os validadores AST (NVDA-019,
+	   wx a11y, controlTypes) -- reintroduz a checagem que saiu com o staged.
 
 	O gate e do NVDAStudio (determinismo fora do modelo), nunca do droid -- e a
 	tese central dos 7 projetos auditados: o executor nao e o juiz.
@@ -309,6 +381,12 @@ def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
 			# Gate indisponivel nao derruba a build -- degrada (fica sem o gate
 			# de execucao, mas o estrutural/sintaxe ja rodou).
 			_logger.warning("[AGENTIC] gate de execucao indisponivel: %s", exc)
+		# Gate de acessibilidade (so vale a pena com sintaxe valida).
+		a11y = _run_accessibility_gate(_read_files_dict(workdir, files))
+		if a11y:
+			problemas.append(
+				"- Problemas de ACESSIBILIDADE (corrija todos):\n  " + "\n  ".join(a11y)
+			)
 	return (not problemas), "\n".join(problemas)
 
 
@@ -341,6 +419,7 @@ def run_agentic_build(
 		request, workdir, model_id=model_id, autonomy=autonomy, timeout=timeout,
 		use_nvda_context=use_nvda_context, extra_context=extra_context,
 	)
+	tokens_acumulados = result.tokens  # soma o custo de TODAS as rodadas
 	if correction_rounds <= 0 or not result.files:
 		return result
 
@@ -349,6 +428,7 @@ def run_agentic_build(
 		result.execution_ok = passou
 		result.gate_report = relatorio
 		result.rounds = rodada
+		result.tokens = tokens_acumulados
 		if passou:
 			result.success = result.success and passou
 			return result
@@ -366,11 +446,13 @@ def run_agentic_build(
 			correcao, result.workdir, model_id=model_id, autonomy=autonomy,
 			timeout=timeout, use_nvda_context=use_nvda_context, extra_context=extra_context,
 		)
+		tokens_acumulados += result.tokens
 		result.rounds = rodada + 1
 
 	# Gate final apos a ultima rodada de correcao.
 	passou, relatorio = _run_gates(result.workdir, result.files)
 	result.execution_ok = passou
 	result.gate_report = relatorio
+	result.tokens = tokens_acumulados
 	result.success = result.success and passou
 	return result

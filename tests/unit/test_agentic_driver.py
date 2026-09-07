@@ -13,11 +13,50 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.3.0"
+assert MODULE_VERSION == "0.5.0"
 
 
 def _fake_proc(returncode=0, stdout="ok", stderr=""):
 	return types.SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+class TestParseDroidTokens:
+	"""Captura de tokens do envelope `droid exec -o json` (comparacao de custo)."""
+
+	def test_soma_input_output_e_cache_creation_ignora_cache_read(self):
+		import json
+		env = json.dumps({"usage": {
+			"input_tokens": 100, "output_tokens": 50,
+			"cache_creation_input_tokens": 30, "cache_read_input_tokens": 9999,
+		}})
+		stdout = "log antes\n" + env + "\n"
+		assert ad._parse_droid_tokens(stdout) == 180  # 100+50+30, sem os 9999
+
+	def test_pega_a_ultima_linha_json_com_usage(self):
+		import json
+		stdout = "{\"nao_e_usage\": 1}\n" + json.dumps({"usage": {"input_tokens": 7}}) + "\n"
+		assert ad._parse_droid_tokens(stdout) == 7
+
+	def test_sem_json_devolve_zero(self):
+		assert ad._parse_droid_tokens("apenas texto do droid\n") == 0
+		assert ad._parse_droid_tokens("") == 0
+
+	def test_comando_inclui_o_json(self, tmp_path):
+		capturado = {}
+
+		def fake_run(cmd, **kwargs):
+			capturado["cmd"] = cmd
+			(tmp_path / "manifest.ini").write_text("name = X\n", encoding="utf-8")
+			plug = tmp_path / "globalPlugins" / "X"
+			plug.mkdir(parents=True)
+			(plug / "__init__.py").write_text("import globalPluginHandler\n", encoding="utf-8")
+			return _fake_proc(stdout='{"usage": {"input_tokens": 12, "output_tokens": 3}}')
+
+		with patch.object(ad, "_achar_droid", return_value="droid"), \
+			patch.object(ad.subprocess, "run", side_effect=fake_run):
+			r = run_agentic_build("x", workdir=str(tmp_path), use_nvda_context=False)
+		assert "-o" in capturado["cmd"] and "json" in capturado["cmd"]
+		assert r.tokens == 15
 
 
 class TestConstrucaoDoComando:
@@ -202,3 +241,42 @@ class TestColetaDeArquivos:
 		assert "manifest.ini" in files
 		assert "system-prompt.txt" not in files
 		assert not any(f.startswith(".factory") for f in files)
+
+
+class TestGateDeAcessibilidade:
+	"""#1 pos-demolicao: gate de acessibilidade deterministico (ast_validator)
+	reintroduzido no caminho agentico -- o accessibility_audit staged saiu."""
+
+	def test_gettext_sem_translators_vira_violacao(self):
+		codigo = "import ui\nui.message(_('ola'))\n"  # _() sem '# Translators:' acima
+		viol = ad._run_accessibility_gate({"globalPlugins/X/__init__.py": codigo})
+		assert any("nvda" in v.lower() or "translators" in v.lower() for v in viol)
+
+	def test_codigo_sem_gettext_nao_gera_violacao_nvda019(self):
+		codigo = "import ui\nui.message('texto fixo')\n"
+		viol = ad._run_accessibility_gate({"globalPlugins/X/__init__.py": codigo})
+		# nao deve haver violacao de NVDA-019 (nao ha _() sem Translators)
+		assert not any("nvda-019" in v.lower() or "translators" in v.lower() for v in viol)
+
+	def test_ignora_nao_py(self):
+		assert ad._run_accessibility_gate({"manifest.ini": "name = X"}) == []
+
+	def test_gate_de_a11y_entra_no_run_gates(self, tmp_path):
+		# estrutura minima valida + gettext sem Translators -> _run_gates reporta a11y
+		(tmp_path / "manifest.ini").write_text("name = X\n", encoding="utf-8")
+		plug = tmp_path / "globalPlugins" / "X"
+		plug.mkdir(parents=True)
+		(plug / "__init__.py").write_text(
+			"import globalPluginHandler\nimport ui\ndef f():\n\tui.message(_('oi'))\n",
+			encoding="utf-8",
+		)
+		# mocka o gate de execucao pra isolar o de a11y
+		class _OK:
+			success = True
+			error = ""
+			stderr = ""
+
+		with patch("nvdastudio.builder.code_sandbox.CodeSandbox") as m:
+			m.return_value.validate_addon_execution.return_value = _OK()
+			passou, rel = ad._run_gates(str(tmp_path), ["manifest.ini", "globalPlugins/X/__init__.py"])
+		assert passou is False and "ACESSIBILIDADE" in rel
