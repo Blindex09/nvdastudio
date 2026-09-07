@@ -37,7 +37,7 @@ from ..utils.logger import get_logger
 # agentic_driver._parse_droid_tokens.
 _parse_droid_tokens = parse_droid_tokens
 
-MODULE_VERSION = "0.8.0"
+MODULE_VERSION = "0.9.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -546,25 +546,43 @@ def run_agentic_build(
 		result.gate_report = relatorio
 		result.rounds = rodada
 		result.tokens = tokens_acumulados
-		if passou:
-			result.success = result.success and passou
-			return result
-		_logger.info(
-			"[AGENTIC] gate reprovou (rodada %d/%d), reinjetando no motor.",
-			rodada, correction_rounds,
-		)
-		correcao = (
-			"O addon que voce gerou no diretorio de trabalho atual NAO passou na "
-			"verificacao. Problemas encontrados:\n" + relatorio +
-			"\n\nCorrija os arquivos EXISTENTES (nao recomece do zero) ate que o "
-			"addon importe e instancie sem erro. Rode os arquivos para confirmar."
-		)
-		# Direcao ao vivo: dobra o ajuste que o usuario digitou durante a rodada.
+
+		# Direcao ao vivo: consome o ajuste que o usuario digitou durante a rodada.
+		# Drenado ANTES do early-return: um ajuste pendente FORCA uma rodada mesmo
+		# com o gate verde -- senao o addon fecharia antes do pedido ser aplicado
+		# (a ressalva que tornava o soft-steer nao-confiavel). Se o gate passou e
+		# nao ha ajuste, ai sim termina.
+		ajuste = ""
 		if steer_provider is not None:
 			try:
 				ajuste = (steer_provider() or "").strip()
 			except Exception:  # pragma: no cover - steer e best-effort
 				ajuste = ""
+
+		if passou and not ajuste:
+			result.success = result.success and passou
+			return result
+
+		if passou:
+			# Gate verde, rodada existe SO para incorporar o pedido do usuario.
+			_logger.info("[AGENTIC] gate verde, mas ha ajuste do usuario -- rodada %d.", rodada + 1)
+			correcao = (
+				"O addon ja passa na verificacao. O usuario pediu este AJUSTE -- "
+				"incorpore mantendo o que ja funciona:\n" + ajuste +
+				"\n\nEdite os arquivos EXISTENTES (nao recomece do zero) e rode "
+				"para confirmar que continua importando e instanciando sem erro."
+			)
+		else:
+			_logger.info(
+				"[AGENTIC] gate reprovou (rodada %d/%d), reinjetando no motor.",
+				rodada, correction_rounds,
+			)
+			correcao = (
+				"O addon que voce gerou no diretorio de trabalho atual NAO passou na "
+				"verificacao. Problemas encontrados:\n" + relatorio +
+				"\n\nCorrija os arquivos EXISTENTES (nao recomece do zero) ate que o "
+				"addon importe e instancie sem erro. Rode os arquivos para confirmar."
+			)
 			if ajuste:
 				_logger.info("[AGENTIC] ajuste do usuario dobrado na rodada %d.", rodada + 1)
 				correcao = (

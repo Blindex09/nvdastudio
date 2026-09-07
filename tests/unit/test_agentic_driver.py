@@ -13,7 +13,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.8.0"
+assert MODULE_VERSION == "0.9.0"
 
 
 def _fake_proc(returncode=0, stdout="ok", stderr=""):
@@ -554,3 +554,31 @@ class TestDirecaoAoVivo:
 		assert len(prompts) == 2
 		assert "adicione um botao Limpar" in prompts[1]
 		assert "AJUSTE PEDIDO PELO USUARIO" in prompts[1]
+
+	def test_ajuste_forca_uma_rodada_mesmo_com_gate_verde(self, tmp_path):
+		import os as _os
+		prompts = []
+
+		def fake_stream(cmd, *, workdir, timeout, progress_callback=None, cancel_event=None, **kw):
+			try:
+				with open(_os.path.join(workdir, "prompt.txt"), encoding="utf-8") as fh:
+					prompts.append(fh.read())
+			except OSError:
+				prompts.append("")
+			self._cria_addon(tmp_path)
+			return _fake_proc()
+
+		# gate SEMPRE verde -- sem o "forca uma rodada", o ajuste nunca pegaria.
+		steer = iter(["adicione um atalho NVDA+shift+n"])
+		with patch("nvdastudio.builder.agentic_backends._achar_droid", return_value="droid"), \
+			patch.object(ad, "_run_streaming", side_effect=fake_stream), \
+			patch.object(ad, "_run_gates", return_value=(True, "")):
+			r = run_agentic_build(
+				"crie um addon", workdir=str(tmp_path), use_nvda_context=False,
+				correction_rounds=2, steer_provider=lambda: next(steer, ""),
+			)
+		assert r.success is True
+		# houve uma 2a rodada SO por causa do ajuste (gate ja estava verde).
+		assert len(prompts) == 2
+		assert "adicione um atalho NVDA+shift+n" in prompts[1]
+		assert "AJUSTE" in prompts[1]

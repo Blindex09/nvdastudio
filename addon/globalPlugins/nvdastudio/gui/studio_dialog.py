@@ -390,9 +390,22 @@ class NVDAStudioDialog(wx.Dialog):
 		)
 		self._input.Bind(wx.EVT_KEY_DOWN, self._on_input_key)
 		sizer.Add(self._input, flag=wx.EXPAND | wx.ALL, border=6)
+		row_run = wx.BoxSizer(wx.HORIZONTAL)
 		self._btn_run = wx.Button(panel, label="&Criar Addon")
 		self._btn_run.Bind(wx.EVT_BUTTON, self._on_run)
-		sizer.Add(self._btn_run, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=6)
+		row_run.Add(self._btn_run, flag=wx.RIGHT, border=6)
+		# Direcao ao vivo: manda um ajuste SEM parar -- o agente incorpora na
+		# proxima rodada, mantendo o que ja fez (estilo ferramenta de ponta).
+		# Escondido fora de um build; aparece quando o Criar vira Parar.
+		self._btn_steer = wx.Button(panel, label="&Enviar ajuste")
+		self._btn_steer.Bind(wx.EVT_BUTTON, self._on_steer)
+		self._btn_steer.SetToolTip(
+			"Envia o texto do campo acima como ajuste para a geração em andamento, "
+			"sem interrompê-la. O agente incorpora na próxima rodada."
+		)
+		self._btn_steer.Hide()
+		row_run.Add(self._btn_steer)
+		sizer.Add(row_run, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=6)
 		self._log_label = wx.StaticText(panel, label="Histórico:")
 		sizer.Add(self._log_label, flag=wx.LEFT, border=6)
 		self._log = wx.TextCtrl(
@@ -492,7 +505,25 @@ class NVDAStudioDialog(wx.Dialog):
 	def _enable_run_btn(self):
 		self._btn_run.SetLabel("&Criar Addon")
 		self._btn_run.Enable()
+		# Fora de um build nao ha o que ajustar: esconde o botao de steer.
+		if getattr(self, "_btn_steer", None) is not None:
+			self._btn_steer.Hide()
+			self._btn_steer.GetParent().Layout()
 		self._update_input_label("Descreva o addon que deseja criar ou modificar:")
+
+	def _on_steer(self, _event):
+		"""Direcao ao vivo: envia o texto do campo como AJUSTE para a geracao em
+		andamento, sem interromper. O orchestrator o incorpora na proxima rodada
+		(mantem o que ja foi gerado -- diferente do Parar+texto, que reinicia)."""
+		ajuste = self._input.GetValue().strip()
+		if not ajuste:
+			ui.message("Digite o ajuste no campo antes de enviar.")
+			return
+		self._input.SetValue("")
+		self._orchestrator.steer_pipeline(ajuste)
+		self._chat_append(f"Você (ajuste):\n{ajuste}")
+		self._chat_append("Sistema:\nAjuste enviado. O agente incorpora na próxima rodada.")
+		ui.message("Ajuste enviado para a geração em andamento.")
 
 	def _run_pending_redirect(self):
 		"""Se o usuario redirecionou a IA enquanto ela processava (interrupcao ativa),
@@ -507,7 +538,11 @@ class NVDAStudioDialog(wx.Dialog):
 	def _disable_run_btn_as_cancel(self):
 		self._btn_run.SetLabel("&Parar")
 		self._btn_run.Enable()
-		self._update_input_label("Progresso:")
+		# Durante o build o campo vira canal de ajuste ao vivo: mostra o botao.
+		if getattr(self, "_btn_steer", None) is not None:
+			self._btn_steer.Show()
+			self._btn_steer.GetParent().Layout()
+		self._update_input_label("Progresso (ou digite um ajuste e clique Enviar ajuste):")
 
 	def _on_run(self, _event):
 		"""Botao Criar Addon ou Parar: pipeline conversacional v2.0.0."""
