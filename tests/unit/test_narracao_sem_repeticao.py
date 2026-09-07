@@ -87,17 +87,9 @@ def test_janela_default_e_oito():
 # BUG 2 -- placeholder interno nao vaza como "Fontes consultadas"
 # ---------------------------------------------------------------------------
 
-def test_placeholder_de_fonte_nao_vaza_pro_usuario():
-	import inspect
-
-	from nvdastudio.core import orchestrator
-
-	src = inspect.getsource(orchestrator)
-	# O filtro precisa existir e cobrir os dois placeholders reais do
-	# domain_researcher.
-	assert "conhecimento estatico" in src
-	assert "conhecimento estatico + llm" in src
-	assert "fontes_reais" in src, "o filtro de fontes reais sumiu"
+# test_placeholder_de_fonte_nao_vaza_pro_usuario removido: testava o filtro de
+# fontes do pipeline staged conversacional (domain_researcher/web_researcher),
+# deletado na demolicao do staged (2026-09-06).
 
 
 def test_fonte_real_ainda_e_mostrada():

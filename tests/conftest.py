@@ -15,14 +15,6 @@ _ADDON_PKG_PATH = os.path.abspath(
 if _ADDON_PKG_PATH not in sys.path:
     sys.path.insert(0, _ADDON_PKG_PATH)
 
-# --------------------------------------------------------------------------
-# Caminho 3 (Slice 3.5): em PRODUCAO o loop agentico e o padrao. Mas ele depende
-# do droid real (API), impossivel de rodar na suite. Entao a suite opta por
-# STAGED por default -- os testes staged continuam exercitando o staged, e os
-# testes do roteamento agentico (test_orchestrator_agentic.py) ligam a flag
-# explicitamente. setdefault: nao sobrescreve se o ambiente ja definiu.
-# --------------------------------------------------------------------------
-os.environ.setdefault("NVDASTUDIO_AGENTIC_MODE", "0")
 
 
 # --------------------------------------------------------------------------
@@ -286,11 +278,8 @@ def _force_gc_after_test():
 def _clear_sub_agent_client_cache():
     """Limpa o cache de clientes LLM em thread-local dos sub-agentes apos cada teste."""
     yield
-    try:
-        from nvdastudio.sub_agents._base import clear_client_cache
-        clear_client_cache()
-    except Exception:
-        pass
+    # sub_agents/_base removido na demolicao do staged (2026-09-06); nada a limpar.
+    return
 
 
 @pytest.fixture(autouse=True)

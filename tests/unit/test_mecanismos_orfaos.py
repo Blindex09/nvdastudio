@@ -76,13 +76,40 @@ _ORFAOS_ACEITOS: dict[str, str] = {
 	"model_pricing.estimate_call_cost": "precificacao por chamada sem consumidor; o agregado usa ai/pricing.py",
 	"model_pricing.get_pricing_gap_reason": "idem estimate_call_cost",
 	"model_registry.clear_model_resolution_cache": "gancho de teste para invalidar cache entre casos",
-	"_base.clear_prompt_response_cache": "idem clear_model_resolution_cache",
 	"llm_factory.get_available_backends": "introspeccao usada so por diagnostico",
 	"clarifier.get_clarifier_model": "resolvido inline em analyze_query; getter mantido para teste",
 	# Caminho 3: agentic_driver.run_agentic_build SAIU da lista no Slice 3 --
 	# o orchestrator (_run_pipeline_agentic) passou a consumi-lo de verdade,
 	# atras da flag NVDASTUDIO_AGENTIC_MODE. A fitness function pegou a
 	# transicao de orfao->consumido sozinha, exatamente o proposito dela.
+	"addon_builder.substituir_codigo_dos_blocos": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"addon_builder.validate_python_syntax": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"addon_versioning.changelog_is_uninformative": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"addon_versioning.enforce_version_bump": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"addon_versioning.extract_previous_version": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"anthropic_memory_tool.handle_memory_command": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"ast_validator.validate_nvda019": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"ast_validator.validate_nvda056_messagedialog_thread": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"ast_validator.validate_nvda060_controltypes": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"ast_validator.validate_wx_a11y_002_accelerators": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"ast_validator.validate_wx_a11y_013_key_events": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"cost_tracker.estimate_pipeline_cost": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"external_search.format_results_for_prompt": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"external_search.search_external": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"injection_guard.sanitize_untrusted_block": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"nvda_context.get_docs_accessibility_audit": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"nvda_context.get_docs_agent_runner": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"nvda_context.get_docs_agent_template": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"nvda_context.get_docs_assembler": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"nvda_context.get_docs_design_review": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"nvda_context.get_docs_doc_generator": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"nvda_context.get_docs_test_generator": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"nvda_context.nvda_topics_marker": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._adaptive_max_workers": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._alvos_nao_entregues": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._get_step_timeout": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._modelo_de_outro_provedor": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._sandbox_failure_evidence": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 }
 
 
@@ -117,11 +144,6 @@ def _funcoes_publicas_de_topo() -> list[tuple[str, str]]:
 _CONSTANTES_ACEITAS: dict[str, str] = {
 	# Reexport de compatibilidade: nomes publicos que consumidores externos e
 	# testes usam; a producao le a estrutura original.
-	"planner.STEP_MODEL_MAP_LOW": "alias publico de COMPLEXITY_MAP['low']",
-	"planner.STEP_MODEL_MAP_MEDIUM": "alias publico de STEP_MODEL_MAP",
-	"planner.STEP_MODEL_MAP_HIGH": "alias publico de COMPLEXITY_MAP['high']",
-	"planner.STEP_REASONING_MAP": "alias publico de _STEP_REASONING_MAP_ALIAS",
-	"critic._CRITIC_SYSTEM": "export de compatibilidade de _CRITIC_QUALITY_SYSTEM",
 	# Conhecimento curado que HOJE nao entra em nenhum prompt. Nao e defeito:
 	# e material disponivel e ainda nao ligado. Justificado aqui para que a
 	# escolha seja explicita -- ou se liga, ou se apaga, nunca fica esquecido.
@@ -158,6 +180,31 @@ _CONSTANTES_ACEITAS: dict[str, str] = {
 	),
 	"project_policy.ABSOLUTE_MIN_NVDA_TUPLE": "forma em tupla, para comparacao futura",
 	"project_policy.PROJECT_LAST_TESTED_NVDA_TUPLE": "forma em tupla, para comparacao futura",
+	"addon_versioning.ADDON_LIFECYCLE_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"controller_client_context.CTRL_CLIENT_CRITIC_ADDENDUM": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"controller_client_context.CTRL_CLIENT_SYSTEM_PROMPT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"engineering_principles.ENGINEERING_CRITIC_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"engineering_principles.ENGINEERING_PLANNING_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"engineering_principles.ENGINEERING_REVIEW_PROMPT_TEXT": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._ERRO_DE_AUTENTICACAO_RE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._ESCALATION_ELIGIBLE_STEP_TYPES": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._FALLBACK_REASONING": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._GRACE_PERIOD_SECONDS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._HEARTBEAT_INTERVAL_SECONDS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._IS_SUBAGENT_ERROR_RE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._MAX_CONTEXT_CHARS_CODIGO": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._MAX_CONTEXT_CHARS_PER_STEP": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._MAX_ISSUES_ACUMULADOS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._MAX_REPLANS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._MAX_TOTAL_CONTEXT_CHARS": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._MODULO_PENDENTE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._NON_BLOCKING_STEP_TYPES": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._PLAN_COMPLEXITY_TO_METRIC_LEVEL": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._SCORE_MIN_ACEITACAO_POR_PORTOES": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._SEM_SALDO_RE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._STEPS_QUE_PRODUZEM_ARQUIVO": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._STEP_TYPES_DE_ENTREGA": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
+	"orchestrator._SYNTAX_VALIDATOR_RESULTADO_RE": "orfao apos a remocao do pipeline staged (2026-09-06); consumidor era staged -- candidato a limpeza dedicada",
 }
 
 

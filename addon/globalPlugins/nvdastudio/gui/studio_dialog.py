@@ -29,7 +29,6 @@ except ImportError:
 from ..memory.conversation_manager import conversation
 from ..core.checkpoint_manager import CheckpointAction, InteractiveCheckpoint
 from ..memory.narration import narrate
-from ..sub_agents.web_researcher import _USER_SOURCES_HEADER
 from ..builder.addon_builder import (
 	extract_code_blocks, save_addon_files, package_addon, AddonBuilderError,
 	bundle_addon_dependencies,
@@ -50,10 +49,15 @@ from ..utils.user_visible_text import sanitize_user_visible_text
 from ..core.orch_types import (
 	PipelinePhase, PlanApproval, CheckpointResult,
 )
-from ..core.planner import (
-	ExecutionPlan, STEP_TEST_GENERATION,
-	STEP_ACCESSIBILITY_AUDIT, STEP_DESIGN_REVIEW, STEP_ENGINEERING_REVIEW,
-)
+# Staged removido (demolicao 2026-09-06): os step_type sao strings; inlinadas
+# aqui em vez de importar do planner deletado. O agente nao produz esses steps
+# (ele gera o addon inteiro num loop), entao os avisos que os usam ficam inertes
+# no caminho agentico -- mantidos por compatibilidade ate a UX ser revista.
+_USER_SOURCES_HEADER = "Fontes consultadas:"  # inlinado (era do web_researcher deletado)
+STEP_TEST_GENERATION = "test_generation"
+STEP_ACCESSIBILITY_AUDIT = "accessibility_audit"
+STEP_DESIGN_REVIEW = "design_review"
+STEP_ENGINEERING_REVIEW = "engineering_review"
 
 MODULE_VERSION = "5.51.0"
 
@@ -704,13 +708,15 @@ class NVDAStudioDialog(wx.Dialog):
 			self._set_status(f"{label}: {detail}")
 
 	def _on_conversational_plan_ready(
-		self, plan: ExecutionPlan, domain_ctx
+		self, plan: object, domain_ctx
 	) -> PlanApproval:
 		"""
 		Callback: plano pronto para aprovacao.
 		Chamado de thread daemon — envia o plano para a janela de conversa e aguarda resposta.
 		"""
-		plan_text = self._orchestrator._planner.format_plan_for_user(plan, domain_ctx)
+		# Staged removido: nao ha mais _planner. Este callback (aprovar plano) e do
+		# fluxo staged e nao dispara no caminho agentico; fallback seguro.
+		plan_text = str(getattr(plan, "summary", "")) or "Plano pronto."
 
 		def _display():
 			# A resposta do usuario aqui e classificada por IA de forma livre (ver
@@ -738,7 +744,7 @@ class NVDAStudioDialog(wx.Dialog):
 		# Se cancelado ou sem input, retorna cancelado
 		if getattr(self._orchestrator, "_cancel_requested", False) or not getattr(self, "_raw_plan_approval_input", None):
 			self._plan_approval_result = PlanApproval(approved=False, modifications="cancelado")
-			cancel_message = plan.cancellation_message.strip() or "A criação foi cancelada."
+			cancel_message = getattr(plan, "cancellation_message", "").strip() or "A criação foi cancelada."
 			def _cancel_ui():
 				self._chat_append(f"Assistente:\n{cancel_message}")
 				ui.message(cancel_message)
@@ -775,7 +781,7 @@ class NVDAStudioDialog(wx.Dialog):
 
 		if intent == "approve":
 			self._plan_approval_result = PlanApproval(approved=True, modifications="")
-			approval_message = plan.approval_message.strip() or "Entendido. Vou iniciar a criação."
+			approval_message = getattr(plan, "approval_message", "").strip() or "Entendido. Vou iniciar a criação."
 			def _approve_ui():
 				self._chat_append(f"Assistente:\n{approval_message}")
 				ui.message(approval_message)
@@ -784,7 +790,7 @@ class NVDAStudioDialog(wx.Dialog):
 			wx.CallAfter(_approve_ui)
 		elif intent == "cancel":
 			self._plan_approval_result = PlanApproval(approved=False, modifications="cancelado")
-			cancel_message = plan.cancellation_message.strip() or "A criação foi cancelada."
+			cancel_message = getattr(plan, "cancellation_message", "").strip() or "A criação foi cancelada."
 			def _cancel_ui():
 				self._chat_append(f"Assistente:\n{cancel_message}")
 				ui.message(cancel_message)
@@ -793,7 +799,7 @@ class NVDAStudioDialog(wx.Dialog):
 			wx.CallAfter(_cancel_ui)
 		else:
 			self._plan_approval_result = PlanApproval(approved=False, modifications=raw_query)
-			modification_message = plan.modification_message.strip() or "Entendido. Vou ajustar o plano."
+			modification_message = getattr(plan, "modification_message", "").strip() or "Entendido. Vou ajustar o plano."
 			def _modify_ui():
 				self._chat_append(f"Assistente:\n{modification_message}")
 				ui.message(modification_message)

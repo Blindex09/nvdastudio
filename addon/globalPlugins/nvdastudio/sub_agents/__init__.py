@@ -1,9 +1,3 @@
-from . import code_generator as code_generator
-from . import manifest_builder as manifest_builder
-from . import accessibility_auditor as accessibility_auditor
-from . import test_generator as test_generator
-from . import web_researcher as web_researcher
-from . import agent_template_agent as agent_template_agent
-from . import agent_runner_agent as agent_runner_agent
-from . import assembler as assembler
-from . import design_review_agent as design_review_agent
+"""Staged removido (demolicao 2026-09-06). Sobra apenas ast_validator (validador
+deterministico AST, usado pelo caminho agentico via import direto). Os sub-agentes
+do pipeline staged (code_generator, manifest_builder, critic-driven, etc.) sairam."""
