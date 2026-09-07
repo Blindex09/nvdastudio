@@ -7,7 +7,7 @@ class TestContextCompression:
 
     def test_orchestrator_versao_3_3_0(self):
         from nvdastudio.core.orchestrator import MODULE_VERSION
-        assert MODULE_VERSION == "5.90.0"
+        assert MODULE_VERSION == "5.91.0"
 
     def test_build_context_output_curto_nao_usa_resumo(self):
         """Outputs curtos passam integralmente sem marcador RESUMO."""

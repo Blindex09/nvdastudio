@@ -1,8 +1,10 @@
-"""Slice 3 do Caminho 3: roteamento agentico no orchestrator, atras de flag.
+"""Caminho 3: roteamento agentico no orchestrator. O agente e o PADRAO (Slice
+3.5, opt-out) e cobre os DOIS fluxos de producao -- criar (_run_pipeline) e
+modificar (_run_conversational_pipeline).
 
-Sem chamada real ao droid -- run_agentic_build mockado. Verifica: a flag
-(default OFF), a conversao de arquivos->blocos, a entrega via on_complete, o
-fallback pro staged quando o agentico nao produz, e o desvio no _run_pipeline.
+Sem chamada real ao droid -- run_agentic_build mockado. Verifica: a flag (default
+ON, opt-out), a conversao de arquivos->blocos, a entrega via on_complete, o
+fallback pro staged quando o agentico nao produz, e o desvio nos dois pipelines.
 """
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -11,7 +13,7 @@ from nvdastudio.core.orchestrator import (
 	MODULE_VERSION, Orchestrator, _agentic_mode_enabled, _agentic_files_to_blocks,
 )
 
-assert MODULE_VERSION == "5.90.0"
+assert MODULE_VERSION == "5.91.0"
 
 
 class TestFlagAgentica:
@@ -125,6 +127,16 @@ class TestDesvioNoRunPipeline:
 		with patch.object(o, "_run_pipeline_agentic") as m_ag:
 			o._run_pipeline("x")
 		m_ag.assert_not_called()
+
+	def test_conversational_tambem_desvia_pro_agentico(self, monkeypatch):
+		# Slice 3.6: o fluxo de MODIFICAR addon (pipeline conversacional) tambem
+		# usa o agente quando ligado.
+		monkeypatch.setenv("NVDASTUDIO_AGENTIC_MODE", "1")
+		o = Orchestrator()
+		o._domain_researcher = MagicMock()  # nao deve ser usado
+		with patch.object(o, "_run_pipeline_agentic", return_value=True) as m_ag:
+			o._run_conversational_pipeline("modifique meu addon")
+		m_ag.assert_called_once_with("modifique meu addon")
 
 	def test_resume_nao_desvia_pro_agentico(self, monkeypatch):
 		# Retomada (resume_plan) e conceito do staged -- nunca vai pro agentico.

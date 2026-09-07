@@ -25,7 +25,7 @@ from nvdastudio.core.orchestrator import MODULE_VERSION as ORCH_VERSION
 
 def test_versoes():
 	assert STUDIO_VERSION == "5.51.0"
-	assert ORCH_VERSION == "5.90.0"
+	assert ORCH_VERSION == "5.91.0"
 
 
 # ---------------------------------------------------------------------------

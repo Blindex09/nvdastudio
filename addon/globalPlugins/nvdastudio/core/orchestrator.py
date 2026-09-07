@@ -52,7 +52,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.90.0"
+MODULE_VERSION = "5.91.0"
 _logger = get_logger("orchestrator")
 
 # ---------------------------------------------------------------------------
@@ -1125,6 +1125,15 @@ class Orchestrator:
 
 	def _run_conversational_pipeline(self, user_query: str):
 		"""Executa o pipeline conversacional completo."""
+		# Slice 3.6: o pipeline conversacional (criar/modificar addon pela GUI) e
+		# a SEGUNDA entrada de producao. Com o agente como padrao, roteia pra ele
+		# tambem -- assim os DOIS fluxos de producao usam o agente. So cai no
+		# staged conversacional abaixo se o agente nao produzir nada (fallback).
+		if _agentic_mode_enabled():
+			if self._run_pipeline_agentic(user_query):
+				return
+			_logger.info("[AGENTIC] fallback: pipeline conversacional staged.")
+
 		self._tokens_by_model = {}
 		self._cancel_requested = False
 		step_results: list[StepResult] = []

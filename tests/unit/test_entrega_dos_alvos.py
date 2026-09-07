@@ -23,7 +23,7 @@ def _step(alvos, tipo=STEP_CODE_GENERATION):
 
 
 def test_versao():
-	assert MODULE_VERSION == "5.90.0"
+	assert MODULE_VERSION == "5.91.0"
 
 
 def test_nada_entregue_lista_todos():
