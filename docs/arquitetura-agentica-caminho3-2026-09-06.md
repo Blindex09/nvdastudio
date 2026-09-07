@@ -141,6 +141,46 @@ default até o novo empatar/superar).
   (skillgate/unlazy/adl/aga-verify): "done" é decidido fora do modelo. O caminho
   3 troca o motor, não os trilhos.
 
+## 6.5. Slice 1.5 — A/B do golden set (MEDIDO, 2026-09-06)
+
+A medição que o §12 (multi-run) pedia, no golden set simples do `test_e35`, os
+4 casos, cada lado via Factory. Real, não estimativa.
+
+| caso | lado | ok | dur(s) | tokens | .py | sintaxe | manifest | i18n |
+|---|---|---|---|---|---|---|---|---|
+| hora | agentico | ✅ | 45 | — | 1 | ✅ | ✅ | ✅ |
+| hora | staged | ✅ | 484 | 257177 | 2 | ✅ | ✅ | ❌ |
+| appmodule_notepad | agentico | ✅ | 53 | — | 1 | ✅ | ✅ | ✅ |
+| appmodule_notepad | staged | ✅ | 318 | 199689 | 2 | ✅ | ✅ | ❌ |
+| dialogo_wx_copiar | agentico | ✅ | 134 | — | 1 | ✅ | ✅ | ✅ |
+| dialogo_wx_copiar | staged | ❌ | 78 | 0 | 0 | — | ❌ | ❌ |
+| traducao_gettext | agentico | ✅ | 82 | — | 1 | ✅ | ✅ | ✅ |
+| traducao_gettext | staged | ✅ | 517 | 246772 | 2 | ✅ | ✅ | ❌ |
+
+**Resultado:**
+- **Success rate:** agentico **4/4**, staged **3/4** (staged falhou `dialogo_wx_copiar`
+  por completo -- 0 arquivos).
+- **Velocidade:** agentico **~5-6x mais rapido** (mediana ~68s vs ~400s).
+- **Custo:** staged ~200-257k tokens/addon. O agentico NAO teve tokens capturados
+  (limitacao: `agentic_driver` nao parseia o envelope de uso do droid) -- a
+  comparacao de custo hoje e so wall-clock. **Proximo ajuste:** parsear
+  `usage` do `droid exec -o json` no driver, para o custo virar comparavel.
+- **i18n:** agentico 4/4 com gettext (`_()`/`initTranslation`/`ngettext`); staged
+  0/4 -- inclusive no `traducao_gettext`, que PEDIU gettext explicitamente. Bate
+  com o historico de reprovacoes NVDA-019 do staged. Caveat de medicao: o lado
+  staged foi medido do `output` dos steps, o agentico dos arquivos reais no
+  disco -- direcao consistente, nao a prova de bala.
+
+**Limites honestos (o que ainda falta pro §12 pleno):** 1 run por (caso,lado) --
+mede 4 casos distintos, nao a VARIANCIA de repetir o mesmo caso. Narrowed, nao
+fechado. E os complexos do `test_e36` (assistentes Gemini, milhoes de tokens/
+horas no staged) ficaram de fora por custo -- o A/B ali exige decisao de orcamento.
+
+**Veredito do A/B:** no tier simples, o loop agentico **ganha nas tres dimensoes
+medidas** (sucesso, velocidade, i18n) e provavelmente em custo. E evidencia real
+-- nao "parece melhor" -- de que o Caminho 3 vale, e a base pra os Slices 2
+(gates pos-loop) e 3 (aposentar o staged).
+
 ## 7. Recomendação de partida
 
 Começar pelo **Slice 0 (spike)**, atrás de flag, sem tocar no pipeline atual:
