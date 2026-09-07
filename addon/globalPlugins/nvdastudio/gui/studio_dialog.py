@@ -50,7 +50,10 @@ from ..utils.user_visible_text import sanitize_user_visible_text
 from ..core.orch_types import (
 	PipelinePhase, PlanApproval, CheckpointResult,
 )
-from ..core.planner import ExecutionPlan, STEP_TEST_GENERATION
+from ..core.planner import (
+	ExecutionPlan, STEP_TEST_GENERATION,
+	STEP_ACCESSIBILITY_AUDIT, STEP_DESIGN_REVIEW, STEP_ENGINEERING_REVIEW,
+)
 
 MODULE_VERSION = "5.51.0"
 
@@ -109,6 +112,58 @@ def _collect_followup_suggestions(step_results) -> str:
 	if STEP_TEST_GENERATION not in tipos_presentes:
 		return "Quer que eu gere testes automatizados para esse addon tambem?"
 	return ""
+
+
+# Steps de auditoria/qualidade de DOMINIO: sao _NON_BLOCKING_STEP_TYPES (a
+# falha nao impede a entrega -- degradacao graciosa, doc secao 9), mas para um
+# gerador de addon de LEITOR DE TELA a auditoria de acessibilidade e o eval de
+# dominio mais critico (doc secao 22, "Accessibility/Domain Evals"). Entregar
+# com success=True e CALAR que ela nao rodou mascara o agente nao ter rodado de
+# verdade -- exatamente o que o E2E real via Factory expos (accessibility_audit,
+# engineering_review falharam por o provedor nao ter tool use, e o usuario nao
+# era avisado). A entrega continua (nao vira gate bloqueante), mas passa a ser
+# HONESTA: checkpoint informacional (doc secao 8) nomeando a checagem que faltou.
+_QUALITY_AUDIT_STEP_NAMES = {
+	STEP_ACCESSIBILITY_AUDIT: "auditoria de acessibilidade",
+	STEP_DESIGN_REVIEW: "revisão de design",
+	STEP_ENGINEERING_REVIEW: "revisão de engenharia",
+}
+
+
+def _collect_quality_gaps(step_results) -> str:
+	"""Aviso honesto quando um step de auditoria/qualidade de dominio foi
+	TENTADO (esta em step_results) e NAO passou (approved=False).
+
+	Deterministico -- olha o resultado real de cada step, nao a IA inventando.
+	So avisa sobre o que o plano tentou e falhou; um step que o planner nem
+	incluiu nao vira aviso (nao foi prometido). Nao bloqueia a entrega -- apenas
+	a torna honesta sobre a checagem que ficou de fora.
+	"""
+	if not step_results:
+		return ""
+	faltantes = []
+	for r in step_results:
+		if r.step_type in _QUALITY_AUDIT_STEP_NAMES and not r.approved:
+			nome = _QUALITY_AUDIT_STEP_NAMES[r.step_type]
+			motivo = ""
+			if getattr(r, "issues", None):
+				motivo = str(r.issues[0]).strip().replace("\n", " ")
+				if len(motivo) > 140:
+					motivo = motivo[:137] + "..."
+			faltantes.append((nome, motivo))
+	if not faltantes:
+		return ""
+	linhas = [
+		f"  - {nome}" + (f": {motivo}" if motivo else "")
+		for nome, motivo in faltantes
+	]
+	plural = "verificações" if len(faltantes) > 1 else "verificação"
+	return (
+		f"⚠️ Atenção: {len(faltantes)} {plural} de qualidade não pôde ser "
+		f"concluída, e o addon foi entregue SEM ela:\n"
+		+ "\n".join(linhas)
+		+ "\nA entrega não foi bloqueada, mas essa checagem não foi feita neste addon."
+	)
 
 
 def _is_path_within(base_path: str, candidate_path: str) -> bool:
@@ -1488,6 +1543,10 @@ class NVDAStudioDialog(wx.Dialog):
 			# Removido PostGenerationDialog por solicitação do usuário.
 			# Agora pergunta diretamente no chat se deseja fazer mais algo ou se pode empacotar.
 			sources_suffix = f"\n\n{web_sources}" if web_sources else ""
+			# Aviso honesto: auditoria de qualidade/dominio que foi tentada e
+			# nao passou (nao bloqueia a entrega, mas nao pode ficar silenciosa).
+			quality_warning = _collect_quality_gaps(result.step_results)
+			quality_suffix = f"\n\n{quality_warning}" if quality_warning else ""
 			followup = _collect_followup_suggestions(result.step_results)
 			pergunta_final = (
 				f"{followup} Ou posso empacotar o addon assim mesmo."
@@ -1500,7 +1559,8 @@ class NVDAStudioDialog(wx.Dialog):
 					for b in blocks
 				)
 				self._chat_append(
-					f"{completed_msg}\n\n"
+					f"{completed_msg}"
+					f"{quality_suffix}\n\n"
 					f"Arquivos gerados ({len(blocks)}):\n{file_lines}"
 					f"{sources_suffix}\n\n"
 					f"{pergunta_final}"
@@ -1508,6 +1568,7 @@ class NVDAStudioDialog(wx.Dialog):
 			else:
 				self._chat_append(
 					f"{completed_msg}"
+					f"{quality_suffix}"
 					f"{sources_suffix}\n\n"
 					f"{pergunta_final}"
 				)
@@ -1525,7 +1586,13 @@ class NVDAStudioDialog(wx.Dialog):
 			# pro campo que o usuario realmente vai usar em seguida.
 			self._input.SetFocus()
 
-			ui.message("Desenvolvimento concluído. Quer ajustar mais alguma coisa ou posso empacotar o addon?")
+			# Fala o aviso de qualidade ANTES do prompt: um usuario de leitor de
+			# tela precisa OUVIR que uma checagem ficou de fora, nao so ve-la no
+			# historico. Sem emoji/quebras, que soam mal na sintese.
+			_aviso_falado = ""
+			if quality_warning:
+				_aviso_falado = quality_warning.replace("⚠️", "").replace("\n", " ").strip() + " "
+			ui.message(f"{_aviso_falado}Desenvolvimento concluído. Quer ajustar mais alguma coisa ou posso empacotar o addon?")
 		else:
 			err = result.error or "Nao foi possivel completar o plano."
 			self._set_status(f"Erro: {err}")

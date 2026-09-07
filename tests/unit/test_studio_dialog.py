@@ -1210,6 +1210,64 @@ class TestCollectFollowupSuggestions:
         assert _collect_followup_suggestions([]) == ""
 
 
+class TestQualityGaps:
+    """Aviso honesto: auditoria de qualidade/dominio tentada e nao aprovada nao
+    pode ficar silenciosa numa entrega com success=True (achado do E2E real via
+    Factory 2026-09-06: accessibility_audit/engineering_review falharam por o
+    provedor nao ter tool use, e o usuario nao era avisado)."""
+
+    def _step(self, step_type: str, approved: bool, issues=None):
+        from types import SimpleNamespace
+        return SimpleNamespace(step_type=step_type, approved=approved, issues=issues or [])
+
+    def test_acessibilidade_reprovada_gera_aviso_nomeado(self):
+        from nvdastudio.gui.studio_dialog import _collect_quality_gaps
+        steps = [
+            self._step("code_generation", True),
+            self._step("accessibility_audit", False, ["Falha de infraestrutura: provedor sem tool use."]),
+        ]
+        aviso = _collect_quality_gaps(steps)
+        assert "acessibilidade" in aviso.lower()
+        assert "infraestrutura" in aviso.lower()  # o motivo real aparece
+        assert "sem ela" in aviso.lower()  # deixa explicito que ficou de fora
+
+    def test_acessibilidade_aprovada_nao_gera_aviso(self):
+        from nvdastudio.gui.studio_dialog import _collect_quality_gaps
+        steps = [
+            self._step("code_generation", True),
+            self._step("accessibility_audit", True),
+        ]
+        assert _collect_quality_gaps(steps) == ""
+
+    def test_step_ausente_nao_gera_aviso(self):
+        """Nao avisar sobre o que o planner nem tentou -- so sobre falha real."""
+        from nvdastudio.gui.studio_dialog import _collect_quality_gaps
+        steps = [self._step("code_generation", True), self._step("assembly", True)]
+        assert _collect_quality_gaps(steps) == ""
+
+    def test_multiplas_reprovadas_pluralizam_e_nomeiam_todas(self):
+        from nvdastudio.gui.studio_dialog import _collect_quality_gaps
+        steps = [
+            self._step("accessibility_audit", False),
+            self._step("engineering_review", False),
+        ]
+        aviso = _collect_quality_gaps(steps)
+        assert "acessibilidade" in aviso.lower()
+        assert "engenharia" in aviso.lower()
+        assert "verificações" in aviso.lower()  # plural
+
+    def test_lista_vazia_nao_gera_aviso(self):
+        from nvdastudio.gui.studio_dialog import _collect_quality_gaps
+        assert _collect_quality_gaps([]) == ""
+
+    def test_motivo_longo_e_truncado(self):
+        from nvdastudio.gui.studio_dialog import _collect_quality_gaps
+        longo = "x" * 300
+        aviso = _collect_quality_gaps([self._step("accessibility_audit", False, [longo])])
+        assert "..." in aviso
+        assert "x" * 300 not in aviso  # nao despeja o motivo inteiro
+
+
 class TestControllerClientNaoExigeManifest:
     """5.46.0: controller_client (programa externo ao NVDA) nunca gera
     manifest.ini por design -- o gate de completude e o empacotamento nao
