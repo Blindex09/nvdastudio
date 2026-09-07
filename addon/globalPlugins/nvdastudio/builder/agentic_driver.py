@@ -25,9 +25,15 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 
-from ..ai.factory_client import _achar_droid, FactoryClientError
+from ..ai.factory_client import FactoryClientError
+from .agentic_backends import AgenticBackend, get_backend, parse_droid_tokens
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
+
+# Compat: os tokens do droid sao parseados pelo backend agora (agentic_backends).
+# Mantido como nome local porque testes e leitores antigos referenciam
+# agentic_driver._parse_droid_tokens.
+_parse_droid_tokens = parse_droid_tokens
 
 MODULE_VERSION = "0.6.0"
 _logger = get_logger("agentic_driver")
@@ -171,20 +177,27 @@ def _droid_once(
 	timeout: int = _DEFAULT_TIMEOUT,
 	use_nvda_context: bool = True,
 	extra_context: str = "",
+	backend: AgenticBackend | None = None,
 ) -> AgenticBuildResult:
-	"""UMA rodada do droid agentico + validacao BASICA (manifest/entry/sintaxe).
+	"""UMA rodada do motor agentico + validacao BASICA (manifest/entry/sintaxe).
 
 	Nunca levanta excecao de execucao: degrada para AgenticBuildResult(success=
 	False, error=...) -- mesma doutrina de code_sandbox. E o tijolo que o ciclo
 	de correcao (Slice 2) repete a cada rodada.
+
+	`backend` (lacuna #3): o motor agentico. None resolve o padrao (droid, ou o
+	que NVDASTUDIO_AGENTIC_BACKEND pedir). Injetar um backend fake e o que prova,
+	nos testes, que o loop nao depende do droid em si.
 	"""
 	if autonomy not in _AUTONOMIAS_VALIDAS:
 		return AgenticBuildResult(
 			success=False, workdir=workdir or "",
 			error=f"autonomia invalida: {autonomy!r} (validas: {_AUTONOMIAS_VALIDAS})",
 		)
+	if backend is None:
+		backend = get_backend()
 	try:
-		droid = _achar_droid()
+		cli = backend.find()
 	except FactoryClientError as exc:
 		return AgenticBuildResult(success=False, workdir=workdir or "", error=str(exc))
 
@@ -220,16 +233,13 @@ def _droid_once(
 	except OSError as exc:
 		return AgenticBuildResult(success=False, workdir=workdir, error=f"falha ao escrever prompts: {exc}")
 
-	cmd = [
-		droid, "exec",
-		"-o", "json",  # envelope com usage -- captura tokens (comparacao de custo)
-		"--auto", autonomy,
-		"--cwd", workdir,
-		"-m", model_id,
-		"--append-system-prompt-file", sp_path,
-		"-f", prompt_path,
-	]
-	_logger.info("[AGENTIC] droid exec --auto %s -m %s cwd=%s", autonomy, model_id, workdir)
+	cmd = backend.build_command(
+		cli, workdir=workdir, system_prompt_path=sp_path, prompt_path=prompt_path,
+		model_id=model_id, autonomy=autonomy,
+	)
+	_logger.info(
+		"[AGENTIC] %s --auto %s -m %s cwd=%s", backend.name, autonomy, model_id, workdir,
+	)
 
 	t0 = time.time()
 	try:
@@ -240,12 +250,12 @@ def _droid_once(
 	except subprocess.TimeoutExpired:
 		return AgenticBuildResult(
 			success=False, workdir=workdir, duration_seconds=time.time() - t0,
-			error=f"droid excedeu {timeout}s no modo agentico",
+			error=f"{backend.name} excedeu {timeout}s no modo agentico",
 		)
 	except OSError as exc:
 		return AgenticBuildResult(
 			success=False, workdir=workdir, duration_seconds=time.time() - t0,
-			error=f"nao foi possivel executar o droid: {exc}",
+			error=f"nao foi possivel executar o {backend.name}: {exc}",
 		)
 
 	dur = time.time() - t0
@@ -269,38 +279,11 @@ def _droid_once(
 		py_syntax_ok=syntax_ok,
 		returncode=proc.returncode,
 		duration_seconds=dur,
-		tokens=_parse_droid_tokens(proc.stdout),
+		tokens=backend.parse_tokens(proc.stdout),
 		stdout_tail=(proc.stdout or "")[-2000:],
 		stderr_tail=(proc.stderr or "")[-2000:],
 		error="" if success else "build agentica nao passou na validacao basica do Slice 0",
 	)
-
-
-def _parse_droid_tokens(stdout: str) -> int:
-	"""Soma tokens NOVOS (input + output + criacao de cache) do envelope JSON do
-	`droid exec -o json`. A leitura de cache (cache_read_input_tokens) fica de
-	fora -- e fracao do preco; somar a peso cheio penalizaria o mecanismo que
-	barateia. Mesma conta que ai/factory_client.py::_ler_envelope. Robusto: pega
-	a ULTIMA linha que parseia como JSON com `usage` (o droid pode logar antes)."""
-	import json
-	total = 0
-	for linha in reversed((stdout or "").splitlines()):
-		linha = linha.strip()
-		if not linha.startswith("{"):
-			continue
-		try:
-			env = json.loads(linha)
-		except (json.JSONDecodeError, ValueError):
-			continue
-		uso = env.get("usage") if isinstance(env, dict) else None
-		if isinstance(uso, dict):
-			total = (
-				int(uso.get("input_tokens") or 0)
-				+ int(uso.get("output_tokens") or 0)
-				+ int(uso.get("cache_creation_input_tokens") or 0)
-			)
-			break
-	return total
 
 
 def _read_files_dict(workdir: str, files: list[str]) -> dict[str, str]:
@@ -415,6 +398,7 @@ def run_agentic_build(
 	use_nvda_context: bool = True,
 	extra_context: str = "",
 	correction_rounds: int = 0,
+	backend: AgenticBackend | None = None,
 ) -> AgenticBuildResult:
 	"""Ponto de entrada publico do driver agentico.
 
@@ -430,9 +414,13 @@ def run_agentic_build(
 	if workdir is None:
 		workdir = tempfile.mkdtemp(prefix="nvdastudio_agentic_")
 
+	# Resolve o backend UMA vez -- todas as rodadas de correcao usam o mesmo motor.
+	if backend is None:
+		backend = get_backend()
+
 	result = _droid_once(
 		request, workdir, model_id=model_id, autonomy=autonomy, timeout=timeout,
-		use_nvda_context=use_nvda_context, extra_context=extra_context,
+		use_nvda_context=use_nvda_context, extra_context=extra_context, backend=backend,
 	)
 	tokens_acumulados = result.tokens  # soma o custo de TODAS as rodadas
 	if correction_rounds <= 0 or not result.files:
@@ -460,6 +448,7 @@ def run_agentic_build(
 		result = _droid_once(
 			correcao, result.workdir, model_id=model_id, autonomy=autonomy,
 			timeout=timeout, use_nvda_context=use_nvda_context, extra_context=extra_context,
+			backend=backend,
 		)
 		tokens_acumulados += result.tokens
 		result.rounds = rodada + 1
