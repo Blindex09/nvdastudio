@@ -79,6 +79,12 @@ _ORFAOS_ACEITOS: dict[str, str] = {
 	"_base.clear_prompt_response_cache": "idem clear_model_resolution_cache",
 	"llm_factory.get_available_backends": "introspeccao usada so por diagnostico",
 	"clarifier.get_clarifier_model": "resolvido inline em analyze_query; getter mantido para teste",
+	# --- Slice 0 do Caminho 3 (arquitetura agentica): spike standalone ---
+	# Driver do droid em modo AGENTICO, ainda SEM chamador de producao de
+	# proposito -- e um spike atras de flag conceitual que nao toca o pipeline
+	# staged atual. Vira consumido quando o Slice 1+ ligar no orchestrator.
+	# Ver docs/arquitetura-agentica-caminho3-2026-09-06.md.
+	"agentic_driver.run_agentic_build": "spike do caminho 3 (slice 0); sem chamador de producao ainda, por design",
 }
 
 
