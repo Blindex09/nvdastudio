@@ -53,7 +53,7 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.91.0"
+MODULE_VERSION = "5.92.0"
 _logger = get_logger("orchestrator")
 
 # ---------------------------------------------------------------------------
@@ -907,12 +907,27 @@ class Orchestrator:
 		return compute_progress(prev, curr)
 
 	def _run_until_success(self, user_query: str) -> OrchestrationResult:
-		from .agentic_loop import AgenticLoop
-
 		self._last_result = None
 		self._suppress_complete_callback = True
 		try:
-			result = AgenticLoop(self).run(user_query)
+			if _agentic_mode_enabled():
+				# Caminho VIVO (Fatia B): o agente direto, sem o AgenticLoop (maquina
+				# de estados/replan do staged). _run_pipeline_agentic ja tem o gate
+				# deterministico + auto-correcao (Slice 2) e seta self._last_result.
+				entregou = self._run_pipeline_agentic(user_query)
+				result = self._last_result
+				if not entregou or result is None:
+					# Sem fallback staged aqui: se o agente nao produziu, erro honesto.
+					result = OrchestrationResult(
+						plan_id="agentic", query=user_query, step_results=[],
+						final_output="", success=False,
+						error="O agente nao conseguiu gerar o addon.",
+					)
+			else:
+				# Opt-out (NVDASTUDIO_AGENTIC_MODE desligado): staged via AgenticLoop.
+				# Sai de vez quando a demolicao do staged terminar (Fatias C/D).
+				from .agentic_loop import AgenticLoop
+				result = AgenticLoop(self).run(user_query)
 		finally:
 			self._suppress_complete_callback = False
 

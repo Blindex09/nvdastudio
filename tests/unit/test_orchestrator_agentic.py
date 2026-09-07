@@ -13,7 +13,7 @@ from nvdastudio.core.orchestrator import (
 	MODULE_VERSION, Orchestrator, _agentic_mode_enabled, _agentic_files_to_blocks,
 )
 
-assert MODULE_VERSION == "5.91.0"
+assert MODULE_VERSION == "5.92.0"
 
 
 class TestFlagAgentica:
@@ -137,6 +137,32 @@ class TestDesvioNoRunPipeline:
 		with patch.object(o, "_run_pipeline_agentic", return_value=True) as m_ag:
 			o._run_conversational_pipeline("modifique meu addon")
 		m_ag.assert_called_once_with("modifique meu addon")
+
+	def test_run_until_success_usa_o_agente_direto_sem_agenticloop(self, monkeypatch):
+		# Fatia B: no caminho vivo (flag ligada), _run_until_success chama o
+		# agente direto -- nao passa mais pelo AgenticLoop (maquinario staged).
+		monkeypatch.setenv("NVDASTUDIO_AGENTIC_MODE", "1")
+		o = Orchestrator()
+		o._on_complete = MagicMock()
+
+		def _fake_agentic(q):
+			o._last_result = SimpleNamespace(success=True, planejamento_degradado=False)
+			return True
+
+		with patch.object(o, "_run_pipeline_agentic", side_effect=_fake_agentic) as m_ag, \
+			patch("nvdastudio.core.agentic_loop.AgenticLoop") as m_loop:
+			res = o._run_until_success("crie um addon")
+		m_ag.assert_called_once_with("crie um addon")
+		m_loop.assert_not_called()
+		assert res.success is True
+
+	def test_run_until_success_sem_arquivos_erro_honesto(self, monkeypatch):
+		monkeypatch.setenv("NVDASTUDIO_AGENTIC_MODE", "1")
+		o = Orchestrator()
+		o._on_complete = MagicMock()
+		with patch.object(o, "_run_pipeline_agentic", return_value=False):
+			res = o._run_until_success("x")
+		assert res.success is False and "nao conseguiu" in (res.error or "")
 
 	def test_resume_nao_desvia_pro_agentico(self, monkeypatch):
 		# Retomada (resume_plan) e conceito do staged -- nunca vai pro agentico.
