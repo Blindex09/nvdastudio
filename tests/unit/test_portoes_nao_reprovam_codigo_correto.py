@@ -112,6 +112,38 @@ def test_portao_execucao_isolada():
 	assert r.success, _detalhe(r)
 
 
+def test_execucao_nao_reprova_addon_que_le_configdir():
+	"""Regressao (achado no E2E complexo AssistenteLeituraGemini, 2026-09-06):
+	um addon que le NVDAState.WritePaths.configDir e junta um arquivo -- padrao
+	comum e CORRETO -- era reprovado pelo gate com
+	`TypeError: expected str... not _Permissive`, porque o stub devolvia um mock
+	truthy nao-string e o guard `if not config_dir` nao pegava. Falso-positivo
+	do gate, que reprovava addon bom (e prejudicava agentico E staged). O stub
+	de NVDAState.WritePaths.configDir passou a ser uma string real."""
+	init = NL.join([
+		"import os",
+		"import globalPluginHandler",
+		"import addonHandler",
+		"import NVDAState",
+		"addonHandler.initTranslation()",
+		"",
+		"",
+		"class GlobalPlugin(globalPluginHandler.GlobalPlugin):",
+		TAB + "def __init__(self, *args, **kwargs):",
+		TAB + TAB + "super().__init__(*args, **kwargs)",
+		TAB + TAB + "config_dir = NVDAState.WritePaths.configDir",
+		TAB + TAB + "if not config_dir:",
+		TAB + TAB + TAB + "config_dir = os.environ.get('TEMP', '.')",
+		TAB + TAB + "self._path = os.path.join(config_dir, 'meu_addon.json')",
+	])
+	arquivos = {
+		f"{_PKG}/__init__.py": init,
+		"manifest.ini": "name = MeuAddon" + NL,
+	}
+	r = CodeSandbox().validate_addon_execution(arquivos)
+	assert r.success, _detalhe(r)
+
+
 def test_portao_lint():
 	r = CodeSandbox().lint_check(_ARQUIVOS)
 	assert r.success or r.error, _detalhe(r)

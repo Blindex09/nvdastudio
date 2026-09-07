@@ -1,6 +1,33 @@
+import os
 import sys
 import inspect
+import tempfile
 import types
+
+
+# Diretorio de config REALISTA para a validacao em sandbox. Addons leem
+# NVDAState.WritePaths.configDir (uma STRING) e a usam em os.path.join. O stub
+# generico (_Permissive) devolvia um mock truthy NAO-string, e o os.path.join
+# quebrava com TypeError -- um FALSO-POSITIVO que reprovava addon CORRETO (achado
+# no E2E complexo AssistenteLeituraGemini, 2026-09-06: o gate de execucao
+# rejeitava um HistoryManager que la fora funcionaria). Um caminho real e
+# descartavel faz o padrao comum (ler configDir e juntar um arquivo) funcionar
+# na validacao como funcionaria dentro do NVDA.
+_STUB_CONFIG_DIR = os.path.join(tempfile.gettempdir(), "nvdastudio_stub_config")
+
+
+class _StubWritePaths:
+	"""Espelha nvda/source/NVDAState.WritePaths -- os caminhos que addons leem
+	com frequencia, como STRINGS reais em vez de mock permissivo."""
+	configDir = _STUB_CONFIG_DIR
+	addonsDir = os.path.join(_STUB_CONFIG_DIR, "addons")
+	addonStoreDir = os.path.join(_STUB_CONFIG_DIR, "addonStore")
+
+
+def _stub_should_write_to_disk() -> bool:
+	# A validacao NUNCA escreve em disco de verdade -- addons checam isto antes
+	# de salvar; False mantem a validacao read-only (Regra 9 / blast radius).
+	return False
 
 
 class _Permissive:
@@ -190,7 +217,11 @@ def install() -> None:
 		"brailleInput": _make_module("brailleInput"),
 		"controlTypes": _make_module("controlTypes"),
 		"textInfos": _make_module("textInfos"),
-		"NVDAState": _make_module("NVDAState"),
+		"NVDAState": _make_module(
+			"NVDAState",
+			WritePaths=_StubWritePaths,
+			shouldWriteToDisk=_stub_should_write_to_disk,
+		),
 		"globalVars": _make_module("globalVars"),
 		"core": _make_module("core"),
 		"queueHandler": _make_module("queueHandler"),
