@@ -28,7 +28,7 @@ except ImportError:
 
 from ..memory.conversation_manager import conversation
 from ..core.checkpoint_manager import CheckpointAction, InteractiveCheckpoint
-from ..sub_agents._base import narrate
+from ..memory.narration import narrate
 from ..sub_agents.web_researcher import _USER_SOURCES_HEADER
 from ..builder.addon_builder import (
 	extract_code_blocks, save_addon_files, package_addon, AddonBuilderError,

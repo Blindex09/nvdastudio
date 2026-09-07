@@ -10,7 +10,6 @@ from typing import Any
 from ..ai.llm_factory import create_llm_client
 from ..ai.llm_client import LLMClientError, LLMResponse
 from ..builder.nvda_context import NVDA_SYSTEM_PROMPT
-from ..memory.conversation_manager import conversation
 from ..utils.logger import get_logger
 
 _logger = get_logger("sub_agent_base")
@@ -54,205 +53,23 @@ def get_last_tokens() -> int:
 	return getattr(_tl, "last_tokens", 0)
 
 
-# Marcadores de plural "de codigo" que os call-sites de narrate() usam (a
-# frase e montada em runtime com um numero: "3 ponto(s)"). Resolvidos aqui,
-# deterministicamente, pelo numero que antecede -- irregulares do portugues
-# ("item(ns)" -> "itens", "secao(oes)" -> "secoes") entram explicitos porque
-# nao dao pra derivar por regra generica.
-_PLURAIS_NARRACAO = {
-	"ponto(s)": ("ponto", "pontos"),
-	"arquivo(s)": ("arquivo", "arquivos"),
-	"problema(s)": ("problema", "problemas"),
-	"caso(s)": ("caso", "casos"),
-	"item(ns)": ("item", "itens"),
-	"secao(oes)": ("secao", "secoes"),
-}
-# Sufixo tecnico ", status searched/cached" que um call-site anexava cru --
-# valor interno da tool de busca, sem significado pro usuario.
-_STATUS_JARGAO_RE = re.compile(r",?\s*status\s+\w+\s*$", re.IGNORECASE)
-
-
-def _expandir_plural(texto: str, marcador: str, singular: str, plural: str) -> str:
-	def _sub(m: "re.Match[str]") -> str:
-		n = m.group(1)
-		return f"{n} {singular if n == '1' else plural}"
-	return re.sub(rf"(\d+)\s+{re.escape(marcador)}", _sub, texto)
-
-
-def _limpar_narracao(action_desc: str) -> str:
-	"""Limpa a frase de narracao que o call-site JA escreveu (PT-BR, primeira
-	pessoa, tempo presente), sem reescrever via uma segunda IA.
-
-	Ate aqui narrate() disparava um modelo leve so pra "naturalizar" a frase:
-	custava tokens e, por vir de um segundo modelo generico, soava
-	enlatado/robotico -- exatamente a queixa do usuario ("essa narracao idiota
-	de robo"). Os call-sites ja passam frase natural; a reescrita nao agregava.
-	A limpeza restante e deterministica e de graca: colapsa espacos, resolve os
-	marcadores de plural de codigo pelo numero ("3 ponto(s)" -> "3 pontos",
-	"1 arquivo(s)" -> "1 arquivo") e remove o sufixo ", status X" interno.
-	"""
-	texto = " ".join(action_desc.split())
-	texto = _STATUS_JARGAO_RE.sub("", texto)
-	for marcador, (singular, plural) in _PLURAIS_NARRACAO.items():
-		if marcador in texto:
-			texto = _expandir_plural(texto, marcador, singular, plural)
-	return texto.strip()
-
-
-def _truncate_at_word(text: str, max_chars: int) -> str:
-	"""Corta text em max_chars sem partir uma palavra ao meio.
-
-	narrate() eco detalhes concretos passados a ele quase verbatim (o system
-	prompt exige isso), entao um slice bruto tipo texto[:150] que corta no
-	meio de uma palavra vaza pro usuario final como texto visivelmente
-	quebrado. Usar SEMPRE antes de embutir texto livre (user_query, prompt)
-	dentro de uma string passada pra narrate().
-	"""
-	if len(text) <= max_chars:
-		return text
-	snippet = text[:max_chars]
-	last_space = snippet.rfind(" ")
-	if last_space > 0:
-		snippet = snippet[:last_space]
-	return snippet.rstrip()
-
-
-def narrate(action_desc: str) -> None:
-	"""
-	Narra em tempo real, em linguagem natural, uma acao que o agente acabou de
-	fazer ou vai fazer (pensando, pesquisando, executando, editando). Emite a
-	frase DIRETO via conversation.emit_status() -- o call-site ja a escreve em
-	PT-BR, primeira pessoa, tempo presente; aqui so aplicamos uma limpeza
-	deterministica (_limpar_narracao). NAO ha mais uma segunda IA reescrevendo:
-	isso custava tokens e soava robotico (a queixa concreta do usuario).
-
-	action_desc: a frase ja pronta da narracao (ex: "terminei a auditoria,
-	encontrei 3 ponto(s) de atencao de acessibilidade").
-
-	Silenciosa em teste (pytest/unittest) para nao poluir asserts de
-	emit_status de outros testes; a limpeza e testada via _limpar_narracao.
-	"""
-	if not action_desc or not action_desc.strip():
-		return
-	if "pytest" in sys.modules or "unittest" in sys.modules:
-		return
-	conversation.emit_status(_limpar_narracao(action_desc))
-
-
-_REASONING_CHUNK_MIN_CHARS = 60
-_SENTENCE_END_CHARS = (".", "!", "?", "\n")
-
-
-class _SentenceChunkBuffer:
-	"""
-	Acumula texto e libera em pedacos por frase (fecha em ./!/?/quebra de
-	linha, so depois de pelo menos _REASONING_CHUNK_MIN_CHARS acumulados) --
-	evita disparar uma acao por delta minusculo de streaming. Subclasses
-	definem o que fazer com cada pedaco fechado via _on_chunk().
-	"""
-
-	def __init__(self):
-		self._buffer = ""
-
-	def feed(self, delta: str) -> None:
-		"""Callback compativel com on_chunk/on_reasoning_chunk do provider_client/ollama_client."""
-		if not delta:
-			return
-		self._buffer += delta
-		while len(self._buffer) >= _REASONING_CHUNK_MIN_CHARS:
-			cut = -1
-			for i, ch in enumerate(self._buffer):
-				if ch in _SENTENCE_END_CHARS and i >= _REASONING_CHUNK_MIN_CHARS - 20:
-					cut = i + 1
-					break
-			if cut == -1:
-				break
-			chunk, self._buffer = self._buffer[:cut].strip(), self._buffer[cut:]
-			if chunk:
-				self._on_chunk(chunk)
-
-	def flush(self) -> None:
-		"""Libera qualquer resto acumulado que nao fechou frase. Chamar ao fim da chamada."""
-		chunk, self._buffer = self._buffer.strip(), ""
-		if chunk:
-			self._on_chunk(chunk)
-
-	def _on_chunk(self, chunk: str) -> None:
-		raise NotImplementedError
-
-
-class LiveNarrator(_SentenceChunkBuffer):
-	"""
-	Acumula deltas de CONTEUDO real (nao reasoning/thinking) que o proprio
-	sub-agente escreve durante o trabalho -- o padrao "tool preamble" (termo
-	da OpenAI): o MESMO modelo que esta gerando o artefato tambem narra em
-	linguagem natural antes/entre as chamadas de ferramenta, no mesmo turno,
-	em vez de uma segunda IA comentando de fora depois. Confirmado por
-	pesquisa dedicada que os 5 provedores suportam texto e tool_calls no
-	mesmo stream (ex: doc oficial da Anthropic mostra literalmente
-	"texto -> tool_use -> texto -> tool_use" no mesmo turno).
-
-	NAO reescreve via narrate() (diferente do antigo ReasoningNarrator,
-	removido na v1.14.0 por ficar sem consumidor): o texto ja e natural e em
-	PT-BR por instrucao direta no system prompt (mesma tecnica ja usada no
-	resto do projeto pra garantir saida em portugues) -- emite direto via
-	conversation.emit_status() assim que fecha uma frase.
-
-	So usado em sub-agentes cuja resposta final e extraida de blocos de
-	codigo com fence (```lang:arquivo ... ```) -- a narracao solta fora dos
-	fences e naturalmente descartada por extract_code_blocks() no
-	orchestrator. Sub-agentes cuja resposta e prosa crua consumida direto
-	(design_review_agent, accessibility_auditor, agent_template_agent,
-	web_researcher) NAO usam LiveNarrator -- misturar narracao ali
-	contaminaria o proprio relatorio/entregavel. Continuam com narrate().
-
-	BUG REAL corrigido na v1.15.0: extract_code_blocks() so protege o
-	ARTEFATO FINAL (o arquivo escrito em disco) de ganhar narracao
-	misturada -- mas o proprio LiveNarrator, ao vivo, exibia TODO o texto
-	que passava por feed(), incluindo o conteudo INTEIRO de dentro dos
-	fences (codigo Python, HTML, JSON, manifest.ini...). Felipe reportou em
-	live-test, colando o historico: dezenas de linhas de codigo real
-	apareciam como se fossem narracao ("Assistente: import wx", "Assistente:
-	self._api_key = api_key", etc.). feed() agora detecta blocos ``` (mesmo
-	fragmentados entre deltas, via _raw_tail) e SUPRIME qualquer texto
-	dentro deles -- so o que esta FORA de um fence chega no buffer de
-	frases/emit_status().
-	"""
-
-	def __init__(self):
-		super().__init__()
-		self._raw_tail = ""
-		self._in_fence = False
-
-	def feed(self, delta: str) -> None:
-		if not delta:
-			return
-		text = self._raw_tail + delta
-		self._raw_tail = ""
-		pos = 0
-		while True:
-			idx = text.find("```", pos)
-			if idx == -1:
-				remainder = text[pos:]
-				# Guarda um "```" que pode ter ficado partido entre deltas
-				# (ex: um delta termina em "``", o proximo comeca com "`...").
-				if remainder.endswith("``"):
-					self._raw_tail = remainder[-2:]
-					remainder = remainder[:-2]
-				elif remainder.endswith("`"):
-					self._raw_tail = remainder[-1:]
-					remainder = remainder[:-1]
-				if not self._in_fence and remainder:
-					super().feed(remainder)
-				break
-			chunk = text[pos:idx]
-			if not self._in_fence and chunk:
-				super().feed(chunk)
-			self._in_fence = not self._in_fence
-			pos = idx + 3
-
-	def _on_chunk(self, chunk: str) -> None:
-		conversation.emit_status(chunk)
+# Fatia A da demolicao do staged (Caminho 3): os helpers de narracao
+# (narrate/LiveNarrator/_truncate_at_word e amigos) mudaram para
+# memory/narration.py -- compartilhados com a GUI e o orchestrator AGENTICOS.
+# Re-exportados aqui para os sub_agents staged e os testes que ainda importam
+# de _base ate a demolicao terminar.
+from ..memory.narration import (  # noqa: E402,F401  (re-export para consumidores de _base)
+	_PLURAIS_NARRACAO,
+	_STATUS_JARGAO_RE,
+	_expandir_plural,
+	_limpar_narracao,
+	_truncate_at_word,
+	narrate,
+	_REASONING_CHUNK_MIN_CHARS,
+	_SENTENCE_END_CHARS,
+	_SentenceChunkBuffer,
+	LiveNarrator,
+)
 
 
 def _get_cached_client(model_id: str):

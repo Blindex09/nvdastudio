@@ -36,13 +36,13 @@ class TestNarrateGuardDeTeste:
         """narrate() nao emite em teste -- o guard evita poluir asserts de
         emit_status de outros testes. A limpeza e testada via _limpar_narracao."""
         from nvdastudio.sub_agents._base import narrate
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrate("terminei a auditoria")
         mock_conv.emit_status.assert_not_called()
 
     def test_narrate_vazio_nao_faz_nada(self):
         from nvdastudio.sub_agents._base import narrate
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrate("")
             narrate("   ")
         mock_conv.emit_status.assert_not_called()
@@ -65,15 +65,13 @@ class TestNarrateSemSegundaIA:
         e nunca cria um cliente LLM."""
         import sys
 
-        import nvdastudio.sub_agents._base as base
-        with patch.object(base, "conversation") as mock_conv, \
-             patch.object(base, "create_llm_client") as mock_llm, \
+        import nvdastudio.memory.narration as narration
+        with patch.object(narration, "conversation") as mock_conv, \
              patch.dict(sys.modules):
             sys.modules.pop("pytest", None)
             sys.modules.pop("unittest", None)
-            base.narrate("terminei a auditoria, encontrei 3 ponto(s) de atencao")
+            narration.narrate("terminei a auditoria, encontrei 3 ponto(s) de atencao")
 
-        mock_llm.assert_not_called()
         mock_conv.emit_status.assert_called_once_with(
             "terminei a auditoria, encontrei 3 pontos de atencao"
         )
@@ -189,7 +187,7 @@ class TestSentenceChunkBufferViaLiveNarrator:
 
     def test_feed_nao_emite_antes_de_fechar_frase(self):
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.feed("Pensando sobre a arquitetura")  # sem pontuacao final, curto
         mock_conv.emit_status.assert_not_called()
@@ -197,7 +195,7 @@ class TestSentenceChunkBufferViaLiveNarrator:
     def test_feed_emite_ao_fechar_frase_apos_minimo_de_caracteres(self):
         from nvdastudio.sub_agents._base import LiveNarrator
         frase = "Vou usar uma classe separada para a logica de rede, assim fica mais facil testar. "
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.feed(frase)
         mock_conv.emit_status.assert_called_once()
@@ -210,7 +208,7 @@ class TestSentenceChunkBufferViaLiveNarrator:
             "travar ", "a ", "interface ", "principal ", "enquanto ",
             "o ", "plano ", "e ", "gerado ", "em ", "segundo ", "plano.",
         ]
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             for delta in deltas:
                 narrator.feed(delta)
@@ -219,7 +217,7 @@ class TestSentenceChunkBufferViaLiveNarrator:
 
     def test_feed_ignora_delta_vazio(self):
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.feed("")
             narrator.feed(None)
@@ -227,7 +225,7 @@ class TestSentenceChunkBufferViaLiveNarrator:
 
     def test_flush_emite_resto_pendente(self):
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.feed("frase incompleta sem pontuacao final e sem fechar")
             mock_conv.emit_status.assert_not_called()
@@ -236,14 +234,14 @@ class TestSentenceChunkBufferViaLiveNarrator:
 
     def test_flush_com_buffer_vazio_nao_emite(self):
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.flush()
         mock_conv.emit_status.assert_not_called()
 
     def test_flush_limpa_o_buffer(self):
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation"):
+        with patch("nvdastudio.memory.narration.conversation"):
             narrator = LiveNarrator()
             narrator.feed("algo pendente")
             narrator.flush()
@@ -264,7 +262,7 @@ class TestLiveNarratorSuprimeConteudoDentroDeFence:
 
     def test_texto_dentro_de_fence_nunca_emite(self):
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.feed("Vou escrever o codigo agora. ")
             narrator.feed("```python:globalPlugins/X/__init__.py\n")
@@ -284,7 +282,7 @@ class TestLiveNarratorSuprimeConteudoDentroDeFence:
         streaming (ex: um delta termina em "``", o proximo comeca com "`
         python:arquivo.py"). O detector precisa juntar isso corretamente."""
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.feed("Escrevendo agora. ``")
             narrator.feed("`python:arquivo.py\nsegredo_que_nao_pode_vazar = 1\n")
@@ -298,7 +296,7 @@ class TestLiveNarratorSuprimeConteudoDentroDeFence:
 
     def test_multiplos_fences_intercalados_com_narracao(self):
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.feed("Primeiro o manifest. ")
             narrator.feed("```ini:manifest.ini\nname = X\n```\n")
@@ -318,7 +316,7 @@ class TestLiveNarratorSuprimeConteudoDentroDeFence:
         """Se o streaming acabar no meio de um bloco de codigo (ex: erro de
         rede), flush() nao deve vazar o codigo parcial pendente."""
         from nvdastudio.sub_agents._base import LiveNarrator
-        with patch("nvdastudio.sub_agents._base.conversation") as mock_conv:
+        with patch("nvdastudio.memory.narration.conversation") as mock_conv:
             narrator = LiveNarrator()
             narrator.feed("Escrevendo o arquivo. ")
             narrator.feed("```python:arquivo.py\ncodigo_parcial_pendente = 1")

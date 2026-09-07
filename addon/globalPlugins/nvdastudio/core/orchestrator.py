@@ -30,7 +30,8 @@ from ..builder.addon_builder import (
 	validate_python_syntax,
 	validate_python_imports,
 )
-from ..sub_agents._base import clear_client_cache, narrate, LiveNarrator, _truncate_at_word
+from ..memory.narration import narrate, LiveNarrator, _truncate_at_word
+from ..sub_agents._base import clear_client_cache
 from ..memory.session_memory import memory
 from ..utils.cost_tracker import estimate_pipeline_cost
 from .orch_types import (
