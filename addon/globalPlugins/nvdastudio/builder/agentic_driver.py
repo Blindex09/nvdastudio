@@ -22,8 +22,10 @@ import ast
 import os
 import subprocess
 import tempfile
+import threading
 import time
 from dataclasses import dataclass, field
+from typing import Callable
 
 from ..ai.factory_client import FactoryClientError
 from .agentic_backends import AgenticBackend, get_backend, parse_droid_tokens
@@ -35,7 +37,7 @@ from ..utils.logger import get_logger
 # agentic_driver._parse_droid_tokens.
 _parse_droid_tokens = parse_droid_tokens
 
-MODULE_VERSION = "0.6.0"
+MODULE_VERSION = "0.7.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -168,6 +170,62 @@ def _validar_basico(workdir: str, files: list[str]) -> tuple[bool, bool, bool]:
 	return has_manifest, has_entry_point, py_syntax_ok
 
 
+def _run_streaming(
+	cmd: list[str], *, workdir: str, timeout: int,
+	progress_callback: Callable[[str], None] | None = None,
+) -> tuple[int, str, str]:
+	"""Roda o processo agentico TRANSMITINDO o stdout ao vivo (linha a linha) para
+	`progress_callback`, enquanto acumula stdout/stderr completos e respeita o
+	timeout. Popen + threads de drenagem em vez de subprocess.run porque as
+	ferramentas de ponta mostram o progresso DURANTE a geracao, nao so no fim --
+	um build agentico complexo leva minutos, e o silencio total nesse tempo e a
+	maior diferenca de UX pro usuario. Levanta subprocess.TimeoutExpired/OSError
+	como subprocess.run faria (o chamador ja trata).
+
+	As duas streams sao drenadas em paralelo (senao o buffer cheio de uma trava a
+	outra). Erros do callback nunca derrubam a build -- progresso e best-effort.
+	"""
+	proc = subprocess.Popen(
+		cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+		text=True, encoding="utf-8", errors="replace",
+		cwd=workdir, creationflags=CREATE_NO_WINDOW,
+	)
+	out_lines: list[str] = []
+	err_lines: list[str] = []
+
+	def _drain(stream, sink: list[str], emit: bool) -> None:
+		if stream is None:
+			return
+		for line in stream:
+			sink.append(line)
+			if emit and progress_callback:
+				texto = line.strip()
+				if texto:
+					try:
+						progress_callback(texto[:200])
+					except Exception:  # pragma: no cover - progresso e best-effort
+						pass
+		try:
+			stream.close()
+		except OSError:  # pragma: no cover - defesa
+			pass
+
+	t_out = threading.Thread(target=_drain, args=(proc.stdout, out_lines, True), daemon=True)
+	t_err = threading.Thread(target=_drain, args=(proc.stderr, err_lines, False), daemon=True)
+	t_out.start()
+	t_err.start()
+	try:
+		proc.wait(timeout=timeout)
+	except subprocess.TimeoutExpired:
+		proc.kill()
+		proc.wait()
+		raise
+	# Deixa as threads terminarem de drenar o que sobrou no buffer.
+	t_out.join(timeout=5)
+	t_err.join(timeout=5)
+	return proc.returncode, "".join(out_lines), "".join(err_lines)
+
+
 def _droid_once(
 	request: str,
 	workdir: str | None = None,
@@ -178,6 +236,7 @@ def _droid_once(
 	use_nvda_context: bool = True,
 	extra_context: str = "",
 	backend: AgenticBackend | None = None,
+	progress_callback: Callable[[str], None] | None = None,
 ) -> AgenticBuildResult:
 	"""UMA rodada do motor agentico + validacao BASICA (manifest/entry/sintaxe).
 
@@ -243,9 +302,8 @@ def _droid_once(
 
 	t0 = time.time()
 	try:
-		proc = subprocess.run(
-			cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
-			timeout=timeout, cwd=workdir, creationflags=CREATE_NO_WINDOW,
+		returncode, stdout, stderr = _run_streaming(
+			cmd, workdir=workdir, timeout=timeout, progress_callback=progress_callback,
 		)
 	except subprocess.TimeoutExpired:
 		return AgenticBuildResult(
@@ -268,7 +326,7 @@ def _droid_once(
 
 	files = _coletar_arquivos(workdir)
 	has_manifest, has_entry, syntax_ok = _validar_basico(workdir, files)
-	success = proc.returncode == 0 and has_manifest and has_entry and syntax_ok and bool(files)
+	success = returncode == 0 and has_manifest and has_entry and syntax_ok and bool(files)
 
 	return AgenticBuildResult(
 		success=success,
@@ -277,12 +335,12 @@ def _droid_once(
 		has_manifest=has_manifest,
 		has_entry_point=has_entry,
 		py_syntax_ok=syntax_ok,
-		returncode=proc.returncode,
+		returncode=returncode,
 		duration_seconds=dur,
-		tokens=backend.parse_tokens(proc.stdout),
-		stdout_tail=(proc.stdout or "")[-2000:],
-		stderr_tail=(proc.stderr or "")[-2000:],
-		error="" if success else "build agentica nao passou na validacao basica do Slice 0",
+		tokens=backend.parse_tokens(stdout),
+		stdout_tail=(stdout or "")[-2000:],
+		stderr_tail=(stderr or "")[-2000:],
+		error="" if success else "build agentica nao passou na validacao basica",
 	)
 
 
@@ -399,6 +457,7 @@ def run_agentic_build(
 	extra_context: str = "",
 	correction_rounds: int = 0,
 	backend: AgenticBackend | None = None,
+	progress_callback: Callable[[str], None] | None = None,
 ) -> AgenticBuildResult:
 	"""Ponto de entrada publico do driver agentico.
 
@@ -421,6 +480,7 @@ def run_agentic_build(
 	result = _droid_once(
 		request, workdir, model_id=model_id, autonomy=autonomy, timeout=timeout,
 		use_nvda_context=use_nvda_context, extra_context=extra_context, backend=backend,
+		progress_callback=progress_callback,
 	)
 	tokens_acumulados = result.tokens  # soma o custo de TODAS as rodadas
 	if correction_rounds <= 0 or not result.files:
@@ -448,7 +508,7 @@ def run_agentic_build(
 		result = _droid_once(
 			correcao, result.workdir, model_id=model_id, autonomy=autonomy,
 			timeout=timeout, use_nvda_context=use_nvda_context, extra_context=extra_context,
-			backend=backend,
+			backend=backend, progress_callback=progress_callback,
 		)
 		tokens_acumulados += result.tokens
 		result.rounds = rodada + 1

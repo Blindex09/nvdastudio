@@ -676,38 +676,47 @@ class Orchestrator:
 	# ------------------------------------------------------------------
 
 	def _run_pipeline_agentic(self, user_query: str) -> bool:
-		"""Slice 3 do Caminho 3: gera o addon pelo driver AGENTICO (droid dirige
-		editar->rodar->corrigir) em vez do pipeline staged.
+		"""Caminho 3 (UNICO caminho, pos-demolicao do staged): gera o addon pelo
+		driver AGENTICO (o backend dirige editar->rodar->corrigir).
 
-		Retorna True se ENTREGOU (disparou on_complete), False se nao conseguiu
-		produzir nada -- ai o chamador (_run_pipeline) cai no staged (fallback).
-		So roda com a flag NVDASTUDIO_AGENTIC_MODE ligada. O gate deterministico
-		(code_sandbox) e a auto-correcao vivem DENTRO de run_agentic_build
-		(Slice 2); aqui o resultado agentico vira o formato de blocos que a GUI
-		ja empacota -- mesma entrega + portao final do staged, sem duplicar.
+		Retorna True se ENTREGOU (disparou on_complete), False se nao produziu nada
+		-- sem fallback staged (nao existe mais); False vira erro honesto no
+		chamador. O gate deterministico (code_sandbox + acessibilidade) e a
+		auto-correcao vivem DENTRO de run_agentic_build; aqui o resultado vira o
+		formato de blocos que a GUI ja empacota -- mesma entrega + portao final.
+
+		O progresso do agente e transmitido AO VIVO: cada linha relevante da saida
+		do motor vira um evento EXECUTANDO, para o usuario nao ficar minutos no
+		silencio durante uma geracao complexa (aproxima a UX das ferramentas de ponta).
 		"""
 		self._running = True
 		self._last_result = None
 		try:
 			from ..builder.agentic_driver import run_agentic_build
 		except Exception as exc:  # pragma: no cover - defesa
-			_logger.error("[AGENTIC] driver indisponivel (%s) -- caindo pro staged.", exc)
+			_logger.error("[AGENTIC] driver indisponivel: %s", exc)
 			return False
 
 		self._emit("PLANEJANDO", "")
 		self._emit("EXECUTANDO", "code_generation")
+
+		def _ao_vivo(linha: str) -> None:
+			# Progresso do motor agentico em tempo real -- best-effort.
+			self._emit("EXECUTANDO", linha)
+
 		try:
 			build = run_agentic_build(
 				user_query,
 				correction_rounds=_AGENTIC_CORRECTION_ROUNDS,
 				use_nvda_context=True,
+				progress_callback=_ao_vivo,
 			)
 		except Exception as exc:  # pragma: no cover - defesa
-			_logger.error("[AGENTIC] falha inesperada (%s) -- caindo pro staged.", exc)
+			_logger.error("[AGENTIC] falha inesperada: %s", exc)
 			return False
 
 		if not build.files:
-			_logger.warning("[AGENTIC] nenhum arquivo produzido -- caindo pro staged.")
+			_logger.warning("[AGENTIC] nenhum arquivo produzido -- erro honesto.")
 			return False
 
 		blocks = _agentic_files_to_blocks(build.workdir, build.files)
