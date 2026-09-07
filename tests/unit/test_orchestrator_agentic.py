@@ -11,22 +11,27 @@ from nvdastudio.core.orchestrator import (
 	MODULE_VERSION, Orchestrator, _agentic_mode_enabled, _agentic_files_to_blocks,
 )
 
-assert MODULE_VERSION == "5.89.0"
+assert MODULE_VERSION == "5.90.0"
 
 
 class TestFlagAgentica:
-	def test_default_desligada(self, monkeypatch):
-		monkeypatch.delenv("NVDASTUDIO_AGENTIC_MODE", raising=False)
-		assert _agentic_mode_enabled() is False
+	"""Slice 3.5: o agentico e o PADRAO -- opt-OUT, nao mais opt-in."""
 
-	def test_liga_com_valores_verdadeiros(self, monkeypatch):
-		for v in ("1", "true", "on", "YES", "Yes"):
+	def test_default_agora_ligado(self, monkeypatch):
+		# Sem a env var, o agentico esta LIGADO (o padrao de producao).
+		monkeypatch.delenv("NVDASTUDIO_AGENTIC_MODE", raising=False)
+		assert _agentic_mode_enabled() is True
+
+	def test_desliga_so_com_valores_falsos(self, monkeypatch):
+		for v in ("0", "false", "off", "no", "OFF", "No"):
+			monkeypatch.setenv("NVDASTUDIO_AGENTIC_MODE", v)
+			assert _agentic_mode_enabled() is False
+
+	def test_valor_qualquer_mantem_ligado(self, monkeypatch):
+		# So os valores de desligar desligam; qualquer outra coisa segue ligado.
+		for v in ("1", "true", "on", "talvez", "sim"):
 			monkeypatch.setenv("NVDASTUDIO_AGENTIC_MODE", v)
 			assert _agentic_mode_enabled() is True
-
-	def test_valor_qualquer_nao_liga(self, monkeypatch):
-		monkeypatch.setenv("NVDASTUDIO_AGENTIC_MODE", "talvez")
-		assert _agentic_mode_enabled() is False
 
 
 class TestArquivosParaBlocos:
@@ -110,7 +115,8 @@ class TestDesvioNoRunPipeline:
 		m_planner.create_plan.assert_not_called()
 
 	def test_flag_desligada_nao_chama_agentico(self, monkeypatch):
-		monkeypatch.delenv("NVDASTUDIO_AGENTIC_MODE", raising=False)
+		# Opt-out explicito volta pro staged.
+		monkeypatch.setenv("NVDASTUDIO_AGENTIC_MODE", "0")
 		o = Orchestrator()
 		# Curto-circuita o staged logo no create_plan (levanta -> except interno).
 		o._planner = MagicMock()

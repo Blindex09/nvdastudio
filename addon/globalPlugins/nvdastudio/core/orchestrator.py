@@ -52,22 +52,28 @@ from ..memory.conversation_manager import conversation
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.iteration_budget import budget as iteration_budget
 
-MODULE_VERSION = "5.89.0"
+MODULE_VERSION = "5.90.0"
 _logger = get_logger("orchestrator")
 
 # ---------------------------------------------------------------------------
-# Caminho 3 (arquitetura agentica) -- Slice 3: roteia a geracao para o driver
-# agentico (builder/agentic_driver.py) ATRAS DE FEATURE FLAG, com o pipeline
-# staged como fallback. Default DESLIGADO -- sem a env var, nada muda.
+# Caminho 3 (arquitetura agentica) -- Slice 3.5: o loop agentico
+# (builder/agentic_driver.py) e o PADRAO da geracao. O pipeline staged continua
+# como FALLBACK (quando o agentico nao produz nada) e para retomada (resume_plan).
+# Opt-OUT explicito: NVDASTUDIO_AGENTIC_MODE in {0,false,off,no} volta pro staged.
+# A suite de teste opta por staged por default (tests/conftest.py) porque o
+# agentico depende do droid real -- producao, sem a env var, usa o agentico.
 # Ver docs/arquitetura-agentica-caminho3-2026-09-06.md.
 # ---------------------------------------------------------------------------
 _AGENTIC_ENV = "NVDASTUDIO_AGENTIC_MODE"
 _AGENTIC_CORRECTION_ROUNDS = 2
+_AGENTIC_OFF_VALUES = ("0", "false", "off", "no")
 
 
 def _agentic_mode_enabled() -> bool:
-	"""True se a flag da arquitetura agentica esta ligada (opt-in explicito)."""
-	return os.environ.get(_AGENTIC_ENV, "").strip().lower() in ("1", "true", "on", "yes")
+	"""Caminho 3 e o PADRAO. Retorna False so quando explicitamente DESLIGADO
+	(NVDASTUDIO_AGENTIC_MODE in {0,false,off,no}) -- opt-OUT para o staged, nao
+	mais opt-in. Sem a env var, o agentico esta ligado."""
+	return os.environ.get(_AGENTIC_ENV, "").strip().lower() not in _AGENTIC_OFF_VALUES
 
 
 def _agentic_files_to_blocks(workdir: str, files: list[str]) -> str:

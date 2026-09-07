@@ -15,6 +15,15 @@ _ADDON_PKG_PATH = os.path.abspath(
 if _ADDON_PKG_PATH not in sys.path:
     sys.path.insert(0, _ADDON_PKG_PATH)
 
+# --------------------------------------------------------------------------
+# Caminho 3 (Slice 3.5): em PRODUCAO o loop agentico e o padrao. Mas ele depende
+# do droid real (API), impossivel de rodar na suite. Entao a suite opta por
+# STAGED por default -- os testes staged continuam exercitando o staged, e os
+# testes do roteamento agentico (test_orchestrator_agentic.py) ligam a flag
+# explicitamente. setdefault: nao sobrescreve se o ambiente ja definiu.
+# --------------------------------------------------------------------------
+os.environ.setdefault("NVDASTUDIO_AGENTIC_MODE", "0")
+
 
 # --------------------------------------------------------------------------
 # Stubs de modulos NVDA — instalados antes de qualquer import do projeto
