@@ -69,8 +69,8 @@ def _sinalizar_conta_indisponivel(resp) -> None:
 		from .model_registry import marcar_saida_estruturada_indisponivel
 
 		marcar_saida_estruturada_indisponivel(f"HTTP {resp.status_code}: {corpo[:160]}")
-	except Exception:  # pragma: no cover - defesa
-		pass
+	except Exception as _exc:  # pragma: no cover - defesa
+		_logger.debug("[OPENCODE_GO] falha ao marcar saida estruturada indisponivel: %s", _exc)
 
 
 class OpenCodeGoClientError(LLMClientError):
@@ -275,8 +275,8 @@ class OpenCodeGoClient:
 					if resp.status_code in (401, 402, 403, 429):
 						try:
 							resp.read()
-						except Exception:  # pragma: no cover - defesa
-							pass
+						except Exception as _exc:  # pragma: no cover - defesa
+							_logger.debug("[OPENCODE_GO] falha ao drenar corpo do erro %s: %s", resp.status_code, _exc)
 					_sinalizar_conta_indisponivel(resp)
 					resp.raise_for_status()
 					for line in resp.iter_lines():
@@ -466,8 +466,8 @@ class OpenCodeGoClient:
 				if resp.status_code in (401, 402, 403, 429):
 					try:
 						resp.read()
-					except Exception:  # pragma: no cover - defesa
-						pass
+					except Exception as _exc:  # pragma: no cover - defesa
+						_logger.debug("[OPENCODE_GO] falha ao drenar corpo do erro %s: %s", resp.status_code, _exc)
 				_sinalizar_conta_indisponivel(resp)
 				resp.raise_for_status()
 				for line in resp.iter_lines():

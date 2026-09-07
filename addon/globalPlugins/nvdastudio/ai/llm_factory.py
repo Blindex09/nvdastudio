@@ -80,8 +80,10 @@ def create_llm_client(
 				marcar_saida_estruturada_indisponivel(
 					motivo="chave nao configurada", provider="opencode_go",
 				)
-			except Exception:  # pragma: no cover - defesa
-				pass
+			except Exception as _exc:  # pragma: no cover - defesa
+				# Ação secundária (o erro real é levantado logo abaixo); mas nunca
+				# engolir sem log -- regra do metodologia-verificacao-arquitetura.md.
+				_logger.debug("[LLM_FACTORY] falha ao marcar opencode_go indisponivel: %s", _exc)
 			raise LLMFactoryError(
 				f"Chave API para {provider} nao configurada. "
 				f"Va em NVDA > Preferencias > Configuracoes > NVDAStudio."
