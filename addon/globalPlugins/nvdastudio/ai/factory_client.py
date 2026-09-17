@@ -53,9 +53,10 @@ Cada decisao aqui saiu de medicao no dia 2026-09-03:
    temporario vazio elimina esse gasto -- e de quebra reduz o blast radius,
    porque o agente nao enxerga o projeto do usuario.
 
-4. MODELO EXPLICITO SEMPRE. O padrao do droid e `claude-opus-5`, o mais caro
-   do catalogo: os 135 mil creditos por plano medidos no spike eram Opus. O
-   padrao daqui e o mesmo heavy que o projeto ja usa.
+4. MODELO EXPLICITO SEMPRE. O padrao historico do droid era
+   `claude-opus-5`, o mais caro do catalogo: os 135 mil creditos por plano
+   medidos no spike eram Opus. O adaptador envia `-m auto` explicitamente,
+   deixando o roteador vivo da Factory escolher conforme a tarefa.
 """
 
 import json
@@ -69,13 +70,13 @@ from ..utils.hidden_process import CREATE_NO_WINDOW
 from ..utils.logger import get_logger
 from .llm_client import LLMClientError, LLMResponse
 
-MODULE_VERSION = "1.3.0"
+MODULE_VERSION = "1.6.0"
 _logger = get_logger("factory_client")
 
-# Mesmo heavy que o projeto ja usa no Ollama -- trocar de provedor nao pode
-# trocar de modelo por acidente. Nunca claude-opus-5 (padrao do droid, o mais
-# caro do catalogo).
-_DEFAULT_MODEL = "kimi-k2.7-code"
+# Auto Model nativo do Droid. Mantemos `-m` explicito para nunca herdar um
+# default caro ou mutavel do CLI, mas a escolha concreta fica com a Factory,
+# que conhece o catalogo e a disponibilidade atuais.
+_DEFAULT_MODEL = "auto"
 
 # Timeout por chamada. O spike com o _PLAN_SCHEMA real levou 108-165s; 600s
 # da folga para step de codigo grande sem deixar o pipeline pendurado.
@@ -94,12 +95,14 @@ _NOMES_DO_BINARIO = ("droid", "droid.cmd", "droid.exe")
 # Read-only NAO basta (o agente as vezes escreve mesmo assim) -- a instrucao e
 # que segura. Prefixada, nunca embutida no meio, para maxima primazia de atencao.
 _INSTRUCAO_SO_TEXTO = (
-	"MODO DE SAIDA: TEXTO PURO. Voce NAO tem permissao para agir. NAO crie, "
-	"escreva, mova ou modifique nenhum arquivo. NAO rode comandos. NAO use "
-	"nenhuma ferramenta. Sua UNICA saida e o TEXTO da resposta, contendo os "
-	"blocos de codigo. Se voce tentar criar arquivos ou empacotar qualquer "
-	"coisa, a tarefa FALHA. Apenas ESCREVA o conteudo completo, como blocos de "
-	"codigo anotados, nada mais."
+	"MODO DESTA CHAMADA: produza somente a resposta textual solicitada. NAO "
+	"execute ferramentas, comandos nem operacoes de arquivo dentro deste "
+	"processo. Entregue exatamente o formato pedido nas instrucoes seguintes: "
+	"pode ser texto, JSON ou blocos de codigo. Esta e apenas uma separacao de "
+	"responsabilidades do adaptador. Pedidos operacionais feitos explicitamente "
+	"pelo usuario autorizam o NVDAStudio a encaminhar o trabalho ao pipeline. "
+	"Reconheca fielmente pedidos para criar, corrigir, modificar, testar ou "
+	"empacotar, para que o aplicativo execute a etapa apropriada."
 )
 
 

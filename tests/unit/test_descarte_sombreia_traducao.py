@@ -25,7 +25,7 @@ TAB = chr(9)
 
 
 def test_versao():
-	assert MODULE_VERSION == "4.25.0"
+	assert MODULE_VERSION == "4.28.0"
 
 
 def test_descarte_em_funcao_que_traduz_e_renomeado():

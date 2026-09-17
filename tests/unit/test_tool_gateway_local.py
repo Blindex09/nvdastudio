@@ -1,3 +1,6 @@
+import threading
+import time
+
 from nvdastudio.tools.tool_gateway import ToolGateway, ToolSchema
 
 
@@ -13,19 +16,24 @@ def test_registered_tool_executes_locally():
 	assert result == "ok"
 
 
-def test_register_builtin_tools_nao_engole_import_error():
-	"""
-	Bug real de auditoria: register_builtin_tools importava file_reader_tool,
-	ast_parser_tool, nvda_validator_tool -- nomes que nunca existiram nos
-	modulos reais (read_file, parse_python_code, validate_addon_structure).
-	O except Exception amplo engolia o ImportError silenciosamente, entao as
-	3 tools nativas nunca se registravam de verdade.
-	"""
-	gateway = ToolGateway()
-	gateway.register_builtin_tools()
-
-	for name in ("file_reader", "ast_parser", "nvda_validator"):
-		assert name in gateway._tools, f"{name} deveria ter sido registrada"
+def test_cancelamento_interrompe_a_espera_da_ferramenta():
+	cancel = threading.Event()
+	gateway = ToolGateway(cancel_event=cancel)
+	gateway.register(
+		"slow",
+		lambda: time.sleep(5),
+		ToolSchema("slow", "Espera", {"type": "object"}, []),
+	)
+	timer = threading.Timer(0.05, cancel.set)
+	timer.start()
+	started = time.monotonic()
+	try:
+		result, error = gateway.call("slow", {})
+	finally:
+		timer.cancel()
+	assert result is None
+	assert "cancelada" in (error or "")
+	assert time.monotonic() - started < 1.0
 
 
 class TestApprovalFailClosed:

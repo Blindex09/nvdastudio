@@ -270,3 +270,25 @@ class TestPortaoFinalSobreOPacote:
 		assert resultado.success is True, (
 			f"pacote correto barrado: {resultado.error!r} {resultado.stdout!r}"
 		)
+
+	def test_pacote_ignora_fontes_de_referencia_e_buildvars(self, tmp_path):
+		"""Regressao do pacote real do NVDAStudio: cache da API e buildVars.py
+		sao dados/build-time, nao modulos executados pelo GlobalPlugin."""
+		import zipfile
+
+		pacote = self._empacotar(tmp_path, {
+			"__init__.py": _plugin(_CHAMADA_ENGOLIDA),
+			"servico.py": _SERVICO_FIEL_AO_CONTRATO,
+		})
+		with zipfile.ZipFile(pacote, "a") as zf:
+			zf.writestr("buildVars.py", "label = _('somente build')\n")
+			zf.writestr(
+				"globalPlugins/MeuAddon/nvda_docs_cache/reference.py",
+				"label = _('codigo de referencia, nunca importado')\n",
+			)
+
+		resultado = CodeSandbox(timeout_sec=30).validate_final_package(pacote)
+
+		assert resultado.success is True, (
+			f"arquivo nao-runtime foi validado como codigo ativo: {resultado.error!r}"
+		)

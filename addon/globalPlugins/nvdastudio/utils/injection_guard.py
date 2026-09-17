@@ -27,9 +27,7 @@ def sanitize_untrusted_block(text: str, source_label: str = "fonte externa") -> 
 	Envolve um bloco de texto de origem NAO confiavel com delimitadores
 	explicitos antes de injetar como contexto num prompt de LLM.
 
-	Diferente de memory_manager.add()/_sanitize_entries_for_snapshot() (que
-	BLOQUEIA a entrada inteira -- aceitavel para uma unica entrada curta de
-	memoria), aqui o texto pode ser um resultado de busca web inteiro
+	O texto pode ser um resultado de busca web inteiro
 	(varios KB, majoritariamente legitimo) -- descartar tudo por causa de
 	uma frase suspeita perderia informacao real. Em vez disso: envolve o
 	bloco com marcadores deixando explicito para o modelo que o conteudo e

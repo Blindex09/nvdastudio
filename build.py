@@ -13,7 +13,7 @@ DIST_DIR = os.path.join(ROOT, "dist")
 # de verdade dentro de addon/globalPlugins/nvdastudio/ (nested, nao so na
 # raiz do projeto) e seria zipado pro .nvda-addon final num build real.
 EXCLUDE_DIRS = {
-    "__pycache__", "bin", "tests", "_tests", "pydantic", "hermes_bridge",
+    "__pycache__", "bin", "tests", "_tests", "hermes_bridge",
     "api_server", "click", "colorama",
     ".ruff_cache", ".mypy_cache", ".pytest_cache", ".hypothesis", ".git",
 }
@@ -22,17 +22,8 @@ EXCLUDE_FILES = {"AI_MODULE_SPEC.md", "cli.py"}
 
 # Padrões de diretório a excluir (verificado via endswith)
 EXCLUDE_DIR_PATTERNS = (".dist-info", ".egg-info")
-LEGACY_DIST_INFO_PREFIXES = (
-    "pydantic-",
-    "anyio-4.13.0",
-    "certifi-2026.2.25",
-    "idna-3.11",
-    "typing_extensions-4.15.0",
-)
 
-# Skills folder AGORA É ESSENCIAL (SKILL.md + skill_registry.json)
-# NAO excluir skills/ — ela contem metadados das skills nativas
-EXCLUDE_TOP_DIRS = set()  # Vazio — skills/ é essencial agora
+EXCLUDE_TOP_DIRS: set = set()
 
 
 def read_version() -> str:
@@ -117,12 +108,6 @@ def build() -> str:
             for dirpath, _, filenames in os.walk(lib_dir):
                 normalized = dirpath.replace("\\", "/").lower()
                 if ".dist-info" not in normalized:
-                    continue
-                dist_info_dir = next(
-                    (part for part in dirpath.replace("\\", "/").split("/") if part.endswith(".dist-info")),
-                    "",
-                )
-                if dist_info_dir.startswith(LEGACY_DIST_INFO_PREFIXES):
                     continue
                 for filename in filenames:
                     upper_name = filename.upper()

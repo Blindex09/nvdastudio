@@ -6,10 +6,9 @@ como AGENTE dentro de trilhos: `droid exec --auto medium` num workdir isolado,
 onde o droid EDITA arquivos, RODA comandos e ITERA ate produzir o addon -- o
 loop das ferramentas de ponta (Cursor/Claude Code), com o droid como motor.
 
-Estado atual (pos-demolicao do staged, 2026-09-06, ver
-docs/arquitetura-agentica-caminho3-2026-09-06.md):
-  - Este e o UNICO caminho de geracao. O orchestrator (_run_pipeline_agentic) o
-    consome de verdade -- planner/sub_agents/pipeline staged foram removidos.
+Estado atual:
+  - Este e o unico caminho de geracao. O orchestrator chama run_agentic_build;
+    o antigo pipeline staged foi removido.
   - Injeta o contexto NVDA completo (nvda_context.get_docs_code_generation +
     NVDA_SYSTEM_PROMPT) no system-prompt.
   - Validacao pelos gates: _run_gates roda sintaxe/estrutura + code_sandbox
@@ -19,25 +18,31 @@ Blast radius: workdir descartavel + `--auto medium` (edita/roda/build/git local,
 NUNCA push/sudo/producao). Nunca usa --skip-permissions-unsafe.
 """
 import ast
+import json
 import os
+import queue
 import subprocess
 import tempfile
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Callable
 
 from ..ai.factory_client import FactoryClientError
-from .agentic_backends import AgenticBackend, get_backend, parse_droid_tokens
+from .agentic_backends import AgenticBackend, get_backend
+from .agent_tools import (
+	AgentToolContext, build_agent_tool_gateway, execute_agent_tool,
+	get_agent_tool_schemas,
+)
+from .agent_checkpoint import (
+	AgentCheckpointStore, checkpoint_store, export_client_history,
+	restore_client_history,
+)
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-# Compat: os tokens do droid sao parseados pelo backend agora (agentic_backends).
-# Mantido como nome local porque testes e leitores antigos referenciam
-# agentic_driver._parse_droid_tokens.
-_parse_droid_tokens = parse_droid_tokens
-
-MODULE_VERSION = "0.9.0"
+MODULE_VERSION = "0.15.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -72,8 +77,29 @@ Como trabalhar (voce e um AGENTE, use isso):
 1. Crie os arquivos no diretorio de trabalho atual.
 2. RODE `python -c "import ast; ast.parse(open('<arquivo>.py').read())"` em cada .py
    que criar, para confirmar que a sintaxe esta valida. Corrija e repita ate passar.
-3. Confirme que manifest.ini existe e tem os campos obrigatorios.
-Entregue apenas quando o addon estiver completo e a sintaxe de todos os .py validada."""
+3. Para qualquer API externa, consulte a documentacao oficial atual antes de
+   escrever o endpoint, o nome do modelo ou o formato do payload. Nunca invente
+   uma API a partir da memoria. Para o Gemini Interactions API, a referencia
+   oficial usa `https://generativelanguage.googleapis.com/v1beta/interactions`,
+   `input` como itens `{"type": "text", "text": "..."}` e
+   `{"type": "audio", "data": "<base64>", "mime_type": "audio/..."}`;
+   no momento, `gemini-3.8-flash` e o modelo mostrado na referencia de audio;
+   ainda assim confirme o modelo vigente na documentacao antes de escolher um.
+4. Explique em portugues o que vai fazer antes de usar ferramentas e informe
+   descobertas relevantes durante o trabalho. Use AskUser se precisar de uma
+   escolha do usuario. Nao abra comandos de terminal que aguardem input.
+   Use timeouts em rede. Nao mostre codigo ou prompts internos na conversa.
+   Mantenha os arquivos-fonte na raiz do diretorio de trabalho, inclusive apos
+   validar. O NVDAStudio empacota e entrega o resultado depois de seus gates;
+   nao crie um ZIP em substituicao aos fontes nem declare o pacote entregue.
+5. Confirme que manifest.ini existe e tem os campos obrigatorios.
+6. Crie testes automatizados proporcionais ao risco da mudança. Para bugs,
+   inclua um teste de regressão que falharia antes da correção. Execute primeiro
+   análise estática e testes locais; só use APIs reais quando as verificações
+   baratas não forem suficientes. Inspecione os dois lados de cada integração.
+Entregue apenas quando o addon estiver completo, a sintaxe de todos os .py
+validada e a verificacao final concluida. Ao terminar, escreva um resumo final
+curto do que foi criado e dos testes executados."""
 
 
 @dataclass
@@ -97,6 +123,9 @@ class AgenticBuildResult:
 	rounds: int = 1
 	# Direcao ao vivo: True quando o usuario INTERROMPEU o build (nao e falha).
 	cancelled: bool = False
+	checkpoint_path: str = ""
+	trace: list[dict] = field(default_factory=list)
+	evaluation: dict = field(default_factory=dict)
 
 
 def _build_nvda_context(request: str) -> str:
@@ -140,12 +169,15 @@ def _build_system_prompt(
 def _coletar_arquivos(workdir: str) -> list[str]:
 	"""Caminhos relativos dos arquivos que o droid produziu, ignorando o que e
 	interno do proprio droid/git."""
-	ignorar = {".git", ".factory", "__pycache__", ".droid"}
+	ignorar = {".git", ".factory", "__pycache__", ".droid", ".pytest_cache"}
 	achados: list[str] = []
 	for raiz, dirs, arquivos in os.walk(workdir):
 		dirs[:] = [d for d in dirs if d not in ignorar]
 		for nome in arquivos:
-			if nome == "prompt.txt" or nome == "system-prompt.txt":
+			if nome in {"prompt.txt", "system-prompt.txt"} or nome.lower().endswith((".nvda-addon", ".zip")):
+				# O pacote produzido pelo agente é um artefato intermediário. Ele
+				# não deve virar bloco de código nem substituir o empacotamento
+				# determinístico da interface para a pasta de saída final.
 				continue
 			rel = os.path.relpath(os.path.join(raiz, nome), workdir).replace("\\", "/")
 			achados.append(rel)
@@ -172,9 +204,37 @@ def _validar_basico(workdir: str, files: list[str]) -> tuple[bool, bool, bool]:
 	return has_manifest, has_entry_point, py_syntax_ok
 
 
+def _build_failure_detail(
+	returncode: int, files: list[str], has_manifest: bool,
+	has_entry: bool, syntax_ok: bool, stderr: str, stdout: str,
+) -> str:
+	"""Produz diagnóstico curto e útil quando o gate determinístico reprova."""
+	problemas = []
+	if returncode != 0:
+		problemas.append(f"o agente terminou com código {returncode}")
+	if not files:
+		problemas.append("nenhum arquivo foi encontrado na pasta de trabalho")
+	if files and not has_manifest:
+		problemas.append("manifest.ini ausente")
+	if files and not has_entry:
+		problemas.append("ponto de entrada do addon ausente")
+	if files and not syntax_ok:
+		problemas.append("há erro de sintaxe Python")
+	diagnostico = (stderr or "").strip()
+	if diagnostico:
+		linhas = [linha.strip() for linha in diagnostico.splitlines() if linha.strip()]
+		if linhas:
+			problemas.append(f"saída do agente: {linhas[-1][:300]}")
+	return "; ".join(problemas) or "build agentica nao passou na validacao basica"
+
+
 class _BuildCancelled(Exception):
 	"""O usuario pediu para INTERROMPER o build em andamento (direcao ao vivo).
 	Distinta de timeout/erro: nao e falha do agente, e escolha do usuario."""
+
+
+class _ProviderSteer(Exception):
+	"""Nova instrução recebida enquanto um provedor nativo transmitia texto."""
 
 
 def _run_streaming(
@@ -257,6 +317,486 @@ def _run_streaming(
 	return proc.returncode, "".join(out_lines), "".join(err_lines)
 
 
+def _rpc_request(request_id: str, method: str, params: dict) -> dict[str, object]:
+	"""Monta uma mensagem do protocolo Factory stream-jsonrpc."""
+	return {
+		"jsonrpc": "2.0",
+		"factoryApiVersion": "1.0.0",
+		"factoryProtocolVersion": "1.193.0",
+		"type": "request",
+		"id": request_id,
+		"method": method,
+		"params": params,
+	}
+
+
+def _permission_request_details(payload: dict) -> tuple[str, dict]:
+	"""Extrai nome e argumentos de uma solicitação Factory de permissão."""
+	params = payload.get("params")
+	if not isinstance(params, dict):
+		return "ferramenta desconhecida", {}
+	uses = params.get("toolUses") or params.get("tool_uses") or []
+	if not uses and isinstance(params.get("toolUse"), dict):
+		uses = [params["toolUse"]]
+	if isinstance(uses, list) and uses:
+		use = uses[0] if isinstance(uses[0], dict) else {}
+		details_obj = use.get("details")
+		details: dict = details_obj if isinstance(details_obj, dict) else dict(use)
+		name = details.get("toolName") or details.get("tool_name") or use.get("name") or details.get("type")
+		arguments = details.get("input") or details.get("parameters") or details.get("arguments") or details
+		return str(name or "ferramenta desconhecida"), arguments if isinstance(arguments, dict) else {}
+	name = params.get("toolName") or params.get("tool_name") or params.get("name")
+	arguments = params.get("input") or params.get("parameters") or params.get("arguments") or {}
+	return str(name or "ferramenta desconhecida"), arguments if isinstance(arguments, dict) else {}
+
+
+def _permission_outcome(payload: dict, approved: bool) -> str:
+	"""Escolhe um valor realmente oferecido pelo servidor Factory."""
+	params = payload.get("params")
+	options = params.get("options", []) if isinstance(params, dict) else []
+	if isinstance(options, list):
+		values = [str(item.get("value")) for item in options if isinstance(item, dict) and item.get("value") is not None]
+		if approved:
+			return next((value for value in values if value.casefold() in {"proceed_once", "proceedonce"}), "cancel")
+		return next((value for value in values if value.casefold() == "cancel"), "cancel")
+	return "proceed_once" if approved else "cancel"
+
+
+def _answer_questions(payload: dict, callback: Callable[[list[str]], list[str]] | None) -> dict:
+	params = payload.get("params") or {}
+	questions = params.get("questions") or []
+	cancelled = {"cancelled": True, "answers": []}
+	if not callback or not questions or any(not isinstance(q, dict) for q in questions):
+		return cancelled
+	try:
+		labels = [str(q.get("question") or "") + (
+			"\nOpções: " + "; ".join(map(str, q["options"])) if q.get("options") else ""
+		) for q in questions]
+		answers = callback(labels)
+		if len(answers) != len(questions) or any(not a.strip() for a in answers):
+			return cancelled
+		return {"answers": [
+			{"index": q["index"], "question": q["question"], "answer": a}
+			for q, a in zip(questions, answers, strict=True)
+		]}
+	except Exception as exc:
+		_logger.warning("[AGENTIC] falha ao perguntar ao usuario: %s", exc)
+		return cancelled
+
+
+_AGENT_TOOL_SCHEMAS = get_agent_tool_schemas()
+
+
+def _native_call_parts(call: dict) -> tuple[str, dict, str]:
+	function = call.get("function") if isinstance(call, dict) else {}
+	function = function if isinstance(function, dict) else {}
+	name = str(function.get("name") or call.get("name") or "")
+	arguments = function.get("arguments", call.get("arguments", {}))
+	if isinstance(arguments, str):
+		try:
+			arguments = json.loads(arguments)
+		except json.JSONDecodeError:
+			arguments = {}
+	return name, arguments if isinstance(arguments, dict) else {}, str(call.get("id") or name)
+
+
+def run_provider_agentic_build(
+	request: str, *, provider: str, model_id: str, workdir: str | None = None,
+	use_nvda_context: bool = True, correction_rounds: int = 0,
+	progress_callback: Callable[[str], None] | None = None,
+	cancel_event: "threading.Event | None" = None,
+	steer_provider: Callable[[], str] | None = None,
+	permission_callback: Callable[[str, dict], bool] | None = None,
+	ask_user_callback: Callable[[list[str]], list[str]] | None = None,
+	resume: bool = True,
+	state_store: AgentCheckpointStore | None = None,
+) -> AgenticBuildResult:
+	"""Loop agêntico comum para provedores HTTP com function calling."""
+	from ..ai.llm_factory import create_llm_client
+
+	store = state_store or checkpoint_store
+	state = store.find_resumable(request, provider, model_id) if resume and workdir is None else None
+	was_resumed = state is not None
+	workdir = workdir or (state.workdir if state else tempfile.mkdtemp(prefix="nvdastudio_agentic_"))
+	os.makedirs(workdir, exist_ok=True)
+	state = state or store.new(request, provider, model_id, workdir)
+	tokens = state.tokens
+	turns = state.turn
+	starting_turn = turns
+	corrections = state.corrections
+	last_content = ""
+	try:
+		client = create_llm_client(model_id=model_id, provider=provider)
+		restore_client_history(client, state.client_history)
+		tool_context = AgentToolContext(
+			workdir=workdir,
+			list_files=lambda: _coletar_arquivos(workdir),
+			validate=lambda: _run_gates(workdir, _coletar_arquivos(workdir)),
+			permission_callback=permission_callback,
+			ask_user_callback=ask_user_callback,
+			client=client,
+			cancel_event=cancel_event,
+		)
+		tool_gateway = build_agent_tool_gateway(tool_context)
+		system = _build_system_prompt(request, use_nvda_context=use_nvda_context) + (
+			"\n\nUse as ferramentas de workspace para produzir os arquivos reais. "
+			"Nao devolva codigo apenas na conversa. Valide antes de concluir."
+		)
+		message = state.message or request
+		tool_results: list[dict[str, str]] | None = state.tool_results
+		max_turns = 32 + max(0, correction_rounds) * 8
+		state.event("run_resumed" if was_resumed else "run_started", turn=turns)
+		store.save(state)
+		while turns - starting_turn < max_turns:
+			if cancel_event is not None and cancel_event.is_set():
+				state.status = "cancelled"
+				state.event("cancelled", turn=turns)
+				store.save(state)
+				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, checkpoint_path=store.path(state.run_id), trace=state.trace)
+			if steer_provider is not None:
+				steer = (steer_provider() or "").strip()
+				if steer:
+					message = f"Nova instrucao do usuario, aplique-a agora:\n{steer}\n\n{message}"
+			def _on_native_chunk(chunk: str) -> None:
+				if cancel_event is not None and cancel_event.is_set():
+					raise _BuildCancelled()
+				if steer_provider is not None:
+					new_instruction = (steer_provider() or "").strip()
+					if new_instruction:
+						raise _ProviderSteer(new_instruction)
+				if progress_callback:
+					progress_callback(chunk)
+
+			try:
+				state.message = message
+				state.tool_results = tool_results
+				state.client_history = export_client_history(client)
+				state.event("model_call_started", turn=turns + 1, model=model_id)
+				store.save(state)
+				response = client.chat(
+					message, system_override=system, tools=_AGENT_TOOL_SCHEMAS,
+					tool_results=tool_results, step_type="code_generation",
+					on_chunk=_on_native_chunk,
+				)
+			except _ProviderSteer as steer:
+				message = f"Nova instrucao do usuario, aplique-a agora:\n{steer}"
+				tool_results = None
+				state.message = message
+				state.tool_results = None
+				state.event("steered", instruction=str(steer)[:1000])
+				store.save(state)
+				continue
+			except _BuildCancelled:
+				state.status = "cancelled"
+				state.event("cancelled", turn=turns)
+				store.save(state)
+				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, checkpoint_path=store.path(state.run_id), trace=state.trace)
+			turns += 1
+			tokens += int(response.tokens_used or 0)
+			state.turn = turns
+			state.tokens = tokens
+			state.client_history = export_client_history(client)
+			state.event("model_call_finished", turn=turns, tool_calls=len(response.tool_calls), tokens=int(response.tokens_used or 0))
+			last_content = response.content or last_content
+			if not response.tool_calls:
+				current_files = _coletar_arquivos(workdir)
+				if progress_callback:
+					progress_callback(
+						"A rodada do agente terminou. O NVDAStudio está executando "
+						"validações independentes."
+					)
+				passed_now, report_now = (
+					_run_gates(workdir, current_files)
+					if current_files else (False, "nenhum arquivo produzido")
+				)
+				if passed_now:
+					if progress_callback:
+						progress_callback("As validações independentes foram aprovadas.")
+					break
+				if corrections >= correction_rounds:
+					break
+				corrections += 1
+				state.corrections = corrections
+				if progress_callback:
+					progress_callback(
+						f"As validações independentes encontraram problemas. "
+						f"Iniciando a correção automática {corrections} de {correction_rounds}."
+					)
+				message = (
+					"A verificacao deterministica reprovou o addon. Corrija os arquivos "
+					"existentes, valide novamente e so entao conclua. Problemas:\n" + report_now
+				)
+				tool_results = None
+				continue
+			tool_results = []
+			turn_signatures: list[str] = []
+			for call in response.tool_calls:
+				name, arguments, call_id = _native_call_parts(call)
+				signature = json.dumps([name, arguments], ensure_ascii=False, sort_keys=True, default=str)
+				turn_signatures.append(signature)
+				if progress_callback:
+					progress_callback(f"Vou usar a ferramenta {name} para realizar esta etapa.")
+				output = execute_agent_tool(tool_gateway, name, arguments)
+				try:
+					tool_ok = not bool(json.loads(output).get("error"))
+				except (ValueError, AttributeError):
+					tool_ok = False
+				state.event("tool_result", tool=name, call_id=call_id, success=tool_ok)
+				tool_results.append({"tool_call_id": call_id, "content": output})
+			batch_signature = "\n".join(turn_signatures)
+			previous_batches = [
+				event.get("signature") for event in state.trace
+				if event.get("kind") == "tool_batch"
+			]
+			state.event("tool_batch", signature=batch_signature[:8000])
+			if len(previous_batches) >= 2 and previous_batches[-2:] == [batch_signature, batch_signature]:
+				state.event("loop_detected", turn=turns)
+				last_content = "Loop de ferramentas repetidas interrompido pelo detector determinístico."
+				break
+			message = "Continue o trabalho usando os resultados das ferramentas."
+			state.message = message
+			state.tool_results = tool_results
+			state.client_history = export_client_history(client)
+			store.save(state)
+	except Exception as exc:
+		state.status = "failed"
+		state.event("failed", error=str(exc)[:2000])
+		store.save(state)
+		return AgenticBuildResult(False, workdir, tokens=tokens, error=f"{provider}: {exc}", checkpoint_path=store.path(state.run_id), trace=state.trace)
+
+	files = _coletar_arquivos(workdir)
+	has_manifest, has_entry, syntax_ok = _validar_basico(workdir, files)
+	passed, report = _run_gates(workdir, files) if files else (False, "nenhum arquivo produzido")
+	success = bool(files) and has_manifest and has_entry and syntax_ok and passed
+	if progress_callback and not passed:
+		progress_callback(
+			"As validações independentes ainda encontraram problemas; "
+			"a entrega não será marcada como concluída."
+		)
+	state.status = "completed" if success else "failed"
+	state.event("run_finished", success=success, gate_report=report[:4000])
+	state.client_history = export_client_history(client)
+	store.save(state)
+	return AgenticBuildResult(
+		success, workdir, files=files, has_manifest=has_manifest,
+		has_entry_point=has_entry, py_syntax_ok=syntax_ok, returncode=0 if success else -1,
+		tokens=tokens, stdout_tail=last_content[-2000:], error="" if success else report,
+		execution_ok=passed, gate_report=report, rounds=corrections + 1,
+		checkpoint_path=store.path(state.run_id), trace=state.trace,
+	)
+def _run_jsonrpc_session(
+	cmd: list[str], *, workdir: str, prompt: str, system_prompt: str, timeout: int,
+	progress_callback: Callable[[str], None] | None = None,
+	cancel_event: "threading.Event | None" = None,
+	steer_provider: Callable[[], str] | None = None,
+	permission_callback: Callable[[str, dict], bool] | None = None,
+	ask_user_callback: Callable[[list[str]], list[str]] | None = None,
+) -> tuple[int, str, str]:
+	"""Executa uma sessão Droid multi-turn sobre JSON-RPC.
+
+	A sessão permanece viva durante cada rodada. O callback de steer pode
+	interromper o turno atual e enviar a nova instrução sem destruir o contexto
+	ou reiniciar o trabalho do zero.
+	"""
+	proc = subprocess.Popen(
+		cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+		text=True, encoding="utf-8", errors="replace", cwd=workdir,
+		creationflags=CREATE_NO_WINDOW,
+	)
+	errors: list[str] = []
+	def drain_errors():
+		if proc.stderr is not None:
+			for line in proc.stderr:
+				errors.append(line)
+	reader = threading.Thread(target=drain_errors, daemon=True)
+	reader.start()
+	try:
+		code, output, error = _exchange_jsonrpc(
+			proc, cmd=cmd, workdir=workdir, prompt=prompt, system_prompt=system_prompt,
+			timeout=timeout, progress_callback=progress_callback, cancel_event=cancel_event,
+			steer_provider=steer_provider, permission_callback=permission_callback,
+			ask_user_callback=ask_user_callback,
+		)
+	finally:
+		if proc.poll() is None:
+			proc.kill()
+		proc.wait()
+		reader.join(timeout=2)
+		for stream in (proc.stdin, proc.stdout, proc.stderr):
+			if stream is not None:
+				try:
+					stream.close()
+				except OSError:
+					_logger.debug("[AGENTIC] canal ja fechado")
+	return code, output, error or "".join(errors)[-2000:]
+
+
+def _exchange_jsonrpc(
+	proc, *, cmd: list[str], workdir: str, prompt: str, system_prompt: str, timeout: int,
+	progress_callback: Callable[[str], None] | None = None,
+	cancel_event: threading.Event | None = None,
+	steer_provider: Callable[[], str] | None = None,
+	permission_callback: Callable[[str, dict], bool] | None = None,
+	ask_user_callback: Callable[[list[str]], list[str]] | None = None,
+) -> tuple[int, str, str]:
+	if proc.stdin is None or proc.stdout is None:
+		proc.kill()
+		return proc.returncode or -1, "", "Droid RPC sem canais de entrada/saída."
+
+	linhas: list[str] = []
+	eventos: queue.Queue[dict | str] = queue.Queue()
+	stdin = proc.stdin
+
+	def _ler_saida() -> None:
+		assert proc.stdout is not None
+		for linha in proc.stdout:
+			texto = linha.strip()
+			if not texto:
+				continue
+			linhas.append(texto)
+			try:
+				eventos.put(json.loads(texto))
+			except json.JSONDecodeError:
+				eventos.put(texto)
+
+	threading.Thread(target=_ler_saida, daemon=True).start()
+
+	def _enviar(metodo: str, params: dict) -> str:
+		request_id = str(uuid.uuid4())
+		pedido = _rpc_request(request_id, metodo, params)
+		stdin.write(json.dumps(pedido, ensure_ascii=False) + "\n")
+		stdin.flush()
+		return request_id
+
+	init_id = _enviar("droid.initialize_session", {
+		"machineId": f"nvdastudio-{os.getpid()}", "cwd": workdir,
+		"modelId": cmd[cmd.index("-m") + 1], "interactionMode": "auto",
+		"autonomyLevel": cmd[cmd.index("--auto") + 1],
+		"systemPrompt": {"type": "preset", "preset": "droid", "append": system_prompt},
+		"disableBuiltinSkills": False,
+	})
+	init_deadline = time.time() + min(timeout, 60)
+	while time.time() < init_deadline:
+		if cancel_event is not None and cancel_event.is_set():
+			raise _BuildCancelled()
+		try:
+			payload = eventos.get(timeout=0.25)
+		except queue.Empty:
+			if proc.poll() is not None:
+				return -1, "\n".join(linhas), "Droid encerrou durante a inicialização da sessão."
+			continue
+		if isinstance(payload, dict) and str(payload.get("id")) == init_id:
+			if payload.get("error") is not None:
+				return -1, "\n".join(linhas), str(payload["error"])
+			break
+	else:
+		proc.kill()
+		proc.wait()
+		return -1, "\n".join(linhas), "Tempo esgotado ao iniciar a sessão Droid."
+	_enviar("droid.add_user_message", {"text": prompt})
+
+	deadline = time.time() + timeout
+	turn_interrupted = False
+	steer_pending = ""
+	completou = False
+	while time.time() < deadline:
+		if cancel_event is not None and cancel_event.is_set():
+			try:
+				_enviar("droid.interrupt_session", {})
+			except (BrokenPipeError, OSError):
+				pass
+			proc.kill()
+			proc.wait()
+			raise _BuildCancelled()
+		if not turn_interrupted and steer_provider is not None:
+			try:
+				steer_pending = (steer_provider() or "").strip()
+			except Exception:  # pragma: no cover - ajuste é best-effort
+				steer_pending = ""
+			if steer_pending:
+				_enviar("droid.interrupt_session", {})
+				turn_interrupted = True
+		try:
+			payload = eventos.get(timeout=0.25)
+		except queue.Empty:
+			if proc.poll() is not None:
+				break
+			continue
+		if progress_callback is not None and isinstance(payload, dict):
+			try:
+				progress_callback(json.dumps(payload, ensure_ascii=False))
+			except Exception as exc:
+				_logger.warning("[AGENTIC] callback de progresso falhou: %s", exc)
+		if not isinstance(payload, dict):
+			continue
+		if payload.get("error"):
+			return -1, "\n".join(linhas), str(payload["error"])
+		if payload.get("method") in {"droid.request_permission", "droid.ask_user"}:
+			if payload.get("method") == "droid.ask_user":
+				resposta = _answer_questions(payload, ask_user_callback)
+			else:
+				tool_name, arguments = _permission_request_details(payload)
+				approved = False
+				if permission_callback is not None:
+					try:
+						params_permission = payload.get("params") or {}
+						uses = params_permission.get("toolUses") or params_permission.get("tool_uses") or []
+						if isinstance(uses, list) and uses:
+							approved = all(permission_callback(*_permission_request_details(
+								{"params": {"toolUses": [use]}}
+							)) for use in uses)
+						else:
+							approved = bool(permission_callback(tool_name, arguments))
+					except Exception:  # pragma: no cover - fail-closed
+						approved = False
+				resposta = {"outcome": _permission_outcome(payload, approved)}
+			stdin.write(json.dumps({
+				"jsonrpc": "2.0",
+				"factoryApiVersion": "1.0.0",
+				"factoryProtocolVersion": "1.193.0",
+				"type": "response",
+				"id": payload.get("id"),
+				"result": resposta,
+			}) + "\n")
+			stdin.flush()
+			continue
+		params = payload.get("params")
+		if not isinstance(params, dict):
+			params = {}
+		notificacao = params.get("notification", {})
+		if not isinstance(notificacao, dict):
+			notificacao = {}
+		if notificacao.get("type") == "agent_turn_completed":
+			if not steer_pending and steer_provider is not None:
+				steer_pending = (steer_provider() or "").strip()
+			if steer_pending:
+				_enviar("droid.add_user_message", {"text": steer_pending})
+				steer_pending = ""
+				turn_interrupted = False
+				continue
+			if notificacao.get("reason") not in {None, "completed"}:
+				return -1, "\n".join(linhas), "O turno do agente terminou sem concluir: " + str(notificacao.get("reason"))
+			completou = True
+			break
+		if payload.get("type") == "result":
+			completou = True
+			break
+
+	try:
+		stdin.close()
+	except OSError:
+		pass
+	if proc.poll() is None:
+		try:
+			proc.wait(timeout=5)
+		except subprocess.TimeoutExpired:
+			proc.kill()
+			proc.wait()
+	if not completou:
+		return -1, "\n".join(linhas), "Sessão encerrada sem conclusão (timeout ou término inesperado)."
+	return 0, "\n".join(linhas), ""
+
+
 def _droid_once(
 	request: str,
 	workdir: str | None = None,
@@ -269,6 +809,9 @@ def _droid_once(
 	backend: AgenticBackend | None = None,
 	progress_callback: Callable[[str], None] | None = None,
 	cancel_event: "threading.Event | None" = None,
+	steer_provider: Callable[[], str] | None = None,
+	permission_callback: Callable[[str, dict], bool] | None = None,
+	ask_user_callback: Callable[[list[str]], list[str]] | None = None,
 ) -> AgenticBuildResult:
 	"""UMA rodada do motor agentico + validacao BASICA (manifest/entry/sintaxe).
 
@@ -326,7 +869,7 @@ def _droid_once(
 		return AgenticBuildResult(success=False, workdir=workdir, error=f"falha ao escrever prompts: {exc}")
 
 	cmd = backend.build_command(
-		cli, workdir=workdir, system_prompt_path=sp_path, prompt_path=prompt_path,
+		cli, workdir=workdir, prompt_path=prompt_path,
 		model_id=model_id, autonomy=autonomy,
 	)
 	_logger.info(
@@ -335,10 +878,22 @@ def _droid_once(
 
 	t0 = time.time()
 	try:
-		returncode, stdout, stderr = _run_streaming(
-			cmd, workdir=workdir, timeout=timeout, progress_callback=progress_callback,
-			cancel_event=cancel_event,
-		)
+		if "--input-format" in cmd and "stream-jsonrpc" in cmd:
+			with open(prompt_path, encoding="utf-8") as fh:
+				prompt_text = fh.read()
+			with open(sp_path, encoding="utf-8") as fh:
+				system_prompt_text = fh.read()
+			returncode, stdout, stderr = _run_jsonrpc_session(
+				cmd, workdir=workdir, prompt=prompt_text,
+				system_prompt=system_prompt_text, timeout=timeout,
+				progress_callback=progress_callback, cancel_event=cancel_event,
+				steer_provider=steer_provider, permission_callback=permission_callback, ask_user_callback=ask_user_callback,
+			)
+		else:
+			returncode, stdout, stderr = _run_streaming(
+				cmd, workdir=workdir, timeout=timeout, progress_callback=progress_callback,
+				cancel_event=cancel_event,
+			)
 	except _BuildCancelled:
 		return AgenticBuildResult(
 			success=False, workdir=workdir, duration_seconds=time.time() - t0,
@@ -364,6 +919,7 @@ def _droid_once(
 			_logger.debug("[AGENTIC] nao removeu %s: %s", p, exc)
 
 	files = _coletar_arquivos(workdir)
+	_logger.info("[AGENTIC] arquivos coletados (%d) em %s: %s", len(files), workdir, files[:20])
 	has_manifest, has_entry, syntax_ok = _validar_basico(workdir, files)
 	success = returncode == 0 and has_manifest and has_entry and syntax_ok and bool(files)
 
@@ -379,7 +935,9 @@ def _droid_once(
 		tokens=backend.parse_tokens(stdout),
 		stdout_tail=(stdout or "")[-2000:],
 		stderr_tail=(stderr or "")[-2000:],
-		error="" if success else "build agentica nao passou na validacao basica",
+		error="" if success else _build_failure_detail(
+			returncode, files, has_manifest, has_entry, syntax_ok, stderr, stdout,
+		),
 	)
 
 
@@ -393,6 +951,30 @@ def _read_files_dict(workdir: str, files: list[str]) -> dict[str, str]:
 		except OSError:
 			pass
 	return out
+
+
+def _project_source_files(files_dict: dict[str, str]) -> dict[str, str]:
+	"""Remove dependencias vendorizadas das analises do codigo do addon.
+
+	As bibliotecas em ``lib/`` continuam presentes nos testes de execucao e na
+	validacao estrutural/de ABI. Ruff, mypy e os validadores de acessibilidade,
+	por outro lado, devem julgar apenas o codigo mantido pelo autor do addon.
+	"""
+	return {
+		rel: content
+		for rel, content in files_dict.items()
+		if rel.replace("\\", "/").split("/", 1)[0].lower() != "lib"
+	}
+
+
+def _typecheck_source_files(files_dict: dict[str, str]) -> dict[str, str]:
+	"""Seleciona codigo de producao; testes possuem gate de execucao proprio."""
+	return {
+		rel: content
+		for rel, content in files_dict.items()
+		if not rel.replace("\\", "/").startswith("tests/")
+		and not os.path.basename(rel).startswith("test_")
+	}
 
 
 def _run_accessibility_gate(files_dict: dict[str, str]) -> list[str]:
@@ -443,7 +1025,9 @@ def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
 	   a classe principal num subprocesso com stubs NVDA -- pega NameError,
 	   assinatura de construtor errada, import que nao resolve (horizon: "se nao
 	   executou, nao esta verificado"). Import tardio (code_sandbox e pesado).
-	3. Acessibilidade: _run_accessibility_gate roda os validadores AST (NVDA-019,
+	3. Testes gerados: se houver tests/test_*.py, executa a suite em subprocesso
+	   isolado. Teste vermelho reprova a entrega e volta para a autocorrecao.
+	4. Acessibilidade: _run_accessibility_gate roda os validadores AST (NVDA-019,
 	   wx a11y, controlTypes) -- reintroduz a checagem que saiu com o staged.
 
 	O gate e do NVDAStudio (determinismo fora do modelo), nunca do droid -- e a
@@ -460,24 +1044,89 @@ def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
 		)
 	if not syntax_ok:
 		problemas.append("- Ha erro de SINTAXE em algum arquivo .py.")
+	files_dict = _read_files_dict(workdir, files)
+	project_files_dict = _project_source_files(files_dict)
+	typecheck_files_dict = _typecheck_source_files(project_files_dict)
+	try:
+		from .addon_builder import validate_addon_structure
+		estruturais = validate_addon_structure(workdir)
+	except Exception as exc:  # pragma: no cover - defesa
+		_logger.warning("[AGENTIC] validacao estrutural indisponivel: %s", exc)
+	else:
+		for problema in estruturais:
+			problemas.append(f"- {problema}")
 	if has_entry and syntax_ok:
 		try:
 			from .code_sandbox import CodeSandbox
-
-			res = CodeSandbox(timeout_sec=15).validate_addon_execution(
-				_read_files_dict(workdir, files),
-			)
-			if not res.success:
-				detalhe = (res.error or res.stderr or "").strip().replace("\n", " ")
-				problemas.append(
-					f"- Erro de EXECUCAO real ao importar/instanciar o addon: {detalhe[:400]}"
-				)
+			sandbox = CodeSandbox(timeout_sec=15)
 		except Exception as exc:  # pragma: no cover - defesa
-			# Gate indisponivel nao derruba a build -- degrada (fica sem o gate
-			# de execucao, mas o estrutural/sintaxe ja rodou).
-			_logger.warning("[AGENTIC] gate de execucao indisponivel: %s", exc)
+			_logger.warning("[AGENTIC] sandbox indisponível: %s", exc)
+			sandbox = None
+
+		if sandbox is not None:
+			try:
+				lint_result = sandbox.lint_check(project_files_dict)
+			except Exception as exc:  # pragma: no cover - defesa
+				_logger.warning("[AGENTIC] Ruff indisponível: %s", exc)
+			else:
+				if not lint_result.success:
+					detail = (
+						lint_result.error or lint_result.stdout or lint_result.stderr
+					).strip().replace("\n", " ")
+					problemas.append(f"- RUFF encontrou defeitos no código: {detail[:800]}")
+
+			try:
+				type_result = sandbox.typecheck(typecheck_files_dict)
+			except Exception as exc:  # pragma: no cover - defesa
+				_logger.warning("[AGENTIC] mypy indisponível: %s", exc)
+			else:
+				if not type_result.success:
+					detail = (
+						type_result.error or type_result.stdout or type_result.stderr
+					).strip().replace("\n", " ")
+					problemas.append(
+						f"- MYPY encontrou inconsistências de tipos: {detail[:800]}"
+					)
+
+			try:
+				res = sandbox.validate_addon_execution(files_dict)
+			except Exception as exc:  # pragma: no cover - defesa
+				_logger.warning("[AGENTIC] gate de execução indisponível: %s", exc)
+			else:
+				if not res.success:
+					detalhe = (res.error or res.stderr or "").strip().replace("\n", " ")
+					problemas.append(
+						f"- Erro de EXECUCAO real ao importar/instanciar o addon: {detalhe[:400]}"
+					)
+
+			test_relpaths = [
+				f for f in files
+				if f.endswith(".py")
+				and (
+					f.replace("\\", "/").startswith("tests/")
+					or os.path.basename(f).startswith("test_")
+				)
+			]
+			if test_relpaths:
+				try:
+					test_result = sandbox.run_test_suite(
+						files_dict, test_relpaths, timeout=30,
+					)
+				except Exception as exc:  # pragma: no cover - defesa
+					_logger.warning("[AGENTIC] executor de testes indisponível: %s", exc)
+				else:
+					if not test_result.success:
+						detalhe = (
+							test_result.error
+							or test_result.stderr
+							or test_result.stdout
+							or "suite terminou com falha sem detalhes"
+						).strip().replace("\n", " ")
+						problemas.append(
+							f"- TESTES automatizados falharam: {detalhe[:800]}"
+						)
 		# Gate de acessibilidade (so vale a pena com sintaxe valida).
-		a11y = _run_accessibility_gate(_read_files_dict(workdir, files))
+		a11y = _run_accessibility_gate(project_files_dict)
 		if a11y:
 			problemas.append(
 				"- Problemas de ACESSIBILIDADE (corrija todos):\n  " + "\n  ".join(a11y)
@@ -499,6 +1148,10 @@ def run_agentic_build(
 	progress_callback: Callable[[str], None] | None = None,
 	cancel_event: "threading.Event | None" = None,
 	steer_provider: Callable[[], str] | None = None,
+	permission_callback: Callable[[str, dict], bool] | None = None,
+	ask_user_callback: Callable[[list[str]], list[str]] | None = None,
+	resume: bool = True,
+	state_store: AgentCheckpointStore | None = None,
 ) -> AgenticBuildResult:
 	"""Ponto de entrada publico do driver agentico.
 
@@ -512,27 +1165,47 @@ def run_agentic_build(
 	DIRECAO AO VIVO:
 	- `cancel_event`: se setado durante uma rodada, o processo e morto e a build
 	  para (result.cancelled=True). Tambem e checado ENTRE rodadas.
-	- `steer_provider`: chamado no inicio de cada rodada de correcao; se devolver
-	  texto (um ajuste que o usuario digitou durante a geracao), ele e dobrado no
-	  prompt da proxima rodada. O droid exec e one-shot, entao redirecionar
-	  acontece na FRONTEIRA da rodada, com o workdir preservado -- nada se perde.
+	- `steer_provider`: consultado durante a sessão RPC; se devolver texto, o
+	  turno atual é interrompido e a nova instrução continua no mesmo contexto.
 	"""
+	store = state_store or checkpoint_store
+	checkpoint = store.find_resumable(request, "factory", model_id) if resume and workdir is None else None
 	# Resolve o workdir UMA vez -- todas as rodadas de correcao compartilham a
 	# mesma pasta (o droid corrige os arquivos que ja existem la).
 	if workdir is None:
-		workdir = tempfile.mkdtemp(prefix="nvdastudio_agentic_")
+		workdir = checkpoint.workdir if checkpoint else tempfile.mkdtemp(prefix="nvdastudio_agentic_")
+	checkpoint = checkpoint or store.new(request, "factory", model_id, workdir)
+	checkpoint.event("run_started" if checkpoint.turn == 0 else "run_resumed", turn=checkpoint.turn)
+	store.save(checkpoint)
 
 	# Resolve o backend UMA vez -- todas as rodadas de correcao usam o mesmo motor.
 	if backend is None:
 		backend = get_backend()
 
+	initial_request = request
+	if checkpoint.turn:
+		initial_request = (
+			"Retome a execução anterior. Inspecione e preserve os arquivos que já "
+			"existem no workspace antes de continuar. Pedido original:\n" + request
+		)
 	result = _droid_once(
-		request, workdir, model_id=model_id, autonomy=autonomy, timeout=timeout,
+		initial_request, workdir, model_id=model_id, autonomy=autonomy, timeout=timeout,
 		use_nvda_context=use_nvda_context, extra_context=extra_context, backend=backend,
 		progress_callback=progress_callback, cancel_event=cancel_event,
+		steer_provider=steer_provider, permission_callback=permission_callback, ask_user_callback=ask_user_callback,
 	)
+	checkpoint.turn += 1
+	checkpoint.tokens += result.tokens
+	checkpoint.event("model_round_finished", turn=checkpoint.turn, success=result.success, files=len(result.files))
+	checkpoint.status = "cancelled" if result.cancelled else "running"
+	store.save(checkpoint)
 	tokens_acumulados = result.tokens  # soma o custo de TODAS as rodadas
 	if result.cancelled or correction_rounds <= 0 or not result.files:
+		checkpoint.status = "cancelled" if result.cancelled else ("completed" if result.success else "failed")
+		checkpoint.event("run_finished", success=result.success)
+		store.save(checkpoint)
+		result.checkpoint_path = store.path(checkpoint.run_id)
+		result.trace = checkpoint.trace
 		return result
 
 	for rodada in range(1, correction_rounds + 1):
@@ -540,6 +1213,11 @@ def run_agentic_build(
 		if cancel_event is not None and cancel_event.is_set():
 			result.cancelled = True
 			result.tokens = tokens_acumulados
+			checkpoint.status = "cancelled"
+			checkpoint.event("cancelled", turn=checkpoint.turn)
+			store.save(checkpoint)
+			result.checkpoint_path = store.path(checkpoint.run_id)
+			result.trace = checkpoint.trace
 			return result
 		passou, relatorio = _run_gates(result.workdir, result.files)
 		result.execution_ok = passou
@@ -560,7 +1238,14 @@ def run_agentic_build(
 				ajuste = ""
 
 		if passou and not ajuste:
+			if progress_callback:
+				progress_callback("As validações independentes foram aprovadas.")
 			result.success = result.success and passou
+			checkpoint.status = "completed" if result.success else "failed"
+			checkpoint.event("run_finished", success=result.success, gate_report=relatorio[:4000])
+			store.save(checkpoint)
+			result.checkpoint_path = store.path(checkpoint.run_id)
+			result.trace = checkpoint.trace
 			return result
 
 		if passou:
@@ -577,6 +1262,11 @@ def run_agentic_build(
 				"[AGENTIC] gate reprovou (rodada %d/%d), reinjetando no motor.",
 				rodada, correction_rounds,
 			)
+			if progress_callback:
+				progress_callback(
+					f"As validações independentes encontraram problemas. "
+					f"Iniciando a correção automática {rodada} de {correction_rounds}."
+				)
 			correcao = (
 				"O addon que voce gerou no diretorio de trabalho atual NAO passou na "
 				"verificacao. Problemas encontrados:\n" + relatorio +
@@ -593,11 +1283,22 @@ def run_agentic_build(
 			correcao, result.workdir, model_id=model_id, autonomy=autonomy,
 			timeout=timeout, use_nvda_context=use_nvda_context, extra_context=extra_context,
 			backend=backend, progress_callback=progress_callback, cancel_event=cancel_event,
+			steer_provider=steer_provider, permission_callback=permission_callback, ask_user_callback=ask_user_callback,
 		)
+		checkpoint.turn += 1
+		checkpoint.corrections = rodada
+		checkpoint.tokens += result.tokens
+		checkpoint.event("correction_round_finished", turn=checkpoint.turn, round=rodada, success=result.success)
+		store.save(checkpoint)
 		tokens_acumulados += result.tokens
 		result.rounds = rodada + 1
 		if result.cancelled:
 			result.tokens = tokens_acumulados
+			checkpoint.status = "cancelled"
+			checkpoint.event("cancelled", turn=checkpoint.turn)
+			store.save(checkpoint)
+			result.checkpoint_path = store.path(checkpoint.run_id)
+			result.trace = checkpoint.trace
 			return result
 
 	# Gate final apos a ultima rodada de correcao.
@@ -606,4 +1307,16 @@ def run_agentic_build(
 	result.gate_report = relatorio
 	result.tokens = tokens_acumulados
 	result.success = result.success and passou
+	if progress_callback:
+		progress_callback(
+			"As validações independentes foram aprovadas."
+			if passou else
+			"As validações independentes ainda encontraram problemas; "
+			"a entrega não será marcada como concluída."
+		)
+	checkpoint.status = "completed" if result.success else "failed"
+	checkpoint.event("run_finished", success=result.success, gate_report=relatorio[:4000])
+	store.save(checkpoint)
+	result.checkpoint_path = store.path(checkpoint.run_id)
+	result.trace = checkpoint.trace
 	return result

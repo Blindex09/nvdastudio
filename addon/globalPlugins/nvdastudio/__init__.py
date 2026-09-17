@@ -22,7 +22,13 @@ from gui.settingsDialogs import NVDASettingsDialog  # noqa: E402
 from scriptHandler import script  # noqa: E402
 
 from .gui.studio_dialog import NVDAStudioDialog  # noqa: E402
-from .gui.settings_panel import NVDAStudioSettingsPanel, get_llm_provider, get_api_key, FirstRunSetupDialog  # noqa: E402
+from .gui.settings_panel import (  # noqa: E402
+	FirstRunSetupDialog,
+	NVDAStudioSettingsPanel,
+	get_api_key,
+	get_llm_provider,
+	provider_requires_api_key,
+)
 from .utils.logger import get_logger  # noqa: E402
 
 addonHandler.initTranslation()
@@ -30,7 +36,7 @@ addonHandler.initTranslation()
 if not hasattr(builtins, "_"):
 	builtins._ = lambda s: s  # type: ignore[attr-defined]
 
-MODULE_VERSION = "2.4.0"
+MODULE_VERSION = "2.4.7"
 _logger = get_logger("global_plugin")
 
 _nvdastudio_dialog_instance = None
@@ -68,6 +74,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 	@script(
 		gesture="kb:NVDA+shift+n",
+		# Translators: Descrição do comando que abre a janela principal do NVDAStudio.
 		description=_("Abre o NVDAStudio - Criador de Addons com Inteligencia Artificial"),
 		category="NVDAStudio"
 	)
@@ -76,6 +83,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 	@script(
 		gesture="kb:NVDA+shift+comma",
+		# Translators: Descrição do comando que abre as configurações do NVDAStudio.
 		description=_("Abre as configuracoes do NVDAStudio no NVDA Settings"),
 		category="NVDAStudio"
 	)
@@ -95,7 +103,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			_nvdastudio_dialog_instance = None
 
 		provider = get_llm_provider()
-		if not get_api_key(provider):
+		if provider_requires_api_key(provider) and not get_api_key(provider):
 			setup = FirstRunSetupDialog(nvda_gui.mainFrame)
 			nvda_gui.mainFrame.prePopup()
 			result = setup.ShowModal()

@@ -1,0 +1,21 @@
+# Config do gitleaks (hook local em .pre-commit-config.yaml).
+#
+# Herda todas as regras padrao; so acrescenta allowlist para codigo que nao e
+# nosso e para fixtures sinteticas de teste.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Codigo de terceiros vendorizado e fixtures sinteticas"
+paths = [
+	# Dependencias puro Python redistribuidas com o addon (httpx, httpcore,
+	# anyio, certifi, idna, h11, tinydb, typing_extensions). Docstrings do
+	# httpx trazem URLs de exemplo com usuario:senha ficticios
+	# (lib/httpx/_urls.py) que disparam falso positivo. O conteudo e identico
+	# ao publicado no PyPI; escanear aqui nao protege nada nosso.
+	'''addon/globalPlugins/nvdastudio/lib/''',
+	# Copia de referencia do codigo-fonte do NVDA/AddonTemplate, lida como
+	# texto pelo nvda_context.py -- tambem nao e codigo nosso.
+	'''addon/globalPlugins/nvdastudio/nvda_docs_cache/''',
+]

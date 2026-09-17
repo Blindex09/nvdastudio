@@ -1,10 +1,119 @@
 import math
+import re
+import threading
+import time
+from dataclasses import asdict, dataclass
 
-from .model_registry import registry, is_alto_model
+from .model_registry import ALTO_MODEL, is_alto_model, registry
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.7.0"
+MODULE_VERSION = "2.0.0"
 _logger = get_logger("model_router")
+
+STUDIO_PROVIDER = "studio"
+STUDIO_ROUTABLE_PROVIDERS = (
+	"factory", "openai", "anthropic", "gemini", "xai", "ollama", "opencode_go",
+)
+_MAX_STUDIO_ROUTES = 3
+_CIRCUIT_FAILURE_THRESHOLD = 2
+_CIRCUIT_COOLDOWN_SECONDS = 300.0
+
+_TASK_COMPLEXITY_RE = re.compile(
+	r"\[TASK-COMPLEXITY:\s*(low|medium|high)\s*\]", re.IGNORECASE,
+)
+_ROUTING_PREFERENCE_RE = re.compile(
+	r"\[ROUTING-PREFERENCE:\s*(balanced|quality|cost|speed|privacy)\s*\]",
+	re.IGNORECASE,
+)
+_MODEL_CAPABILITIES_RE = re.compile(
+	r"\[MODEL-CAPABILITIES:\s*([^\]]*)\]", re.IGNORECASE,
+)
+_ROUTABLE_MODEL_CAPABILITIES = frozenset({"vision", "audio", "video"})
+
+
+@dataclass(frozen=True)
+class RouteDecision:
+	"""Decisão auditável de provedor/modelo produzida pelo gateway Studio."""
+
+	provider: str
+	model_id: str
+	score: float
+	reason: str
+	complexity: str
+	preference: str
+	required_capabilities: tuple[str, ...]
+	estimated_context_tokens: int
+
+	def to_dict(self) -> dict:
+		return asdict(self)
+
+
+@dataclass
+class _ProviderHealth:
+	consecutive_failures: int = 0
+	retry_after: float = 0.0
+	last_error: str = ""
+
+
+_provider_health: dict[str, _ProviderHealth] = {}
+_provider_health_lock = threading.Lock()
+
+
+def extract_task_complexity(request: str) -> str:
+	"""Lê a classificação semântica declarada pela IA; fallback conservador.
+
+	Não tenta adivinhar complexidade por palavras-chave. Assim, conteúdo é
+	decidido pela IA e o roteamento permanece determinístico e auditável.
+	"""
+	match = _TASK_COMPLEXITY_RE.search(request or "")
+	return match.group(1).lower() if match else "medium"
+
+
+def extract_routing_preference(request: str) -> str:
+	"""Lê a preferência declarada semanticamente; o padrão é equilibrado."""
+	match = _ROUTING_PREFERENCE_RE.search(request or "")
+	return match.group(1).lower() if match else "balanced"
+
+
+def extract_required_capabilities(request: str) -> frozenset[str]:
+	"""Extrai capacidades declaradas pela IA para entradas multimodais reais."""
+	match = _MODEL_CAPABILITIES_RE.search(request or "")
+	if not match:
+		return frozenset()
+	requested = {
+		item.strip().lower()
+		for item in match.group(1).split(",")
+		if item.strip()
+	}
+	return frozenset(requested & _ROUTABLE_MODEL_CAPABILITIES)
+
+
+def estimate_context_tokens(request: str) -> int:
+	"""Estimativa conservadora incluindo o contexto técnico fixo do NVDA."""
+	return max(4_000, len(request or "") // 4 + 12_000)
+
+
+def record_provider_outcome(provider: str, success: bool, error: str = "") -> None:
+	"""Atualiza o disjuntor de sessão usado somente pelo roteamento Studio."""
+	if provider == STUDIO_PROVIDER:
+		return
+	with _provider_health_lock:
+		health = _provider_health.setdefault(provider, _ProviderHealth())
+		if success:
+			health.consecutive_failures = 0
+			health.retry_after = 0.0
+			health.last_error = ""
+			return
+		health.consecutive_failures += 1
+		health.last_error = (error or "falha sem detalhe")[:500]
+		if health.consecutive_failures >= _CIRCUIT_FAILURE_THRESHOLD:
+			health.retry_after = time.monotonic() + _CIRCUIT_COOLDOWN_SECONDS
+
+
+def _provider_is_healthy(provider: str) -> bool:
+	with _provider_health_lock:
+		health = _provider_health.get(provider)
+		return health is None or health.retry_after <= time.monotonic()
 
 # Pontuacao neutra pra modelo sem hint curado -- mesmo valor de fallback
 # usado por C:\agentic (_documented_strengths), nem penaliza nem favorece
@@ -121,6 +230,19 @@ def _task_quality(strengths: dict[str, float], step_type: str) -> float:
 	return strengths["quality"]
 
 
+def _normalized_capabilities(provider: str, model_id: str) -> set[str]:
+	"""Normaliza aliases históricos do catálogo sem inventar capacidades."""
+	if provider == "factory" and model_id == "auto":
+		return {"tool_use", "coding_agentic"}
+	info = registry.get_model_info(model_id)
+	if info is None:
+		return set()
+	caps = set(info.capabilities)
+	if "tools" in caps:
+		caps.add("tool_use")
+	return caps
+
+
 # Tamanho representativo de UMA chamada, usado so pra estimar custo real
 # ($/token) de forma comparavel entre modelos -- nao precisa ser exato (a
 # mesma dupla de tokens se aplica a todos os candidatos, entao so a ORDEM
@@ -147,8 +269,7 @@ def _cost_score(provider: str, model_id: str) -> float:
 	C:\\agentic -- usar a faixa cheia deles, nao uma reescala propria, e o
 	que faz a formula continuar calibrada.
 
-	Sem preco catalogado (Ollama/OpenCode Go -- sempre, ver PRICING_GAPS em
-	model_pricing.py; ou qualquer modelo nao pesquisado), cai pro cost_tier
+	Sem preco catalogado (assinaturas e modelos sem tarifa por token), cai pro cost_tier
 	curado (comportamento anterior, inalterado) -- mantem a diferenciacao de
 	"restricao de recurso" (tamanho/velocidade) que ja existia pra
 	providers sem preco real por token.
@@ -285,93 +406,90 @@ def select_model(
 	return best.model_id
 
 
-# Todos os provedores nativos que o NVDAStudio sabe rotear -- usado so pela
-# escalacao cross-provider (select_model_and_provider), nunca pra escolha
-# inicial (essa continua dentro do provider ativo, ver select_model acima).
-_ALL_ROUTABLE_PROVIDERS = ("ollama", "openai", "gemini", "anthropic", "xai", "opencode_go", "factory")
-
-# 1.2.0: quando o provider ATIVO e "ollama", o resgate cross-provider fica
-# restrito a este conjunto -- NUNCA os provedores pagos diretos (openai/
-# gemini/anthropic/xai). Achado real ao vivo (test_e36, 2026-08-09): o
-# resgate escalou pra OpenAI direto so porque a OPENAI_API_KEY estava
-# presente no ambiente, mesmo sem saldo/creditos reais la -- Felipe
-# esclareceu a intencao real: "ollama em alto, modelos do ollama, o que nao
-# tiver nativo, entra opencode go... somente no ollama. so nao faco isso
-# com os outros, por que os outros nao tenho assinatura". OpenCode Go e
-# assinatura fixa (custo marginal ~0, ver ai/pricing.py), entao e o UNICO
-# fallback seguro quando o Ollama e o provider principal escolhido.
-# 1.7.0: Factory entra pelo MESMO criterio que ja escolheu o OpenCode Go --
-# assinatura fixa, custo marginal previsivel, sem risco de gastar credito
-# avulso que o usuario nao tem. Palavras dele em 2026-08-09: "so nao faco
-# isso com os outros, por que os outros nao tenho assinatura". Em
-# 2026-09-03 o criterio provou seu valor ao contrario: o OpenCode Go ficou
-# sem saldo (401) e o Ollama comecou a devolver 429 na mesma sessao,
-# deixando o resgate sem para onde ir.
-_OLLAMA_RESCUE_PROVIDERS: tuple[str, ...] = ("opencode_go", "factory")
+def _studio_score(
+	provider: str,
+	model_id: str,
+	step_type: str,
+	complexity: str,
+	preference: str,
+) -> float:
+	strengths = _DOCUMENTED_STRENGTHS.get((provider, model_id), {
+		"quality": _NEUTRAL_STRENGTH,
+		"coding": _NEUTRAL_STRENGTH,
+		"tools": _NEUTRAL_STRENGTH,
+		"speed": _NEUTRAL_STRENGTH,
+	})
+	if preference == "quality":
+		return .85 * _task_quality(strengths, step_type) + .10 * _reliability_score(provider, model_id, step_type) + .05 * strengths["speed"]
+	if preference == "cost":
+		return .60 * _cost_score(provider, model_id) + .25 * _task_quality(strengths, step_type) + .15 * _reliability_score(provider, model_id, step_type)
+	if preference == "speed":
+		return .60 * strengths["speed"] + .30 * _task_quality(strengths, step_type) + .10 * _reliability_score(provider, model_id, step_type)
+	return _routing_score(provider, model_id, step_type, complexity)
 
 
-def select_model_and_provider(
-	step_type: str, complexity: str, exclude_provider: str | None = None,
-	active_provider: str | None = None,
-) -> tuple[str, str] | None:
+def select_routes(
+	provider: str,
+	step_type: str,
+	configured_model: str,
+	*,
+	request: str = "",
+	available_providers: tuple[str, ...] | list[str] | None = None,
+	required_capabilities: frozenset[str] | None = None,
+) -> list[RouteDecision]:
+	"""Seleciona uma rota manual ou um ranking cross-provider para Studio.
+
+	Fora de ``Studio + Alto`` nunca há troca silenciosa de provedor. No Studio,
+	só entram provedores que o chamador confirmou como configurados/disponíveis.
 	"""
-	1.1.0: escalacao cross-provider -- pontua candidatos de TODOS os
-	provedores com chave configurada (nao so o provider ativo) e retorna
-	o melhor (provider, model_id) entre eles. Usado quando um step ja
-	esgotou retry + escalacao NORMAL (mesmo provider, select_model()) e
-	continua falhando -- so nesse ponto, nunca na escolha inicial.
+	complexity = extract_task_complexity(request)
+	preference = extract_routing_preference(request)
+	required = required_capabilities or frozenset()
+	context_tokens = estimate_context_tokens(request)
 
-	Alinhado ao padrao de producao 2026 (pesquisa dedicada, 2026-08-09:
-	Bifrost/LiteLLM/gateways de LLM): "failover fires at the provider level
-	when a backend stops responding, while cascading fires at the model
-	quality level when a response score falls below your threshold" --
-	provider primario cuida do caso normal (select_model), fallback entre
-	provedores so entra quando o primario ja falhou (aqui). Deliberadamente
-	MENOS abrangente que C:\\agentic (que pontua todos os provedores desde
-	o inicio de toda chamada) -- essa e a excecao sofisticada, nao o padrao
-	dominante do mercado; replicar so na escalacao e o que a maioria dos
-	gateways de producao faz.
+	if provider != STUDIO_PROVIDER or not is_alto_model(configured_model):
+		model_id = select_model(
+			provider, step_type, configured_model, complexity=complexity,
+			required_capabilities=required,
+		)
+		return [RouteDecision(
+			provider=provider, model_id=model_id, score=1.0,
+			reason="Provedor escolhido manualmente; o roteamento ficou restrito a ele.",
+			complexity=complexity, preference=preference,
+			required_capabilities=tuple(sorted(required)),
+			estimated_context_tokens=context_tokens,
+		)]
 
-	exclude_provider: provider que ja foi tentado (normal + escalacao) e
-	falhou -- nao faz sentido pontuar candidatos dele de novo aqui.
-
-	active_provider (1.2.0): o provider PRINCIPAL configurado pelo usuario
-	(get_llm_provider(), ANTES de qualquer exclusao por falha). Quando
-	"ollama", restringe o resgate a _OLLAMA_RESCUE_PROVIDERS (so
-	opencode_go) -- nunca os provedores pagos diretos, que o usuario pode
-	nao ter assinatura/credito neles. Para qualquer outro active_provider,
-	comportamento inalterado (todos os _ALL_ROUTABLE_PROVIDERS elegiveis).
-
-	Retorna None quando nenhum OUTRO provider tem chave configurada (fail-
-	open -- comportamento identico a antes desta funcao existir).
-	"""
-	from ..gui.settings_panel import get_api_key
-	from .model_registry import _UI_PROVIDER_TO_REGISTRY_PROVIDERS
-
-	routable = _OLLAMA_RESCUE_PROVIDERS if active_provider == "ollama" else _ALL_ROUTABLE_PROVIDERS
-
-	best_provider = ""
-	best_model = ""
-	best_score = -1.0
-	for provider in routable:
-		if provider == exclude_provider:
+	available = set(available_providers or ())
+	candidates: list[RouteDecision] = []
+	for candidate_provider in STUDIO_ROUTABLE_PROVIDERS:
+		if candidate_provider not in available or not _provider_is_healthy(candidate_provider):
 			continue
-		if provider not in _UI_PROVIDER_TO_REGISTRY_PROVIDERS:
+		model_id = select_model(
+			candidate_provider, step_type, ALTO_MODEL, complexity=complexity,
+			required_capabilities=required,
+		)
+		caps = _normalized_capabilities(candidate_provider, model_id)
+		if required and not required.issubset(caps):
 			continue
-		if not get_api_key(provider):
+		info = registry.get_model_info(model_id)
+		if info and info.context_window and context_tokens > info.context_window:
 			continue
-		try:
-			candidates = registry.get_active_models_for_ui_provider(provider)
-		except Exception as exc:
-			_logger.debug("[DEBUG] select_model_and_provider: %s indisponivel (%s).", provider, exc)
-			continue
-		for model in candidates:
-			score = _routing_score(provider, model.model_id, step_type, complexity)
-			if score > best_score:
-				best_score = score
-				best_provider = provider
-				best_model = model.model_id
+		score = _studio_score(candidate_provider, model_id, step_type, complexity, preference)
+		reason = (
+			f"complexidade {complexity}; preferência {preference}; "
+			f"capacidades {', '.join(sorted(required)) or 'gerais'}; "
+			f"contexto estimado {context_tokens} tokens; provedor configurado e saudável"
+		)
+		candidates.append(RouteDecision(
+			provider=candidate_provider, model_id=model_id, score=score,
+			reason=reason, complexity=complexity, preference=preference,
+			required_capabilities=tuple(sorted(required)),
+			estimated_context_tokens=context_tokens,
+		))
 
-	if not best_provider:
-		return None
-	return (best_provider, best_model)
+	candidates.sort(key=lambda route: route.score, reverse=True)
+	# Privacidade significa minimização de compartilhamento: uma única empresa
+	# recebe o pedido, sem failover que replique contexto entre serviços.
+	limit = 1 if preference == "privacy" else _MAX_STUDIO_ROUTES
+	return candidates[:limit]

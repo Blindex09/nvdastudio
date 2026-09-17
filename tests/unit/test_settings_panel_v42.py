@@ -16,7 +16,26 @@ def _read_settings() -> str:
 class TestSettingsPanelVersao:
     def test_versao_e_4_2_0(self):
         from nvdastudio.gui.settings_panel import MODULE_VERSION
-        assert MODULE_VERSION == "6.11.0"
+        assert MODULE_VERSION == "7.0.0"
+
+
+class TestStudioProvider:
+    def test_studio_e_selecionavel_e_oferece_somente_alto(self):
+        from nvdastudio.ai.model_registry import ALTO_MODEL
+        from nvdastudio.gui.settings_panel import _MODELS_BY_PROVIDER, _PROVIDER_CODES
+
+        assert "studio" in _PROVIDER_CODES
+        assert _MODELS_BY_PROVIDER["studio"] == [("Alto (recomendado)", ALTO_MODEL)]
+
+    def test_studio_nao_tem_chave_propria(self):
+        from nvdastudio.gui.settings_panel import (
+            _API_KEY_CONFIG_KEYS,
+            provider_requires_api_key,
+        )
+
+        assert "studio" not in _API_KEY_CONFIG_KEYS
+        assert provider_requires_api_key("studio") is False
+        assert provider_requires_api_key("factory") is False
 
 
 class TestFactoryNoDropdownDeModelo:
@@ -38,13 +57,6 @@ class TestFactoryNoDropdownDeModelo:
         assert any(code == ALTO_MODEL for _, code in modelos), (
             "Factory roda no Alto/automatico -- o dropdown tem que oferecer 'Alto'"
         )
-
-    def test_factory_tem_default(self):
-        from nvdastudio.gui.settings_panel import _DEFAULT_MODELS
-        from nvdastudio.ai.model_registry import ALTO_MODEL
-
-        assert _DEFAULT_MODELS.get("factory") == ALTO_MODEL
-
 
 class TestTestarChaveFactoryUsaODroid:
     """Regressao: o botao Testar mandava a Factory para o ProviderClient (HTTP),
@@ -278,7 +290,6 @@ class TestOpenCodeGoNaoESelecionavel:
     def test_opencode_go_fora_dos_modelos_por_provider(self):
         import nvdastudio.gui.settings_panel as settings_panel
         assert "opencode_go" not in settings_panel._MODELS_BY_PROVIDER
-        assert "opencode_go" not in settings_panel._DEFAULT_MODELS
 
     def test_chave_opencode_go_continua_configuravel(self):
         """A chave precisa continuar existindo nos dicts de API key --

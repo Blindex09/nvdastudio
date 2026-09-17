@@ -5,42 +5,8 @@ from unittest.mock import MagicMock, patch
 
 from nvdastudio.ai.clarifier import (
     analyze_query, build_enriched_query,
-    ClarificationResult, get_clarifier_model,
+    ClarificationResult,
 )
-
-class TestClarifierModel:
-    """Invariante: o Clarifier roda no modelo com json_schema estrito garantido.
-
-    Auditoria 2026-09-01: existia aqui um teste afirmando "Invariante: modelo do
-    Clarifier e kimi-k2.6", verificando a constante CLARIFIER_MODEL. A constante
-    nao era lida por ninguem -- get_clarifier_model() sempre devolveu
-    get_structured_output_model(0), na pratica opencode_go::gpt-5.6-luna. O
-    teste passava, a mensagem de falha dizia que o modelo do Clarifier era
-    kimi-k2.6, e o Clarifier rodava em outro modelo. Falsa confianca: verificar
-    uma constante nao e verificar o comportamento que ela aparenta controlar.
-
-    A constante foi removida (clarifier 1.7.0). O teste abaixo checa quem
-    decide de fato.
-    """
-
-    def test_modelo_do_clarifier_e_o_resolvido_nao_uma_constante(self):
-        from nvdastudio.ai.model_registry import get_structured_output_model
-
-        assert get_clarifier_model() == get_structured_output_model(0)
-
-    def test_get_clarifier_model_sempre_opencode_go(self):
-        """
-        1.6.0: achado real de auditoria 2026-08-26 -- analyze_query() exige
-        JSON estrito, mas seguia o tier light do provider ATIVO (Ollama no
-        default), sem json_schema real. Agora sempre forca OpenCode Go via
-        model_registry.py::get_structured_output_model().
-        """
-        assert get_clarifier_model() == "opencode_go::gpt-5.6-luna"
-
-    def test_get_clarifier_model_ignora_provider_ativo_do_usuario(self, monkeypatch):
-        monkeypatch.setattr("nvdastudio.gui.settings_panel.get_llm_provider", lambda: "gemini")
-        monkeypatch.setattr("nvdastudio.gui.settings_panel.get_llm_model", lambda: "gemini-3.1-pro-preview")
-        assert get_clarifier_model() == "opencode_go::gpt-5.6-luna"
 
 
 class TestAnalyzeQueryComMock:
@@ -102,18 +68,22 @@ class TestAnalyzeQueryComMock:
         Mock.assert_not_called()
         assert result.needs_clarification is False
 
-    def test_erro_na_api_retorna_false_graceful(self):
-        """Falha na API nao bloqueia o usuario — sistema assume query clara."""
+    def test_erro_na_api_pergunta_em_vez_de_assumir_query_clara(self):
+        """Falha da IA preserva a decisao de produto com pergunta simples."""
         from nvdastudio.ai.llm_client import LLMClientError
 
         with patch("nvdastudio.ai.clarifier.call_with_structured_output") as Mock:
             Mock.side_effect = LLMClientError("timeout")
             result = analyze_query("addon qualquer")
 
-        assert result.needs_clarification is False
+        assert result.needs_clarification is True
+        assert result.user_level == "iniciante"
+        assert result.addon_architecture == "ambiguous"
+        assert len(result.questions) == 1
+        assert "exemplo simples" in result.questions[0]
 
-    def test_json_invalido_retorna_false_graceful(self):
-        """Resposta invalida da API nao bloqueia o usuario."""
+    def test_json_invalido_pergunta_em_vez_de_iniciar_pipeline(self):
+        """Resposta inválida não autoriza geração baseada em suposição."""
         mock_resp = MagicMock()
         mock_resp.content = "isso nao e json {{{invalido"
         mock_resp.reasoning = None
@@ -122,7 +92,20 @@ class TestAnalyzeQueryComMock:
             Mock.return_value = mock_resp
             result = analyze_query("addon qualquer")
 
-        assert result.needs_clarification is False
+        assert result.needs_clarification is True
+        assert result.questions
+
+    def test_conteudo_vazio_pergunta_em_vez_de_iniciar_pipeline(self):
+        mock_resp = MagicMock()
+        mock_resp.content = ""
+        mock_resp.reasoning = None
+
+        with patch("nvdastudio.ai.clarifier.call_with_structured_output") as Mock:
+            Mock.return_value = mock_resp
+            result = analyze_query("crie um addon")
+
+        assert result.needs_clarification is True
+        assert result.user_level == "iniciante"
 
     def test_retorna_clarification_result(self):
         """Tipo de retorno e sempre ClarificationResult."""

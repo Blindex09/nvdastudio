@@ -1,9 +1,14 @@
-from pydantic import BaseModel
+from dataclasses import dataclass
 
-MODULE_VERSION = "1.0.1"
+MODULE_VERSION = "1.1.0"
 
 
-class ModelPrice(BaseModel):
+# dataclass, nao pydantic: pydantic_core e binario compilado por versao de
+# Python/ABI e nao pode ser vendorizado em lib/ com seguranca; dentro do NVDA
+# o import falhava e derrubava model_router junto. Os valores aqui sao
+# literais do proprio modulo, nao entrada externa -- nao ha o que validar.
+@dataclass(frozen=True)
+class ModelPrice:
 	input_per_million: float
 	output_per_million: float
 	source_url: str
@@ -54,75 +59,7 @@ MODEL_PRICING: dict[str, dict[str, ModelPrice]] = {
 	},
 }
 
-# Todo (provider, model_id) em _DOCUMENTED_STRENGTHS (model_router.py) sem
-# entrada em MODEL_PRICING precisa estar registrado aqui com um motivo --
-# nunca deixar um modelo silenciosamente com custo implicito $0 sem razao.
-PRICING_GAPS: dict[str, dict[str, str]] = {
-	"xai": {
-		"grok-4.3": (
-			"Preco por token nao encontrado em pesquisa dedicada (2026-08-17). "
-			"Conferir docs.x.ai antes de usar preco real -- cai no fallback por cost_tier."
-		),
-	},
-	# Ollama Cloud cobra por assinatura/cota de GPU-time, nao $/token -- mesma
-	# razao ja documentada no governance comment de model_registry.py
-	# (_OLLAMA_SERVED_MAKERS). Custo marginal por chamada tratado como ~$0
-	# nas comparacoes (assinatura ja paga, nao aumenta com uso dentro da cota).
-	"ollama": {
-		"kimi-k2.7-code": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"kimi-k2.6": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"deepseek-v4-flash": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"deepseek-v4-pro": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"glm-5.2": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"glm-5.1": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"minimax-m3": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"minimax-m2.7": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"gpt-oss:120b": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"gpt-oss:20b": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"qwen3.5:397b": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"nemotron-3-ultra": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"nemotron-3-super": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"nemotron-3-nano:30b": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"mistral-large-3:675b": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-		"gemma4:31b": "Ollama Cloud cobra por assinatura/cota de uso, sem preco por token publicado.",
-	},
-	"opencode_go": {
-		"gpt-5.6-luna": "OpenCode Go e cobrado por assinatura/cota fixa (ja paga); endpoint backend-only, sem preco tokenizado proprio nesse contexto.",
-	},
-}
-
-
 def get_model_price(provider: str, model_id: str) -> ModelPrice | None:
 	"""None quando nao ha preco por token catalogado -- quem chama deve cair
 	pro fallback de cost_tier (registry), nunca tratar como $0 silencioso."""
 	return MODEL_PRICING.get(provider, {}).get(model_id)
-
-
-def get_pricing_gap_reason(provider: str, model_id: str) -> str | None:
-	return PRICING_GAPS.get(provider, {}).get(model_id)
-
-
-# Providers cujo modelo de cobranca e assinatura/cota, nao $/token real -- o
-# custo marginal por chamada individual e tratado como ~$0 nas comparacoes
-# (ja pago, nao aumenta com uso dentro da cota). Mesma logica de
-# C:\agentic (_SUBSCRIPTION_BASED_PROVIDERS em model_router.py de la).
-_SUBSCRIPTION_BASED_PROVIDERS = {"ollama", "opencode_go"}
-
-
-def estimate_call_cost(
-	provider: str, model_id: str, input_tokens: int, expected_output_tokens: int,
-) -> float | None:
-	"""
-	Custo estimado (USD) de UMA chamada, dado o tamanho esperado de entrada/
-	saida. None quando nao ha preco publicado E o provider nao e assinatura
-	(caso em que 0.0 e o valor real, nao um placeholder).
-	"""
-	price = get_model_price(provider, model_id)
-	if price:
-		return (
-			input_tokens * price.input_per_million
-			+ expected_output_tokens * price.output_per_million
-		) / 1_000_000
-	if provider in _SUBSCRIPTION_BASED_PROVIDERS:
-		return 0.0
-	return None

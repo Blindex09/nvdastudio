@@ -225,8 +225,8 @@ class TestBuildEnrichedQueryArchitecture:
 
 class TestClarifierVersion:
 
-    def test_versao_e_1_5_0(self):
+    def test_versao_e_1_8_0(self):
         from nvdastudio.ai.clarifier import MODULE_VERSION
-        assert MODULE_VERSION == "1.7.0", (
-            f"clarifier versao esperada 1.5.0, encontrada {MODULE_VERSION}."
+        assert MODULE_VERSION == "2.1.0", (
+            f"clarifier versao esperada 1.8.0, encontrada {MODULE_VERSION}."
         )

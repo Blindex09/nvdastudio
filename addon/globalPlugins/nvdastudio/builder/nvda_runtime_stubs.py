@@ -74,7 +74,7 @@ class GlobalPlugin:
 	"""Base real pra `class X(globalPluginHandler.GlobalPlugin)` -- precisa
 	ser classe de verdade (nao instancia), MagicMock nao serve de base."""
 	def __init__(self, *args, **kwargs):
-		pass
+		super().__init__()
 
 	def terminate(self):
 		pass

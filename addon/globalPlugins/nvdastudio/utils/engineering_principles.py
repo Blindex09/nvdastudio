@@ -26,14 +26,6 @@ importam daqui. Nunca duplicar estes textos num prompt local (README Regra 5).
 """
 
 MODULE_VERSION = "1.0.0"
-UPDATED_AT = "2026-08-29"
-
-# Documentos de origem, para rastreabilidade quando alguem for atualizar isto.
-SOURCE_DOCS: tuple[str, ...] = (
-	"docs/metodologia-verificacao-arquitetura.md",
-	"docs/conceitos-ia-para-desenvolvimento-de-software.md",
-	"docs/conceitos-ia-seguranca-confiabilidade.md",
-)
 
 
 # ---------------------------------------------------------------------------

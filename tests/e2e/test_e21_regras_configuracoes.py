@@ -176,7 +176,7 @@ def _executar_fluxo_completo(
 	)
 
 	try:
-		orch._run_pipeline(query)
+		orch._run_until_complete(query)
 	except Exception as exc:
 		report.error = f"Pipeline excecao: {exc}"
 		report.duration_seconds = time.time() - t0

@@ -7,16 +7,17 @@ omit =
 branch = True
 
 # fail_under e um PISO (regressao), nao uma meta ja atingida -- cobertura
-# real medida em 2026-08-03 foi 57.25%. Setado a 55% (margem de folga contra
+# real medida em 2026-09-12 foi 65.28%. Setado a 60% (margem de folga contra
 # flutuacao normal entre execucoes) para pegar quedas reais sem travar
 # commits legitimos. Suba este numero conforme a cobertura real sobe --
-# nunca abaixe pra "fazer passar".
+# nunca abaixe pra "fazer passar". O piso so vale se alguem o avaliar: o job
+# de testes do CI roda `pytest --cov`, que aplica este numero.
 [report]
 exclude_lines =
     pragma: no cover
     if __name__ == .__main__.:
     raise NotImplementedError
-fail_under = 55
+fail_under = 60
 show_missing = True
 skip_covered = False
 

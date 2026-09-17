@@ -3,7 +3,6 @@ import tempfile
 
 from nvdastudio.utils.injection_guard import detect_injection, sanitize_untrusted_block
 from nvdastudio.builder.addon_builder import save_addon_files
-from nvdastudio.builder.api_key_validator import ApiKeyValidator
 
 
 class TestAdversarialPromptInjection:
@@ -117,34 +116,3 @@ class TestAdversarialPathTraversal:
 			folder, saved = save_addon_files(blocks, tmpdir, "AddonTeste")
 			for path in saved:
 				assert os.path.normpath(path).startswith(os.path.normpath(folder))
-
-
-class TestAdversarialApiKeyOfuscada:
-	"""
-	Tenta disfarces comuns de chave de API hardcoded ALEM do caso obvio
-	(literal direto na chamada) -- concatenacao, variavel intermediaria com
-	nome generico, chave partida em pedacos.
-	"""
-
-	def test_chave_openai_literal_direta_e_detectada(self):
-		codigo = 'client = OpenAI(api_key="sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF")'
-		resultado = ApiKeyValidator().audit_code(codigo)
-		assert resultado.is_clean is False
-
-	def test_chave_atribuida_a_variavel_intermediaria_e_detectada(self):
-		codigo = (
-			"minha_chave = 'sk-proj-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF'\n"
-			"client = OpenAI(api_key=minha_chave)\n"
-		)
-		resultado = ApiKeyValidator().audit_code(codigo)
-		assert resultado.is_clean is False
-
-	def test_uso_correto_via_env_var_nao_gera_falso_positivo(self):
-		"""Robustness na outra direcao: o uso CORRETO (variavel de ambiente)
-		nao pode ser confundido com hardcoded -- isso puniria o padrao certo."""
-		codigo = (
-			"import os\n"
-			"client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))\n"
-		)
-		resultado = ApiKeyValidator().audit_code(codigo)
-		assert resultado.is_clean is True

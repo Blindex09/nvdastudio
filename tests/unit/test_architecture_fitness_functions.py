@@ -133,15 +133,8 @@ class TestSemDependenciaCircularEntreModulos:
 	transitivamente) -- ciclo estrutural quase sempre indica acoplamento
 	que deveria ser quebrado com uma interface/camada intermediaria.
 
-	Granularidade de ARQUIVO (nao subpacote) de proposito: 2 subpacotes
-	podem legitimamente se cruzar nos 2 sentidos (ex: tools/domain_
-	researcher.py usa o tipo DomainContext de core/orch_types.py, e core/
-	orchestrator.py usa a classe DomainResearcher de tools/) sem que isso
-	seja um ciclo de verdade -- nenhum ARQUIVO especifico depende de si
-	mesmo transitivamente. Um checker por subpacote acusaria isso como
-	"ciclo" (falso positivo real, encontrado ao escrever este teste:
-	core<->tools e utils<->memory pareciam ciclos no nivel de subpacote,
-	mas nenhum dos dois e ciclo de verdade no nivel de arquivo).
+	A granularidade e de ARQUIVO, nao de subpacote, para evitar falsos
+	positivos quando pacotes se cruzam sem que um modulo dependa de si mesmo.
 	"""
 
 	def test_grafo_de_dependencias_e_aciclico(self):

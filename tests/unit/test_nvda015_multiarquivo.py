@@ -22,7 +22,7 @@ import tempfile
 
 from nvdastudio.builder.addon_builder import MODULE_VERSION, validate_addon_structure
 
-assert MODULE_VERSION == "4.25.0"
+assert MODULE_VERSION == "4.28.0"
 
 
 def _monta_addon(raiz: str, arquivos: dict[str, str]) -> None:

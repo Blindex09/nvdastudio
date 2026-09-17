@@ -72,8 +72,3 @@ def estimate_cost_usd(model_id: str, tokens: int, provider: str = "") -> float:
     if price <= 0.0 or tokens <= 0:
         return 0.0
     return round((tokens / 1_000_000) * price, 6)
-
-
-def estimate_cost_brl(model_id: str, tokens: int, provider: str = "") -> float:
-    """Estima custo em BRL (conversao direta pela taxa fixa USD_TO_BRL_RATE)."""
-    return round(estimate_cost_usd(model_id, tokens, provider) * USD_TO_BRL_RATE, 6)

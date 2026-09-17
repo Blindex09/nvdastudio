@@ -11,18 +11,6 @@ from ..utils.project_policy import (
 PROMPT_VERSION = "3.35.0"
 
 # ------------------------------------------------------------------
-# Tabela de versoes do projeto.
-# O baseline oficial do NVDAStudio atual e 2026.1+.
-# ------------------------------------------------------------------
-
-NVDA_VERSION_TABLE: list[tuple[str, str, str]] = [
-	# (cenario, minimumNVDAVersion, lastTestedNVDAVersion)
-	("Baseline oficial do projeto",            PROJECT_MIN_NVDA, PROJECT_LAST_TESTED_NVDA),
-	("Forward-compatibility para NVDA 2026.1+", PROJECT_MIN_NVDA, "2026.1.0"),
-	("Piso tecnico absoluto do ecossistema",   ABSOLUTE_MIN_NVDA, PROJECT_LAST_TESTED_NVDA),
-]
-
-# ------------------------------------------------------------------
 # Regras de deteccao NVDA-001..040, NVDA-042..050
 # Fonte: Community Access nvda-addon-specialist.md (2026-03-21)
 # ------------------------------------------------------------------
@@ -1733,26 +1721,6 @@ explicacao em texto puro sem markdown.
 
 Responda sempre em portugues do Brasil. Texto puro, sem markdown.
 """
-
-# Dicas rapidas exibidas na sidebar do dialog
-NVDA_QUICK_TIPS = [
-	("GlobalPlugin", "Funciona em qualquer app. Herda de globalPluginHandler.GlobalPlugin"),
-	("AppModule", "Especifico para um .exe. Herda de appModuleHandler.AppModule"),
-	("ui.message()", "Faz o NVDA falar um texto imediatamente"),
-	("wx.CallAfter()", "Obrigatorio para abrir dialogs de dentro de scripts (WX-A11Y-009)"),
-	("prePopup/postPopup", "Use ao redor de ShowModal() no gui.mainFrame"),
-	("api.getFocusObject()", "Retorna o objeto com foco de teclado atual"),
-	("manifest.ini", f"Todo addon novo aqui usa baseline minimo {PROJECT_MIN_NVDA}"),
-	(".nvda-addon", "Formato ZIP renomeado. Instale via Menu NVDA > Ferramentas > Addons"),
-	("addonHandler", "Chame addonHandler.initTranslation() para suporte a traducoes (NVDA-003)"),
-	("@script()", "Decorator para registrar atalhos. Sempre inclua description= (NVDA-008)"),
-	("terminate()", "Implemente sempre para limpar recursos persistentes (NVDA-004)"),
-	("nextHandler()", "Chame em todo event handler para nao quebrar cadeia (NVDA-001)"),
-	("wx.StaticText", "Fix primario pra WX-A11Y-001: adicione imediatamente antes de controle sem label visivel"),
-	("SetName()", "Complemento (nao substituto) de wx.StaticText pra acessibilidade (WX-A11Y-001)"),
-	("2026.1+", f"Baseline oficial do projeto: {PROJECT_SUPPORTED_RANGE} sem compatibilidade legada"),
-	("2026.1", "Forward-compatibility: Python 3.13 64-bit torna DLLs 32-bit incompativeis (NVDA-017)"),
-]
 
 # 2026-08-16: achado real de auditoria -- _NVDA_DOCS_DIR apontava pra um
 # caminho absoluto do Windows (c:\docs_nvda) que so existia manualmente na

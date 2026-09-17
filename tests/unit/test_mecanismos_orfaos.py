@@ -42,53 +42,7 @@ _IGNORAR_DIRS = {"lib", "nvda_docs_cache", "__pycache__"}
 
 # Orfaos conhecidos e ACEITOS, cada um com o motivo. Tirar algo daqui exige
 # conectar a funcao ou remove-la (Regra 3 do README, anti-legado).
-_ORFAOS_ACEITOS: dict[str, str] = {
-	# --- API publica de modulos que ainda nao tem superficie de UI ---
-	"skills_hub.list_skills": "catalogo de skills sem tela propria; get_skill() e o caminho real",
-	"skills_hub.search_skills": "idem list_skills",
-	"skills_hub.enable_skill": "idem list_skills",
-	"skills_hub.disable_skill": "idem list_skills",
-	"skills_hub.get_skill_registry": "idem list_skills",
-	"skills_hub.get_skill_definitions": "idem list_skills",
-	"pricing.estimate_cost_brl": "conversao BRL sem consumidor; a exibicao usa USD",
-	# --- getters de timeout com politica divergente da usada em producao ---
-	# ACHADO 2026-08-30, NAO corrigido de proposito: `get_api_timeout()` aplica
-	# politica por modelo (kimi 240s, deepseek 120s, default 180s) enquanto
-	# provider_client._TIMEOUT e ollama_client._OLLAMA_CLOUD_TIMEOUT usam 300s
-	# fixo. Conectar os clientes ao getter ENCURTARIA o timeout do modelo padrao
-	# de producao de 300s para 240s -- com steps de 400 mil tokens observados ao
-	# vivo, isso arrisca criar timeout onde hoje nao ha. Exige decisao de
-	# produto com medicao, nao um refactor cego.
-	"timeouts.get_api_timeout": "politica divergente da usada nos clientes; ver comentario acima",
-	"timeouts.get_api_stale_timeout": "idem get_api_timeout",
-	"timeouts.get_ttfb_timeout": "idem get_api_timeout",
-	"timeouts.get_sandbox_timeout": "code_sandbox usa constante propria; mesma classe de divergencia",
-	"timeouts.get_pipeline_grace_period": "periodo de graca nunca aplicado ao pipeline",
-	# --- utilitarios testados e deliberadamente nao conectados ---
-	"addon_builder.export_addon_zip": "exportacao alternativa; o fluxo real usa .nvda-addon",
-	"addon_builder.generate_quality_report": "relatorio sem superficie de UI",
-	"addon_builder.get_blocking_structural_issues": "filtro auxiliar; validate_addon_structure e o caminho real",
-	"addon_builder.validate_python_structure": "testado e nao conectado -- precedente registrado no changelog 97.21.0",
-	"project_policy.is_below_project_baseline": "helper de politica; a comparacao real usa parse_version_tuple",
-	"model_pricing.estimate_call_cost": "precificacao por chamada sem consumidor; o agregado usa ai/pricing.py",
-	"model_pricing.get_pricing_gap_reason": "idem estimate_call_cost",
-	"model_registry.clear_model_resolution_cache": "gancho de teste para invalidar cache entre casos",
-	"llm_factory.get_available_backends": "introspeccao usada so por diagnostico",
-	"clarifier.get_clarifier_model": "resolvido inline em analyze_query; getter mantido para teste",
-	# Primitivo de seguranca CORRETO e testado (test_adversarial_robustness),
-	# deliberadamente nao conectado: envolve um bloco de DADO externo como inerte,
-	# e o consumidor real era o wrapping de resultado de busca web (web_researcher/
-	# external_search), removido com o staged. No caminho agentico o request do
-	# usuario e INSTRUCAO, nao dado -- envolve-lo como dado seria errado; a fronteira
-	# de injecao que o request precisa (deteccao nao-bloqueante) usa detect_injection,
-	# ja conectada em builder/agentic_driver.py. Mantido para quando conteudo externo
-	# (busca web) voltar a entrar no prompt.
-	"injection_guard.sanitize_untrusted_block": "primitivo de seguranca correto; consumidor (wrapping de busca web) saiu com o staged; ver comentario acima",
-	# Caminho 3: agentic_driver.run_agentic_build SAIU da lista no Slice 3 --
-	# o orchestrator (_run_pipeline_agentic) passou a consumi-lo de verdade,
-	# atras da flag NVDASTUDIO_AGENTIC_MODE. A fitness function pegou a
-	# transicao de orfao->consumido sozinha, exatamente o proposito dela.
-}
+_ORFAOS_ACEITOS: dict[str, str] = {}
 
 
 def _modulos() -> list[pathlib.Path]:
@@ -119,39 +73,7 @@ def _funcoes_publicas_de_topo() -> list[tuple[str, str]]:
 	return achadas
 
 
-_CONSTANTES_ACEITAS: dict[str, str] = {
-	# Reexport de compatibilidade: nomes publicos que consumidores externos e
-	# testes usam; a producao le a estrutura original.
-	# Conhecimento curado que HOJE nao entra em nenhum prompt. Nao e defeito:
-	# e material disponivel e ainda nao ligado. Justificado aqui para que a
-	# escolha seja explicita -- ou se liga, ou se apaga, nunca fica esquecido.
-	"nvda_context.NVDA_QUICK_TIPS": (
-		"16 fatos curtos de API do NVDA; a fonte completa do NVDA ja e injetada "
-		"nos prompts de codigo, entao ligar isto so faria sentido se medisse "
-		"melhora -- ainda nao medido"
-	),
-	"nvda_context.NVDA_VERSION_TABLE": (
-		"tabela de versoes; a politica de baseline aplicada de fato vive em "
-		"utils/project_policy.py (PROJECT_MIN_NVDA), que a producao le"
-	),
-	"rule_registry.COMMUNITY_ACCESS_SOURCES": (
-		"procedencia das regras, para auditoria humana e citacao; nao entra em "
-		"decisao de execucao"
-	),
-	"opencode_go_client._KNOWN_MODELS": (
-		"catalogo de referencia do provedor; a validacao real acontece na "
-		"resposta HTTP, nao numa lista local que envelhece"
-	),
-	"settings_panel._DEFAULT_MODELS": (
-		"defaults por provedor consultados pela GUI via resolucao dinamica; "
-		"mantido como referencia do catalogo esperado"
-	),
-	"engineering_principles.SOURCE_DOCS": "procedencia dos 3 documentos de metodologia",
-	"engineering_principles.UPDATED_AT": "data da ultima revisao do conteudo destilado",
-	"rule_registry.UPDATED_AT": "data da ultima revisao do catalogo de regras",
-	"project_policy.ABSOLUTE_MIN_NVDA_TUPLE": "forma em tupla, para comparacao futura",
-	"project_policy.PROJECT_LAST_TESTED_NVDA_TUPLE": "forma em tupla, para comparacao futura",
-}
+_CONSTANTES_ACEITAS: dict[str, str] = {}
 
 
 def _constantes_de_topo() -> list[tuple[str, str]]:

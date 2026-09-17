@@ -60,11 +60,12 @@ class ToolGateway:
     - Metricas de latencia
     """
 
-    def __init__(self):
+    def __init__(self, cancel_event: threading.Event | None = None):
         self._tools: Dict[str, Dict[str, Any]] = {}      # name -> {handler, schema, check_fn}
         self._call_history: List[ToolCall] = []          # Historico de chamadas
         self._rate_tracker: Dict[str, List[float]] = {}  # tool -> timestamps
         self._lock = threading.Lock()
+        self._cancel_event = cancel_event
         # 3.4.0: pool COMPARTILHADO removido. `future.cancel()` e no-op quando a
         # task ja esta rodando (garantia do concurrent.futures), entao uma tool
         # travada ocupava para sempre um dos 4 workers deste pool -- 4 tools
@@ -322,6 +323,8 @@ class ToolGateway:
         timeout_s = get_tool_timeout(tool_name) if tool_name else get_tool_timeout("")
         last_error = None
         for attempt in range(_MAX_RETRIES + 1):
+            if self._cancel_event is not None and self._cancel_event.is_set():
+                return None, "operação cancelada pelo usuário"
             # 3.4.0: pool descartavel de 1 worker por tentativa. Se o handler
             # travar, `future.cancel()` nao o interrompe (a task ja roda) -- mas
             # a thread vazada fica isolada NESTE pool, jamais consumindo um slot
@@ -329,8 +332,21 @@ class ToolGateway:
             call_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gateway_tool")
             try:
                 future = call_pool.submit(handler, **args)
-                result = future.result(timeout=timeout_s)
-                return result, None
+                deadline = time.monotonic() + timeout_s
+                while True:
+                    if self._cancel_event is not None and self._cancel_event.is_set():
+                        future.cancel()
+                        return None, "operação cancelada pelo usuário"
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise FuturesTimeout()
+                    try:
+                        result = future.result(timeout=min(0.25, remaining))
+                        return result, None
+                    except FuturesTimeout:
+                        if time.monotonic() < deadline:
+                            continue
+                        raise
             except FuturesTimeout:
                 future.cancel()
                 last_error = f"timeout apos {timeout_s:.0f}s"
@@ -354,87 +370,6 @@ class ToolGateway:
                 # descartavel e coletado quando a thread eventualmente termina.
                 call_pool.shutdown(wait=False)
         return None, last_error
-
-    # -------------------------------------------------------------------------
-    # Registro de tools nativas do NVDAStudio
-    # -------------------------------------------------------------------------
-
-    def register_builtin_tools(self) -> None:
-        """Regrega tools nativas do NVDAStudio no gateway."""
-        try:
-            from ..tool_system.builtins.file_reader import read_file as file_reader_tool
-            from ..tool_system.builtins.ast_parser import parse_python_code as ast_parser_tool
-            from ..tool_system.builtins.nvda_validator import validate_addon_structure as nvda_validator_tool
-            from ..tool_system.builtins.file_editor import edit_file as file_editor_tool
-
-            self.register(
-                "file_reader",
-                file_reader_tool,
-                ToolSchema(
-                    name="file_reader",
-                    description="Le conteudo de arquivos de texto.",
-                    parameters={"type": "object", "properties": {"path": {"type": "string"}}},
-                    required=["path"],
-                ),
-                check_fn=lambda: True,
-                dangerous=False,
-            )
-
-            self.register(
-                "ast_parser",
-                ast_parser_tool,
-                ToolSchema(
-                    name="ast_parser",
-                    description="Analisa sintaxe Python via AST.",
-                    parameters={"type": "object", "properties": {"code": {"type": "string"}}},
-                    required=["code"],
-                ),
-                check_fn=lambda: True,
-                dangerous=False,
-            )
-
-            self.register(
-                "nvda_validator",
-                nvda_validator_tool,
-                ToolSchema(
-                    name="nvda_validator",
-                    description="Valida compatibilidade de addons NVDA.",
-                    parameters={"type": "object", "properties": {"addon_path": {"type": "string"}}},
-                    required=["addon_path"],
-                ),
-                check_fn=lambda: True,
-                dangerous=False,
-            )
-
-            self.register(
-                "file_editor",
-                file_editor_tool,
-                ToolSchema(
-                    name="file_editor",
-                    description="Cria, edita, compara, move, remove e desfaz alterações em arquivos do workspace.",
-                    parameters={
-                        "type": "object",
-                        "properties": {
-                            "action": {"type": "string", "enum": ["replace", "insert", "create", "write", "delete", "move", "diff", "undo"]},
-                            "path": {"type": "string"},
-                            "old_text": {"type": "string"},
-                            "new_text": {"type": "string"},
-                            "content": {"type": "string"},
-                            "destination_path": {"type": "string"},
-                            "replace_all": {"type": "boolean", "default": False},
-                            "expected_sha256": {"type": "string"},
-                            "operation_id": {"type": "string"},
-                        },
-                    },
-                    required=["action"],
-                ),
-                check_fn=lambda: True,
-                dangerous=True,
-            )
-
-            _logger.info("[GATEWAY] Tools nativas registradas: file_reader, ast_parser, nvda_validator, file_editor")
-        except Exception as e:
-            _logger.warning("[GATEWAY] Falha ao registrar tools nativas: %s", e)
 
     # -------------------------------------------------------------------------
     # Metricas
@@ -471,7 +406,3 @@ class ToolGateway:
         """Limpa historico de chamadas."""
         with self._lock:
             self._call_history.clear()
-
-
-# Instancia global
-tool_gateway = ToolGateway()

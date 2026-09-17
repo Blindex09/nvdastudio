@@ -1,12 +1,18 @@
+# Runtime — tinydb e httpx (com httpcore/h11/anyio/certifi/idna/
+# typing_extensions, todos puro Python) sao vendorizados e VERSIONADOS em
+# addon/globalPlugins/nvdastudio/lib/: o __init__.py do addon poe lib/ no
+# sys.path, build.py empacota a pasta e tests/unit/
+# test_build_runtime_dependencies.py garante que tudo vai no .nvda-addon e
+# importa so com stdlib + lib/. Fora do NVDA (dev, CI) os pacotes do PyPI
+# abaixo sao instalados por conveniencia da suite.
+#
+# Nada com extensao compilada entra em lib/ (pydantic_core, por exemplo):
+# binario e preso a versao de Python/ABI do NVDA e quebraria em silencio.
+# Para re-vendorizar:
+#   python -m pip install --no-compile --target addon/globalPlugins/nvdastudio/lib httpx tinydb
+#   (e apagar lib/bin/, que e so o script CLI do httpx)
 tinydb>=4.8.0
-
-# Runtime — no NVDA estas libs sao vendorizadas em
-# addon/globalPlugins/nvdastudio/lib/ (fora do controle de versao). Fora do
-# NVDA (dev, CI, testes) elas precisam vir do PyPI, senao os clientes de
-# provedor (provider_client, ollama_client, opencode_go_client) degradam para
-# "biblioteca HTTP interna nao esta disponivel" e ~29 testes falham.
 httpx>=0.27.0
-pydantic>=2.0.0
 
 # Testes
 pytest>=8.0.0

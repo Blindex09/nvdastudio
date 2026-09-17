@@ -67,4 +67,28 @@ class TestCallWithStructuredOutputFallback:
 			with pytest.raises(llm_factory.LLMFactoryError):
 				llm_factory.call_with_structured_output("pergunta", {"type": "json_object"})
 
-		assert mock_create.call_count == len(STRUCTURED_OUTPUT_MODEL_CHAIN)
+		assert mock_create.call_count == len(STRUCTURED_OUTPUT_MODEL_CHAIN) + 1
+
+	def test_studio_e_usado_como_ultimo_fallback_configurado(self):
+		from nvdastudio.ai import llm_factory
+		from nvdastudio.ai.llm_client import LLMClientError, LLMResponse
+		from nvdastudio.gui import settings_panel
+
+		failed = MagicMock()
+		failed.chat.side_effect = LLMClientError("indisponivel")
+		studio = MagicMock()
+		studio.chat.return_value = LLMResponse("{}", "studio::modelo")
+
+		def create(model_id):
+			return studio if model_id == "studio::alto" else failed
+
+		with (
+			patch.object(settings_panel, "get_llm_provider", return_value="studio"),
+			patch.object(settings_panel, "get_llm_model", return_value="alto"),
+			patch.object(llm_factory, "create_llm_client", side_effect=create),
+		):
+			result = llm_factory.call_with_structured_output(
+				"pergunta", {"type": "json_object"},
+			)
+		assert result.content == "{}"
+		studio.chat.assert_called_once()

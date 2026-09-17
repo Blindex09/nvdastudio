@@ -1,13 +1,41 @@
 class TestAddonBuilderVersaoV13:
     def test_versao_e_1_8_0(self):
         from nvdastudio.builder.addon_builder import MODULE_VERSION
-        assert MODULE_VERSION == "4.25.0"
+        assert MODULE_VERSION == "4.28.0"
 
 
 class TestValidateAddonStructureImport:
     def test_importavel(self):
         from nvdastudio.builder.addon_builder import validate_addon_structure
         assert callable(validate_addon_structure)
+
+
+class TestFallbacksUsamSintaxePython:
+	"""Texto em prompts/documentação não pode ser tratado como chamada executável."""
+
+	def test_strings_nao_disparam_regras_de_execucao(self, tmp_path):
+		from nvdastudio.builder.addon_builder import _check_all_nvda_fallbacks
+
+		plugin = tmp_path / "globalPlugins" / "X"
+		plugin.mkdir(parents=True)
+		(plugin / "__init__.py").write_text(
+			"PROMPT = '''time.sleep(1) ui.message('x') SynthDriver threading.Thread except: open('x', 'w')'''\n",
+			encoding="utf-8",
+		)
+		problems = _check_all_nvda_fallbacks(str(tmp_path), {"version": "1.0.0"})
+		assert not any(code in problem for problem in problems for code in ("NVDA-002", "NVDA-010", "NVDA-011", "NVDA-012", "NVDA-016"))
+
+	def test_monkey_patch_real_de_modulo_ainda_e_detectado(self, tmp_path):
+		from nvdastudio.builder.addon_builder import _check_all_nvda_fallbacks
+
+		plugin = tmp_path / "globalPlugins" / "X"
+		plugin.mkdir(parents=True)
+		(plugin / "__init__.py").write_text(
+			"import api\napi.getFocusObject = lambda: None\n",
+			encoding="utf-8",
+		)
+		problems = _check_all_nvda_fallbacks(str(tmp_path), {"version": "1.0.0"})
+		assert any("NVDA-006" in problem for problem in problems)
 
 
 class TestValidateAddonStructurePastaInexistente:
@@ -67,6 +95,29 @@ class TestValidateAddonStructureCompleto:
         # Apenas analisa texto — nao executa
         problems = validate_addon_structure(str(tmp_path))
         assert isinstance(problems, list)
+
+    def test_init_marcador_na_raiz_nao_e_tratado_como_plugin(self, tmp_path):
+        """Regressao: globalPlugins/__init__.py vazio e apenas marcador."""
+        from nvdastudio.builder.addon_builder import validate_addon_structure
+
+        (tmp_path / "manifest.ini").write_text(
+            "name = MeuAddon\nsummary = MeuAddon\nauthor = Teste\nversion = 1.0.0\n"
+            "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.2.0\n",
+            encoding="utf-8",
+        )
+        root = tmp_path / "globalPlugins"
+        plugin = root / "meuAddon"
+        plugin.mkdir(parents=True)
+        (root / "__init__.py").write_text("", encoding="utf-8")
+        (plugin / "__init__.py").write_text(self._addon_python_completo(), encoding="utf-8")
+        (tmp_path / "doc").mkdir()
+
+        problems = validate_addon_structure(str(tmp_path))
+        assert not any(
+            code in problem
+            for problem in problems
+            for code in ("ESTRUTURA-005", "NVDA-003", "NVDA-004")
+        )
 
 
 class TestValidateAddonStructureManifest:

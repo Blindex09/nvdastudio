@@ -1,6 +1,6 @@
 from nvdastudio.builder.nvda_context import (
-    NVDA_SYSTEM_PROMPT, PROMPT_VERSION, NVDA_QUICK_TIPS,
-    NVDA_DETECTION_RULES, WX_A11Y_RULES, DTK_A11Y_RULES, NVDA_VERSION_TABLE,
+    NVDA_SYSTEM_PROMPT, PROMPT_VERSION,
+    NVDA_DETECTION_RULES, WX_A11Y_RULES, DTK_A11Y_RULES,
 )
 
 _EMOJIS_PROIBIDOS = [
@@ -152,37 +152,6 @@ class TestIntegracaoProvedoresIA:
         assert idx != -1
         trecho = NVDA_SYSTEM_PROMPT[idx:idx + 600]
         assert "threading.Thread" in trecho
-
-
-class TestNvdaQuickTips:
-    def test_quick_tips_nao_vazio(self):
-        assert len(NVDA_QUICK_TIPS) > 0
-
-    def test_quick_tips_sao_tuplas_de_dois_elementos(self):
-        for tip in NVDA_QUICK_TIPS:
-            assert isinstance(tip, tuple)
-            assert len(tip) == 2
-
-    def test_quick_tips_sem_titulo_vazio(self):
-        for titulo, _ in NVDA_QUICK_TIPS:
-            assert titulo.strip()
-
-    def test_quick_tips_sem_descricao_vazia(self):
-        for _, descricao in NVDA_QUICK_TIPS:
-            assert descricao.strip()
-
-    def test_quick_tips_sem_emojis(self):
-        for titulo, descricao in NVDA_QUICK_TIPS:
-            texto = titulo + descricao
-            for emoji in _EMOJIS_PROIBIDOS:
-                assert emoji not in texto
-
-    def test_quick_tips_tem_ao_menos_5_dicas(self):
-        assert len(NVDA_QUICK_TIPS) >= 5
-
-    def test_quick_tips_titulos_sao_unicos(self):
-        titulos = [t for t, _ in NVDA_QUICK_TIPS]
-        assert len(titulos) == len(set(titulos))
 
 
 class TestNvdaDetectionRules:
@@ -338,34 +307,3 @@ class TestDtkA11yRules:
         assert rule is not None
         assert "Serio" in rule[1], f"DTK-A11Y-010 deve ser Serio: {rule[1]}"
         assert "modal" in rule[2].lower() or "dialogo" in rule[2].lower()
-
-
-class TestNvdaVersionTable:
-    """NVDA_VERSION_TABLE com baseline oficial e faixas auxiliares do projeto."""
-
-    def test_version_table_existe(self):
-        assert NVDA_VERSION_TABLE is not None
-        assert len(NVDA_VERSION_TABLE) > 0
-
-    def test_cada_linha_tem_3_elementos(self):
-        for row in NVDA_VERSION_TABLE:
-            assert len(row) == 3, f"Linha deve ter (cenario, min, tested): {row}"
-
-    def test_versao_minima_nao_abaixo_de_2019_3(self):
-        """Regra NVDA-018: minimumNVDAVersion nunca abaixo de 2019.3.0."""
-        for cenario, min_ver, _ in NVDA_VERSION_TABLE:
-            partes = min_ver.split(".")
-            ano = int(partes[0])
-            assert ano >= 2019, f"Cenario '{cenario}': ano {ano} abaixo do minimo"
-
-    def test_linha_forward_compat_aponta_para_2026(self):
-        """A tabela deve preservar uma linha de forward-compatibility para NVDA 2026.1+."""
-        row = next((r for r in NVDA_VERSION_TABLE if "2026.1+" in r[0]), None)
-        assert row is not None
-        assert "2026" in row[2], f"Linha forward-compat deve apontar para 2026.x: {row}"
-
-    def test_baseline_oficial_e_2026_1_1(self):
-        row = next((r for r in NVDA_VERSION_TABLE if "Baseline oficial" in r[0]), None)
-        assert row is not None
-        assert row[1] == "2026.1.1"
-        assert row[2] == "2026.2.0"

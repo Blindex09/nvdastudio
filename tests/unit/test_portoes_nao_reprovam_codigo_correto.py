@@ -26,11 +26,7 @@ import os
 
 import pytest
 
-from nvdastudio.builder.addon_builder import (
-	validate_python_imports,
-)
 from nvdastudio.builder.code_sandbox import CodeSandbox
-from nvdastudio.core.orchestrator import Orchestrator
 
 NL = chr(10)
 TAB = chr(9)
@@ -91,14 +87,6 @@ _ARQUIVOS = {f"{_PKG}/__init__.py": _INIT, f"{_PKG}/servico.py": _SERVICO}
 
 def _detalhe(r):
 	return (r.stdout or r.stderr or r.error or "")[:400]
-
-
-def test_portao_imports_declarados():
-	assert not validate_python_imports(_INIT, local_modules={"servico"})
-
-
-def test_portao_ponto_de_entrada():
-	assert not Orchestrator._missing_loadable_entry_point(list(_ARQUIVOS))
 
 
 def test_portao_execucao_isolada():

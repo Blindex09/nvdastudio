@@ -1,6 +1,5 @@
 import os
 import sys
-import configparser
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -60,12 +59,12 @@ class TestE2ManifestSanitize:
 	um manifest.ini valido mesmo quando o LLM gera multiline + campos proibidos.
 	"""
 
-	def test_manifest_salvo_e_parseable_por_configparser(self, tmp_path):
+	def test_manifest_salvo_respeita_semantica_escalar_do_configobj(self, tmp_path):
 		"""
-		O manifest.ini salvo deve ser parseavel pelo configparser (equivalente ao
-		ConfigObj usado pelo NVDA) — sem VdtTypeError e sem valores lista.
+		O manifest.ini salvo deve manter campos string como escalares segundo a
+		semantica do ConfigObj usado pelo NVDA — sem VdtTypeError/valor lista.
 		"""
-		from nvdastudio.builder.addon_builder import save_addon_files
+		from nvdastudio.builder.addon_builder import save_addon_files, _manifest_scalar_errors
 
 		addon_folder, _ = save_addon_files(
 			_make_blocks(), str(tmp_path), "AddonSanitize", use_timestamp=False,
@@ -77,12 +76,7 @@ class TestE2ManifestSanitize:
 		with open(manifest_path, encoding="utf-8") as fh:
 			content = fh.read()
 
-		# configparser requer secao; o manifest NVDA nao tem -- usa secao fake
-		# pra confirmar de verdade que o parser aceita o arquivo sem erro
-		# (VdtTypeError/valor-lista sao sintomas de linha de continuacao mal
-		# formada, que o parser rejeitaria).
-		cp = configparser.RawConfigParser()
-		cp.read_string("[manifest]\n" + content)
+		assert _manifest_scalar_errors(content) == []
 
 		# Nenhum valor deve ter indentacao de continuacao (seria multiline)
 		for line in content.splitlines():

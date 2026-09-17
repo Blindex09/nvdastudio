@@ -430,7 +430,6 @@ def test_factory_uses_native_provider_without_hermes(monkeypatch):
 	monkeypatch.setattr(settings_panel, "get_api_key", lambda provider: "secret")
 	client = llm_factory.create_llm_client(model_id="gpt-5.6-luna", provider="openai")
 	assert isinstance(client, ProviderClient)
-	assert llm_factory.get_available_backends() == {"native": True}
 
 
 # ---------------------------------------------------------------------------

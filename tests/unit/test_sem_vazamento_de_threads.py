@@ -23,7 +23,7 @@ from nvdastudio.core.orchestrator import MODULE_VERSION, Orchestrator
 
 
 def test_versao():
-	assert MODULE_VERSION == "5.92.0"
+	assert MODULE_VERSION == "7.0.0"
 
 
 def test_criar_orchestrator_nao_deixa_thread_para_tras():

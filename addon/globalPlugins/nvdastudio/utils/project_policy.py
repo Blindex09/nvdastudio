@@ -23,13 +23,3 @@ def parse_version_tuple(version: str) -> tuple[int, int, int]:
 	except ValueError:
 		return (0, 0, 0)
 	return (major, minor, patch)
-
-
-PROJECT_MIN_NVDA_TUPLE = parse_version_tuple(PROJECT_MIN_NVDA)
-PROJECT_LAST_TESTED_NVDA_TUPLE = parse_version_tuple(PROJECT_LAST_TESTED_NVDA)
-ABSOLUTE_MIN_NVDA_TUPLE = parse_version_tuple(ABSOLUTE_MIN_NVDA)
-
-
-def is_below_project_baseline(version: str) -> bool:
-	"""Retorna True se a versao estiver abaixo do baseline oficial do projeto."""
-	return parse_version_tuple(version) < PROJECT_MIN_NVDA_TUPLE

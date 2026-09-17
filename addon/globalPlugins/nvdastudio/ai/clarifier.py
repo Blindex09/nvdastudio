@@ -6,8 +6,33 @@ from .llm_client import LLMClientError
 from .llm_factory import call_with_structured_output
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 
-MODULE_VERSION = "1.7.0"
+MODULE_VERSION = "2.1.0"
 _logger = get_logger("clarifier")
+
+SAFE_CLARIFICATION_QUESTION = (
+	"Antes de começar, pode explicar com um exemplo simples o que deve acontecer "
+	"e em que momento a pessoa usará essa função?"
+)
+
+
+def _safe_clarification_fallback(reason: str) -> "ClarificationResult":
+	"""Falha fechada quando a decisão semântica do Clarifier não é confiável.
+
+	Continuar como se o pedido estivesse claro transforma indisponibilidade da IA
+	em decisão de produto. Uma pergunta funcional, curta e sem jargão preserva o
+	controle do usuário e funciona também para quem está começando a desenvolver.
+	"""
+	_logger.warning(
+		"[AVISO] Clarifier indisponivel (%s). Solicitando esclarecimento seguro.",
+		reason,
+	)
+	return ClarificationResult(
+		needs_clarification=True,
+		questions=[SAFE_CLARIFICATION_QUESTION],
+		user_level="iniciante",
+		intent="create",
+		addon_architecture="ambiguous",
+	)
 
 
 # 1.6.0: analyze_query() exige JSON estrito (_CLARIFIER_SCHEMA, additionalProperties=
@@ -15,13 +40,6 @@ _logger = get_logger("clarifier")
 # isso e deepseek-v4-flash, sem json_schema real (achado de auditoria 2026-08-26, ver
 # model_registry.py::get_structured_output_model()). Toda chamada real caia no
 # fallback de "sem clarificacao" quando o JSON vinha malformado, silenciosamente.
-def get_clarifier_model() -> str:
-	"""Retorna o modelo do clarifier -- sempre OpenCode Go com json_schema
-	estrito garantido, nunca o tier light do provider ativo do usuario. Ver
-	model_registry.py::get_structured_output_model()."""
-	from .model_registry import get_structured_output_model
-	return get_structured_output_model(0)
-
 # Valores validos para addon_architecture
 _VALID_ARCHITECTURES = frozenset({"external", "driver", "deep_integration", "ambiguous"})
 
@@ -44,6 +62,10 @@ _CLARIFIER_SYSTEM = (
 	'  "surgical_description": "",\n'
 	'  "needs_clarification": true|false,\n'
 	'  "user_level": "iniciante|intermediario|avancado",\n'
+	'  "task_complexity": "low|medium|high",\n'
+	'  "routing_preference": "balanced|quality|cost|speed|privacy",\n'
+	'  "required_model_capabilities": [],\n'
+	'  "package_requested": false,\n'
 	'  "questions": ["pergunta 1"],\n'
 	'  "forbidden": false,\n'
 	'  "refusal_reason": "",\n'
@@ -108,6 +130,15 @@ _CLARIFIER_SYSTEM = (
 	'- intermediario: conhece o NVDA, usa alguns termos\n'
 	'- avancado: usa termos tecnicos, globalPlugin, appModule, SynthDriver\n'
 	'\n'
+	'PREFERENCIA DE ROTEAMENTO:\n'
+	'- balanced: padrão, quando o usuário não declarou preferência.\n'
+	'- quality, cost ou speed: somente quando o usuário pedir essa prioridade.\n'
+	'- privacy: quando o usuário pedir minimização de compartilhamento entre serviços.\n'
+	'\n'
+	'CAPACIDADES DO MODELO:\n'
+	'- Use vision, audio ou video somente quando o usuário estiver entregando esse tipo de dado ao agente.\n'
+	'- Não marque audio só porque o addon que será criado processará áudio no futuro.\n'
+	'\n'
 	'QUANDO PERGUNTAR (needs_clarification=true):\n'
 	'- addon_architecture == ambiguous (SEMPRE perguntar)\n'
 	'- Pedido vago sobre O QUE deve fazer\n'
@@ -133,6 +164,10 @@ class ClarificationResult:
 	intent: str = "create"           # create | iterate | surgical_edit | chat | forbidden
 	surgical_description: str = ""   # instrucao deterministica para surgical_edit
 	addon_architecture: str = "external"  # external | driver | deep_integration | ambiguous
+	task_complexity: str = "medium"  # low | medium | high; semantica declarada pela IA
+	routing_preference: str = "balanced"
+	required_model_capabilities: list[str] = field(default_factory=list)
+	package_requested: bool = False  # decisao semantica; nunca inferida por palavra-chave
 
 
 def analyze_query(query: str) -> ClarificationResult:
@@ -158,12 +193,19 @@ def analyze_query(query: str) -> ClarificationResult:
 						"surgical_description":     {"type": "string"},
 						"needs_clarification":      {"type": "boolean"},
 						"user_level":               {"type": "string", "enum": ["iniciante", "intermediario", "avancado"]},
+						"task_complexity":          {"type": "string", "enum": ["low", "medium", "high"]},
+						"routing_preference":       {"type": "string", "enum": ["balanced", "quality", "cost", "speed", "privacy"]},
+						"required_model_capabilities": {
+							"type": "array",
+							"items": {"type": "string", "enum": ["vision", "audio", "video"]},
+						},
+						"package_requested":        {"type": "boolean"},
 						"questions":                {"type": "array", "items": {"type": "string"}},
 						"forbidden":                {"type": "boolean"},
 						"refusal_reason":           {"type": "string"},
 						"extra_features_planned":   {"type": "array", "items": {"type": "string"}},
 					},
-					"required": ["intent", "addon_architecture", "needs_clarification", "user_level", "forbidden"],
+					"required": ["intent", "addon_architecture", "needs_clarification", "user_level", "task_complexity", "routing_preference", "required_model_capabilities", "package_requested", "forbidden"],
 					"additionalProperties": False,
 				}
 			}
@@ -177,16 +219,14 @@ def analyze_query(query: str) -> ClarificationResult:
 		log_llm_response(_logger, f"clarifier_v{MODULE_VERSION}", raw)
 
 		if not raw.strip():
-			_logger.warning("[AVISO] Clarifier: API retornou conteudo vazio. Prosseguindo sem perguntas.")
-			return ClarificationResult(needs_clarification=False, questions=[])
+			return _safe_clarification_fallback("a API retornou conteúdo vazio")
 
 		clean = raw.strip()
 		clean = re.sub(r"^```(?:json)?\n?", "", clean)
 		clean = re.sub(r"\n?```$", "", clean)
 
 		if not clean.strip():
-			_logger.warning("[AVISO] Clarifier: resposta apos limpeza esta vazia. Prosseguindo sem perguntas.")
-			return ClarificationResult(needs_clarification=False, questions=[])
+			return _safe_clarification_fallback("a resposta ficou vazia após a limpeza")
 
 		data = json.loads(clean)
 		return _parse_clarifier_json(data)
@@ -197,8 +237,7 @@ def analyze_query(query: str) -> ClarificationResult:
 			data = _extract_json_fallback(raw)
 			return _parse_clarifier_json(data)
 		except (json.JSONDecodeError, KeyError) as exc2:
-			_logger.warning("[AVISO] Clarifier: fallback JSON falhou (%s). Prosseguindo sem perguntas.", exc2)
-			return ClarificationResult(needs_clarification=False, questions=[])
+			return _safe_clarification_fallback(f"resposta inválida: {exc2}")
 	except (LLMClientError, Exception) as exc:
 		exc_str = str(exc)
 		if "400" in exc_str or "Bad Request" in exc_str:
@@ -208,8 +247,7 @@ def analyze_query(query: str) -> ClarificationResult:
 				forbidden=True, intent="forbidden",
 				refusal_reason="Pedido bloqueado pela politica de conteudo da API.",
 			)
-		_logger.warning("[AVISO] Clarifier falhou (%s). Prosseguindo sem perguntas.", exc)
-		return ClarificationResult(needs_clarification=False, questions=[])
+		return _safe_clarification_fallback(f"falha na API: {exc}")
 
 
 def _extract_json_fallback(text: str) -> dict:
@@ -283,7 +321,19 @@ def _parse_clarifier_json(data: dict) -> ClarificationResult:
 	user_level = str(data.get("user_level", "intermediario")).lower()
 	if user_level not in ("iniciante", "intermediario", "avancado"):
 		user_level = "intermediario"
+	task_complexity = str(data.get("task_complexity", "medium")).lower()
+	if task_complexity not in ("low", "medium", "high"):
+		task_complexity = "medium"
+	routing_preference = str(data.get("routing_preference", "balanced")).lower()
+	if routing_preference not in ("balanced", "quality", "cost", "speed", "privacy"):
+		routing_preference = "balanced"
+	required_model_capabilities = [
+		str(capability).lower()
+		for capability in data.get("required_model_capabilities", [])
+		if str(capability).lower() in {"vision", "audio", "video"}
+	]
 	extra_features = [str(e) for e in data.get("extra_features_planned", []) if e]
+	package_requested = bool(data.get("package_requested", False))
 
 	log_decision(_logger, "intent_detectado",
 				 f"intent={intent} level={user_level} "
@@ -297,6 +347,10 @@ def _parse_clarifier_json(data: dict) -> ClarificationResult:
 			user_level=user_level, intent="surgical_edit",
 			surgical_description=surgical_description,
 			addon_architecture=addon_architecture,
+			task_complexity=task_complexity,
+			routing_preference=routing_preference,
+			required_model_capabilities=required_model_capabilities,
+			package_requested=package_requested,
 		)
 
 	if needs and questions:
@@ -308,6 +362,10 @@ def _parse_clarifier_json(data: dict) -> ClarificationResult:
 			user_level=user_level, intent=intent,
 			extra_features_planned=extra_features,
 			addon_architecture=addon_architecture,
+			task_complexity=task_complexity,
+			routing_preference=routing_preference,
+			required_model_capabilities=required_model_capabilities,
+			package_requested=package_requested,
 		)
 
 	log_decision(_logger, "query_clara",
@@ -317,6 +375,10 @@ def _parse_clarifier_json(data: dict) -> ClarificationResult:
 		user_level=user_level, intent=intent,
 		extra_features_planned=extra_features,
 		addon_architecture=addon_architecture,
+		task_complexity=task_complexity,
+		routing_preference=routing_preference,
+		required_model_capabilities=required_model_capabilities,
+		package_requested=package_requested,
 	)
 
 
@@ -326,6 +388,9 @@ def build_enriched_query(
 	answers: list[str],
 	user_level: str = "intermediario",
 	addon_architecture: str = "external",
+	task_complexity: str = "medium",
+	routing_preference: str = "balanced",
+	required_model_capabilities: list[str] | None = None,
 ) -> str:
 	"""
 	Monta query enriquecida com respostas do usuario, nivel e arquitetura detectada.
@@ -341,6 +406,15 @@ def build_enriched_query(
 				parts.append(f"- {q}: {a.strip()}")
 
 	parts.append(f"\n[Nivel do usuario detectado: {user_level}]")
+	complexity = task_complexity if task_complexity in ("low", "medium", "high") else "medium"
+	parts.append(f"[TASK-COMPLEXITY: {complexity}]")
+	preference = routing_preference if routing_preference in (
+		"balanced", "quality", "cost", "speed", "privacy",
+	) else "balanced"
+	parts.append(f"[ROUTING-PREFERENCE: {preference}]")
+	capabilities = sorted(set(required_model_capabilities or []) & {"vision", "audio", "video"})
+	if capabilities:
+		parts.append(f"[MODEL-CAPABILITIES: {','.join(capabilities)}]")
 
 	# Injeta arquitetura apenas quando relevante para o Planner
 	if addon_architecture and addon_architecture != "external":

@@ -1,10 +1,8 @@
-from typing import Optional
-
 from .llm_client import LLMClientError, LLMClientProtocol, LLMResponse
 from .model_registry import ALTO_MODEL, is_alto_model, resolve_alto_model
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "5.5.0"
+MODULE_VERSION = "6.1.0"
 _logger = get_logger("llm_factory")
 
 DEFAULT_MODEL = ALTO_MODEL
@@ -16,16 +14,14 @@ class LLMFactoryError(LLMClientError):
 
 def create_llm_client(
 	model_id: str = DEFAULT_MODEL,
-	provider: Optional[str] = None,
+	provider: str | None = None,
 ) -> LLMClientProtocol:
 	"""
 	Cria um cliente HTTP nativo conforme o provedor configurado.
 
 	model_id no formato "<provider>::<model_id_real>" (ex:
 	"opencode_go::gpt-5.6-luna") forca esse provider, ignorando tanto o
-	parametro provider= explicito quanto get_llm_provider() -- convencao
-	usada exclusivamente por ai/model_router.py::select_model_and_provider()
-	pra escalacao cross-provider (5.2.0).
+	parametro provider= explicito quanto get_llm_provider().
 	"""
 	if "::" in model_id:
 		tagged_provider, _, tagged_model = model_id.partition("::")
@@ -36,6 +32,12 @@ def create_llm_client(
 	if provider is None:
 		from ..gui.settings_panel import get_llm_provider
 		provider = get_llm_provider()
+
+	if provider == "studio":
+		from .studio_client import StudioClient
+		# Studio expõe somente o sentinela Alto. Valores concretos antigos podem
+		# chegar de consumidores que resolviam tier antes de conhecer o gateway.
+		return StudioClient(model_id=ALTO_MODEL)
 
 	if is_alto_model(model_id):
 		model_id = resolve_alto_model(provider)
@@ -132,16 +134,11 @@ def create_llm_client(
 		raise LLMFactoryError(f"Provedor {provider} indisponivel: {e}") from e
 
 
-def get_available_backends() -> dict[str, bool]:
-	"""Retorna status dos backends disponiveis."""
-	return {"native": True}
-
-
 def call_with_structured_output(
 	user_message: str,
 	response_format: dict,
-	system_override: Optional[str] = None,
-	reasoning_effort: Optional[str] = None,
+	system_override: str | None = None,
+	reasoning_effort: str | None = None,
 	step_type: str = "",
 ) -> LLMResponse:
 	"""
@@ -155,18 +152,16 @@ def call_with_structured_output(
 	responsabilidade de quem chama) avanca pro proximo imediatamente, sem
 	retry no mesmo modelo. So levanta excecao se a cadeia INTEIRA falhar.
 
-	Usado pelos pontos do projeto que exigem JSON garantido e nao tem
-	logica de escalacao propria: clarifier.py, core/agentic_loop.py
-	(arbitro do ensemble_verify), gui/studio_dialog.py, memory/
-	memory_manager.py. core/planner.py e ai/critic.py tem estrategia de
-	retry propria (planner: narracao ao vivo via tool call; critic: dois
-	estagios com log_decision) e chamam create_llm_client() direto com
-	model_registry.py::get_structured_output_model(), sem passar por aqui.
+	Usado pelas decisoes semanticas estruturadas da interface e do Clarifier.
 	"""
 	from .model_registry import STRUCTURED_OUTPUT_MODEL_CHAIN, get_structured_output_model
 	last_exc: LLMClientError | None = None
+	attempted: set[str] = set()
 	for idx in range(len(STRUCTURED_OUTPUT_MODEL_CHAIN)):
 		model_id = get_structured_output_model(idx)
+		if model_id in attempted:
+			continue
+		attempted.add(model_id)
 		try:
 			client = create_llm_client(model_id=model_id)
 			return client.chat(
@@ -183,6 +178,29 @@ def call_with_structured_output(
 				model_id, exc,
 			)
 			continue
+
+	# A cadeia auditada continua preferencial, mas não pode tornar os demais
+	# provedores incapazes de participar do mesmo comportamento semântico. Ao
+	# final, tenta o provider configurado; Studio delega isso ao seu ranking.
+	try:
+		from ..gui.settings_panel import get_llm_model, get_llm_provider
+		active_provider = get_llm_provider()
+		active_model = get_llm_model()
+		fallback_id = f"{active_provider}::{active_model}"
+		if fallback_id not in attempted:
+			client = create_llm_client(model_id=fallback_id)
+			return client.chat(
+				user_message,
+				system_override=system_override,
+				response_format=response_format,
+				reasoning_effort=reasoning_effort,
+				step_type=step_type,
+			)
+	except LLMClientError as exc:
+		last_exc = exc
+		_logger.warning(
+			"[STRUCTURED_OUTPUT] fallback do provedor ativo falhou: %s", exc,
+		)
 	raise LLMFactoryError(
-		f"Toda a cadeia de structured output (OpenCode Go) esta indisponivel. Ultimo erro: {last_exc}"
+		f"Toda a cadeia de saída estruturada está indisponível. Último erro: {last_exc}"
 	) from last_exc

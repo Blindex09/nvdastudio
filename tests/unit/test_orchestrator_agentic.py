@@ -1,17 +1,36 @@
-"""Roteamento agentico no orchestrator apos a demolicao do staged (2026-09-06).
-
-O agente e o UNICO caminho: _run_pipeline, _run_conversational_pipeline e
-_run_until_success delegam a _run_pipeline_agentic. Sem flag, sem fallback staged.
-run_agentic_build e mockado (sem droid real).
-"""
+"""Roteamento e entrega do unico pipeline agentico do orchestrator."""
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from nvdastudio.core.orchestrator import (
 	MODULE_VERSION, Orchestrator, _agentic_files_to_blocks,
 )
 
-assert MODULE_VERSION == "5.92.0"
+assert MODULE_VERSION == "7.0.0"
+
+
+def _route(provider="factory", model="auto", reason="rota de teste"):
+	return SimpleNamespace(
+		provider=provider,
+		model_id=model,
+		reason=reason,
+		to_dict=lambda: {
+			"provider": provider,
+			"model_id": model,
+			"reason": reason,
+		},
+	)
+
+
+@pytest.fixture(autouse=True)
+def _factory_por_padrao(monkeypatch):
+	"""Casos legados deste arquivo exercitam o backend Droid."""
+	monkeypatch.setattr(
+		"nvdastudio.core.orchestrator._get_agentic_routes",
+		lambda _request="": [_route()],
+	)
 
 
 class TestArquivosParaBlocos:
@@ -53,10 +72,93 @@ class TestRunPipelineAgentico:
 		o._suppress_complete_callback = False
 		with patch("nvdastudio.builder.agentic_driver.run_agentic_build",
 				return_value=_fake_build(tmp_path)):
-			ok = o._run_pipeline_agentic("crie um addon")
-		assert ok is True and len(recebidos) == 1
+			o._run_agent("crie um addon")
+		assert len(recebidos) == 1
 		res = recebidos[0]
 		assert res.success is True and "```python" in res.step_results[0].output
+		assert res.artifact_files == ["manifest.ini", "globalPlugins/X/__init__.py"]
+
+	def test_factory_alto_passa_auto_model_ao_driver(self, tmp_path):
+		"""A seleção automática precisa chegar ao caminho agêntico real."""
+		_prep(tmp_path)
+		o = Orchestrator()
+		o._on_complete = lambda _result: None
+		o._suppress_complete_callback = False
+		m = MagicMock(return_value=_fake_build(tmp_path))
+		with (
+			patch("nvdastudio.builder.agentic_driver.run_agentic_build", m),
+			patch("nvdastudio.gui.settings_panel.get_llm_provider", return_value="factory"),
+			patch("nvdastudio.gui.settings_panel.get_llm_model", return_value="alto"),
+		):
+			o._run_agent("crie um addon complexo")
+
+		assert m.call_args.kwargs["model_id"] == "auto"
+		assert o._last_result.step_results[0].model_used == "factory::auto"
+
+	@pytest.mark.parametrize("provider", ["ollama", "openai", "gemini", "anthropic", "xai"])
+	def test_demais_provedores_usam_motor_agentico_nativo(self, tmp_path, monkeypatch, provider):
+		_prep(tmp_path)
+		o = Orchestrator()
+		o._on_complete = lambda _result: None
+		o._suppress_complete_callback = False
+		native = MagicMock(return_value=_fake_build(tmp_path))
+		droid = MagicMock(side_effect=AssertionError("Droid nao deve executar outro provedor"))
+		monkeypatch.setattr(
+			"nvdastudio.core.orchestrator._get_agentic_routes",
+			lambda _request="": [_route(provider, f"modelo-{provider}")],
+		)
+		with (
+			patch("nvdastudio.builder.agentic_driver.run_provider_agentic_build", native),
+			patch("nvdastudio.builder.agentic_driver.run_agentic_build", droid),
+		):
+			o._run_agent("crie um addon")
+		assert native.call_args.kwargs["provider"] == provider
+		assert native.call_args.kwargs["model_id"] == f"modelo-{provider}"
+		assert o._last_result.step_results[0].model_used == f"{provider}::modelo-{provider}"
+
+	def test_studio_faz_failover_preservando_workspace(self, tmp_path, monkeypatch):
+		_prep(tmp_path)
+		o = Orchestrator()
+		o._on_complete = lambda _result: None
+		o._suppress_complete_callback = False
+		monkeypatch.setattr(
+			"nvdastudio.core.orchestrator._get_agentic_routes",
+			lambda _request="": [
+				_route("openai", "modelo-a"),
+				_route("gemini", "modelo-b"),
+			],
+		)
+		first = _fake_build(
+			tmp_path, success=False, execution_ok=False,
+			gate_report="teste falhou",
+		)
+		second = _fake_build(tmp_path)
+		native = MagicMock(side_effect=[first, second])
+		with patch(
+			"nvdastudio.builder.agentic_driver.run_provider_agentic_build",
+			native,
+		):
+			o._run_agent("crie um addon")
+
+		assert native.call_count == 2
+		assert native.call_args_list[1].kwargs["workdir"] == str(tmp_path)
+		assert o._last_result.success is True
+		assert o._last_result.selected_provider == "gemini"
+		assert len(o._last_result.routing_decisions) == 2
+
+	def test_propaga_pedido_de_pacote_no_resultado(self, tmp_path):
+		_prep(tmp_path)
+		recebidos = []
+		o = Orchestrator()
+		o._on_complete = lambda result: recebidos.append(result)
+		o._suppress_complete_callback = False
+		o._package_requested = True
+		with patch(
+			"nvdastudio.builder.agentic_driver.run_agentic_build",
+			return_value=_fake_build(tmp_path),
+		):
+			o._run_agent("crie, teste e empacote")
+		assert recebidos[0].package_requested is True
 
 	def test_gate_reprovado_entrega_mas_success_false(self, tmp_path):
 		_prep(tmp_path)
@@ -66,8 +168,7 @@ class TestRunPipelineAgentico:
 		o._suppress_complete_callback = False
 		build = _fake_build(tmp_path, execution_ok=False, gate_report="- Erro de EXECUCAO real", rounds=3)
 		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", return_value=build):
-			ok = o._run_pipeline_agentic("x")
-		assert ok is True
+			o._run_agent("x")
 		assert recebidos[0].success is False and "EXECUCAO" in (recebidos[0].error or "")
 		assert recebidos[0].total_retries == 2
 
@@ -77,9 +178,10 @@ class TestRunPipelineAgentico:
 		o._suppress_complete_callback = False
 		with patch("nvdastudio.builder.agentic_driver.run_agentic_build",
 				return_value=_fake_build(tmp_path, files=[])):
-			ok = o._run_pipeline_agentic("x")
-		assert ok is False
-		o._on_complete.assert_not_called()
+			o._run_agent("x")
+		o._on_complete.assert_called_once_with(o._last_result)
+		assert o._last_result.success is False
+		assert o._last_result.error
 
 
 class TestDirecaoAoVivoNoOrchestrator:
@@ -92,8 +194,7 @@ class TestDirecaoAoVivoNoOrchestrator:
 		o._suppress_complete_callback = False
 		build = _fake_build(tmp_path, cancelled=True, success=False)
 		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", return_value=build):
-			ok = o._run_pipeline_agentic("x")
-		assert ok is True
+			o._run_agent("x")
 		assert recebidos[0].success is False
 		assert "interrompida" in (recebidos[0].error or "").lower()
 
@@ -104,10 +205,10 @@ class TestDirecaoAoVivoNoOrchestrator:
 		o._suppress_complete_callback = False
 		m = MagicMock(return_value=_fake_build(tmp_path))
 		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", m):
-			o._run_pipeline_agentic("crie um addon")
+			o._run_agent("crie um addon")
 		kwargs = m.call_args.kwargs
 		assert kwargs["cancel_event"] is o._agentic_cancel
-		assert kwargs["steer_provider"] == o._drenar_steer
+		assert kwargs["steer_provider"] == o._drain_steer
 
 	def test_cancel_pipeline_seta_o_event(self):
 		o = Orchestrator()
@@ -119,47 +220,26 @@ class TestDirecaoAoVivoNoOrchestrator:
 		o = Orchestrator()
 		o.steer_pipeline("adicione um botao Limpar")
 		o.steer_pipeline("e um atalho")
-		drenado = o._drenar_steer()
+		drenado = o._drain_steer()
 		assert "adicione um botao Limpar" in drenado and "e um atalho" in drenado
 		# consumido: a proxima drenagem vem vazia.
-		assert o._drenar_steer() == ""
+		assert o._drain_steer() == ""
 
 	def test_steer_vazio_e_ignorado(self):
 		o = Orchestrator()
 		o.steer_pipeline("   ")
-		assert o._drenar_steer() == ""
+		assert o._drain_steer() == ""
 
 
-class TestPipelinesDelegamAoAgente:
-	def test_run_pipeline_e_agentico(self):
-		o = Orchestrator()
-		with patch.object(o, "_run_pipeline_agentic", return_value=True) as m:
-			o._run_pipeline("crie um addon")
-		m.assert_called_once_with("crie um addon")
-
-	def test_run_pipeline_sem_arquivos_erro_honesto(self):
-		o = Orchestrator()
-		o._on_complete = MagicMock()
-		with patch.object(o, "_run_pipeline_agentic", return_value=False):
-			o._run_pipeline("x")
-		res = o._on_complete.call_args[0][0]
-		assert res.success is False and "nao conseguiu" in (res.error or "")
-
-	def test_conversational_e_agentico(self):
-		o = Orchestrator()
-		with patch.object(o, "_run_pipeline_agentic", return_value=True) as m:
-			o._run_conversational_pipeline("modifique meu addon")
-		m.assert_called_once_with("modifique meu addon")
-
-	def test_run_until_success_usa_o_agente(self):
+class TestPipelineUnico:
+	def test_run_until_complete_usa_o_agente(self):
 		o = Orchestrator()
 		o._on_complete = MagicMock()
 
 		def _fake(q):
-			o._last_result = SimpleNamespace(success=True, planejamento_degradado=False)
-			return True
+			o._last_result = SimpleNamespace(success=True)
 
-		with patch.object(o, "_run_pipeline_agentic", side_effect=_fake) as m:
-			res = o._run_until_success("crie um addon")
+		with patch.object(o, "_run_agent", side_effect=_fake) as m:
+			res = o._run_until_complete("crie um addon")
 		m.assert_called_once_with("crie um addon")
 		assert res.success is True

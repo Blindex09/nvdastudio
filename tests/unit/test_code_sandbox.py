@@ -10,29 +10,29 @@ class TestRunTestSuitePerformance:
 	"""
 
 	def test_run_pytest_desliga_plugin_autoload(self):
-		from unittest.mock import MagicMock, patch
+		from types import SimpleNamespace
+		from unittest.mock import patch
 		from nvdastudio.builder.code_sandbox import CodeSandbox
 
-		fake_proc = MagicMock(returncode=0, stdout="1 passed", stderr="")
-		with patch("nvdastudio.builder.code_sandbox.subprocess.run", return_value=fake_proc) as mock_run:
+		fake_proc = SimpleNamespace(returncode=0, stdout="1 passed", stderr="", error="", timed_out=False, isolated=True, backend="docker")
+		with patch.object(CodeSandbox, "_isolated_python", return_value=fake_proc) as isolated:
 			CodeSandbox()._run_pytest("/tmp/qualquer", ["test_x.py"], timeout=25)
 
-		env = mock_run.call_args.kwargs["env"]
+		env = isolated.call_args.args[3]
 		assert env.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
 
-	def test_run_pytest_ainda_herda_o_resto_do_ambiente_real(self):
-		"""So adiciona a flag -- nao substitui o env real (PATH/APPDATA
-		continuam presentes, motivo pelo qual herdamos os.environ.copy())."""
-		import os
-		from unittest.mock import MagicMock, patch
+	def test_run_pytest_nao_repassa_ambiente_nem_credenciais(self):
+		"""O contêiner recebe uma allowlist, nunca APPDATA/PATH/chaves."""
+		from types import SimpleNamespace
+		from unittest.mock import patch
 		from nvdastudio.builder.code_sandbox import CodeSandbox
 
-		fake_proc = MagicMock(returncode=0, stdout="1 passed", stderr="")
-		with patch("nvdastudio.builder.code_sandbox.subprocess.run", return_value=fake_proc) as mock_run:
+		fake_proc = SimpleNamespace(returncode=0, stdout="1 passed", stderr="", error="", timed_out=False, isolated=True, backend="docker")
+		with patch.object(CodeSandbox, "_isolated_python", return_value=fake_proc) as isolated:
 			CodeSandbox()._run_pytest("/tmp/qualquer", ["test_x.py"], timeout=25)
 
-		env = mock_run.call_args.kwargs["env"]
-		assert env.get("PATH") == os.environ.get("PATH")
+		env = isolated.call_args.args[3]
+		assert set(env) == {"PYTEST_DISABLE_PLUGIN_AUTOLOAD"}
 
 
 def test_syntax_check_exposes_stable_result_contract():

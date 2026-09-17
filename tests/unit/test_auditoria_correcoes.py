@@ -3,9 +3,6 @@
 Cada correcao trava aqui o comportamento que faltava, a custo zero de API.
 """
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # Achado 1 -- _infer_python_filename tinha fallback_counter mas o chamador
 # nunca passava: dois blocos sem classe e sem anotacao viravam ambos
@@ -94,70 +91,3 @@ def test_op_destrutiva_helper_direto():
 	assert _op_destrutiva_no_carregamento(
 		{"a.py": "from shutil import rmtree\ndef f():\n\trmtree('x')\n"}
 	) == "", "rmtree dentro de funcao nao-carregada nao deve disparar"
-
-
-# ---------------------------------------------------------------------------
-# Achado 3 -- o validador de gestos reconhecia @script/__gestures mas nao o
-# binding programatico self.bindGesture(...), um padrao valido do NVDA:
-# addon que funcionava era reprovado por "atalho ausente".
-# ---------------------------------------------------------------------------
-
-class TestBindGestureProgramatico:
-	def test_bindgesture_literal_reconhecido(self):
-		from nvdastudio.sub_agents.ast_validator import (
-			extract_declared_gestures, validate_declared_gestures,
-		)
-		codigo = (
-			"import globalPluginHandler\n"
-			"class GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
-			"\tdef __init__(self, *a, **k):\n"
-			"\t\tsuper().__init__(*a, **k)\n"
-			"\t\tself.bindGesture('kb:NVDA+shift+g', 'reviewText')\n"
-		)
-		assert "kb:nvda+shift+g" in extract_declared_gestures(codigo)
-		assert validate_declared_gestures(codigo, ["kb:NVDA+shift+g"]).ok, (
-			"bindGesture programatico e valido -- nao pode ser reprovado"
-		)
-
-	def test_bindgestures_dict_inline_reconhecido(self):
-		from nvdastudio.sub_agents.ast_validator import extract_declared_gestures
-
-		codigo = (
-			"class GlobalPlugin:\n"
-			"\tdef __init__(self):\n"
-			"\t\tself.bindGestures({'kb:control+shift+m': 's1', 'kb:NVDA+h': 's2'})\n"
-		)
-		encontrados = extract_declared_gestures(codigo)
-		assert "kb:control+shift+m" in encontrados
-		assert "kb:nvda+h" in encontrados
-
-	def test_atalho_realmente_ausente_ainda_reprova(self):
-		"""A correcao nao pode cegar o portao: um atalho pedido que nao existe
-		em @script, __gestures NEM bindGesture continua sendo reprovado."""
-		from nvdastudio.sub_agents.ast_validator import validate_declared_gestures
-
-		codigo = "class GlobalPlugin:\n\tpass\n"
-		assert not validate_declared_gestures(codigo, ["kb:NVDA+shift+g"]).ok
-
-
-# ---------------------------------------------------------------------------
-# Achado 4 -- o workspace do file_editor era parents[5] (a pasta addons/ do
-# NVDA / raiz do repo), deixando o LLM de geracao alcancar o codigo do proprio
-# NVDAStudio e todos os addons instalados.
-# ---------------------------------------------------------------------------
-
-def test_codigo_do_nvdastudio_fica_fora_do_workspace_default():
-	from pathlib import Path
-
-	import nvdastudio.tool_system.builtins.file_editor as fe
-
-	# O proprio arquivo do file_editor (codigo do NVDAStudio) tem que ser
-	# REJEITADO pelo resolvedor sob o workspace default -- prova direta de que
-	# o LLM nao alcanca o codigo do NVDAStudio.
-	with pytest.raises(ValueError, match="workspace"):
-		fe._resolve_workspace_file(fe.__file__)
-
-	default = fe._default_workspace_root()
-	assert default not in Path(fe.__file__).resolve().parents, (
-		"o workspace default cobre a arvore do proprio NVDAStudio"
-	)

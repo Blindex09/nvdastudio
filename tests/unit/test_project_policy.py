@@ -4,7 +4,6 @@ from nvdastudio.utils.project_policy import (
     PROJECT_LAST_TESTED_NVDA,
     PROJECT_MIN_NVDA,
     PROJECT_SUPPORTED_RANGE,
-    is_below_project_baseline,
     parse_version_tuple,
 )
 
@@ -34,12 +33,3 @@ class TestProjectPolicyHelpers:
 
     def test_parse_version_tuple_com_duas_partes(self):
         assert parse_version_tuple("2026.1") == (2026, 1, 0)
-
-    def test_version_abaixo_do_baseline(self):
-        assert is_below_project_baseline("2024.1") is True
-
-    def test_version_no_baseline(self):
-        assert is_below_project_baseline("2026.1.1") is False
-
-    def test_version_acima_do_baseline(self):
-        assert is_below_project_baseline("2026.2") is False

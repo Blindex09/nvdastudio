@@ -12,7 +12,7 @@ from gui.guiHelper import BoxSizerHelper
 from ..utils.logger import get_logger
 from ..ai.model_registry import ALTO_MODEL, get_provider_step_models, registry
 
-MODULE_VERSION = "6.11.0"
+MODULE_VERSION = "7.0.0"
 _logger = get_logger("settings_panel")
 
 CONFIG_SECTION = "nvdastudio"
@@ -30,6 +30,7 @@ CONFIG_KEY_LANGUAGE   = "uiLanguage"
 # tavily/exa) porque o resgate precisa da chave real do Felipe pra
 # funcionar, so nao aparece como opcao selecionavel aqui.
 _PROVIDERS = [
+    ("Studio (roteamento automatico)", "studio"),
     ("Ollama Cloud",  "ollama"),
     ("OpenAI",        "openai"),
     ("Google Gemini", "gemini"),
@@ -187,16 +188,7 @@ _MODELS_BY_PROVIDER: dict[str, list[tuple[str, str]]] = {
     # tier e verificado), entao _build_models_for_provider("factory") devolve
     # so [("Alto (recomendado)", ALTO_MODEL)] -- que e exatamente o certo:
     # Factory roda no Alto/automatico, roteando pro modelo verificado.
-    for ui_provider in ("ollama", "openai", "gemini", "anthropic", "xai", "factory")
-}
-
-_DEFAULT_MODELS = {
-    "ollama":    ALTO_MODEL,
-    "openai":    ALTO_MODEL,
-    "gemini":    ALTO_MODEL,
-    "anthropic": ALTO_MODEL,
-    "xai":       ALTO_MODEL,
-    "factory":   ALTO_MODEL,
+    for ui_provider in ("studio", "ollama", "openai", "gemini", "anthropic", "xai", "factory")
 }
 
 _LANGUAGES = [
@@ -213,6 +205,12 @@ _DEFAULT_OUTPUT_DIR = os.path.join(
 
 def _validate_provider_key(provider: str, key: str, model_id: str) -> None:
     """Faz uma chamada minima pelo mesmo cliente usado em producao."""
+    if provider == "studio":
+        if not get_studio_available_providers():
+            raise RuntimeError(
+                "Configure ao menos uma chave de provedor ou o login da Factory antes de usar o Studio."
+            )
+        return
     from ..ai.model_registry import resolve_provider_tier_model
     concrete_model = resolve_provider_tier_model(provider, "light", model_id)
     from ..ai.llm_client import LLMClientProtocol
@@ -264,6 +262,27 @@ def get_api_key(provider: str) -> str:
         return config.conf[CONFIG_SECTION].get(key_name, "").strip()
     return ""
 
+
+def provider_requires_api_key(provider: str) -> bool:
+    """Studio não tem chave própria; Factory também aceita login do Droid."""
+    return provider not in {"studio", "factory"}
+
+
+def get_studio_available_providers() -> tuple[str, ...]:
+    """Retorna provedores utilizáveis sem solicitar credenciais novas."""
+    available = [
+        provider
+        for provider in ("openai", "anthropic", "gemini", "xai", "ollama", "opencode_go")
+        if get_api_key(provider)
+    ]
+    try:
+        from ..ai.factory_client import _achar_droid
+        _achar_droid()
+        available.append("factory")
+    except Exception as exc:
+        _logger.debug("[STUDIO] Factory localmente indisponível: %s", exc)
+    return tuple(available)
+
 def get_output_dir() -> str:
     ensure_config_section()
     saved = config.conf[CONFIG_SECTION].get(CONFIG_KEY_OUTPUT_DIR, "").strip()
@@ -291,7 +310,8 @@ class NVDAStudioSettingsPanel(SettingsPanel):
         provider_idx = _PROVIDER_CODES.index(current_provider) if current_provider in _PROVIDER_CODES else 0
         self.provider_ctrl.SetSelection(provider_idx)
         self.provider_ctrl.SetToolTip(
-            "Escolha o provedor de IA. Cada provedor exige sua propria chave API."
+            "Studio escolhe automaticamente entre os provedores configurados. "
+            "Os demais mantêm a execução no provedor escolhido."
         )
         self.provider_ctrl.Bind(wx.EVT_CHOICE, self._on_provider_changed)
 
@@ -302,7 +322,8 @@ class NVDAStudioSettingsPanel(SettingsPanel):
             choices=[],
         )
         self.model_ctrl.SetToolTip(
-            "Escolha Alto para o NVDAStudio selecionar automaticamente o melhor modelo do provedor."
+            "Em Studio, Alto seleciona provedor e modelo. Nos demais, Alto "
+            "seleciona somente o melhor modelo daquele provedor."
         )
         self._refresh_model_choices()
 
@@ -394,7 +415,7 @@ class NVDAStudioSettingsPanel(SettingsPanel):
 
     def _current_provider(self) -> str:
         idx = self.provider_ctrl.GetSelection()
-        return _PROVIDER_CODES[idx] if 0 <= idx < len(_PROVIDER_CODES) else "hermes"
+        return _PROVIDER_CODES[idx] if 0 <= idx < len(_PROVIDER_CODES) else "ollama"
 
     def _refresh_model_choices(self):
         provider = self._current_provider()
@@ -412,7 +433,7 @@ class NVDAStudioSettingsPanel(SettingsPanel):
 
     def _update_provider_ui(self):
         provider = self._current_provider()
-        need_key = provider != "hermes"
+        need_key = provider_requires_api_key(provider)
 
         label = _API_KEY_LABELS.get(provider, "Chave API:")
         self.api_key_label.SetLabel(label)
@@ -426,6 +447,13 @@ class NVDAStudioSettingsPanel(SettingsPanel):
             self.api_key_ctrl.Disable()
             self.api_key_ctrl.SetValue("")
 
+        if provider == "studio":
+            self._api_key_status.SetLabel(
+                "Studio usa automaticamente os provedores cujas chaves já estão configuradas."
+            )
+        elif not self._api_key_status.GetLabel().startswith("Validando"):
+            self._api_key_status.SetLabel("")
+
         self.Layout()
         self.Refresh()
 
@@ -436,7 +464,7 @@ class NVDAStudioSettingsPanel(SettingsPanel):
     def _on_validate_api_key(self, event):
         provider = self._current_provider()
         key = self.api_key_ctrl.GetValue().strip()
-        if not key:
+        if provider_requires_api_key(provider) and not key:
             self._api_key_status.SetLabel("Campo vazio. Insira a chave antes de validar.")
             self.Layout()
             ui.message("NVDAStudio: campo de chave API vazio.")
@@ -551,8 +579,8 @@ class FirstRunSetupDialog(wx.Dialog):
             panel,
             label=(
                 "Bem-vindo ao NVDAStudio.\n"
-                "Escolha seu provedor de IA e insira a chave API correspondente.\n"
-                "O NVDAStudio se conecta diretamente ao provedor escolhido."
+                "Escolha um provedor ou use Studio para seleção automática.\n"
+                "Provedores diretos usam a chave API correspondente."
             ),
         )
         intro.Wrap(440)
@@ -561,7 +589,7 @@ class FirstRunSetupDialog(wx.Dialog):
         lbl_provider = wx.StaticText(panel, label="&Provedor de IA:")
         sizer.Add(lbl_provider, flag=wx.LEFT | wx.RIGHT | wx.TOP, border=8)
         self._provider_ctrl = wx.Choice(panel, choices=[label for label, _ in _PROVIDERS])
-        self._provider_ctrl.SetSelection(0)
+        self._provider_ctrl.SetSelection(_PROVIDER_CODES.index("ollama"))
         self._provider_ctrl.Bind(wx.EVT_CHOICE, self._on_provider_changed)
         sizer.Add(self._provider_ctrl, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM, border=8)
 
@@ -601,11 +629,14 @@ class FirstRunSetupDialog(wx.Dialog):
 
     def _update_key_ui(self):
         provider = self._current_provider()
-        need_key = True
+        need_key = provider_requires_api_key(provider)
         label = _API_KEY_LABELS.get(provider, "Chave API:")
         self._key_label.SetLabel(label)
         self._key_label.Show(need_key)
         self._token_ctrl.Show(need_key)
+        self._btn_validate.SetLabel(
+            "&Verificar provedores" if provider == "studio" else "&Validar chave API"
+        )
         if not need_key:
             self._token_ctrl.SetValue("")
         self.Layout()
@@ -617,7 +648,7 @@ class FirstRunSetupDialog(wx.Dialog):
     def _on_validate(self, event) -> None:
         provider = self._current_provider()
         key = self._token_ctrl.GetValue().strip()
-        if not key:
+        if provider_requires_api_key(provider) and not key:
             self._set_status("Campo vazio. Insira a chave antes de validar.")
             ui.message("NVDAStudio: campo de chave vazio.")
             return
@@ -654,9 +685,16 @@ class FirstRunSetupDialog(wx.Dialog):
         provider = self._current_provider()
         key = self._token_ctrl.GetValue().strip()
 
-        if not key:
+        if provider_requires_api_key(provider) and not key:
             self._set_status("Insira a chave API antes de salvar.")
             ui.message("NVDAStudio: chave API obrigatoria para este provedor.")
+            return
+
+        if provider == "studio" and not get_studio_available_providers():
+            self._set_status(
+                "Configure ao menos uma chave de provedor antes de selecionar Studio."
+            )
+            ui.message("NVDAStudio: nenhum provedor configurado para o modo Studio.")
             return
 
         ensure_config_section()

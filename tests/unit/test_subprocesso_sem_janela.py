@@ -79,12 +79,8 @@ def test_find_python_nunca_devolve_o_nvda():
 	assert achado is None or "nvda" not in achado.lower()
 
 
-class TestValidacaoDeExecucaoDegradaSemPython:
-	"""Regressao do loop de 'Erro de execucao real: [WinError 740]': DENTRO do
-	NVDA, sys.executable e o nvda.exe (nao roda como python, pede elevacao). A
-	validacao de execucao tem que PULAR nesse caso -- ausencia de interpretador
-	e infra, nao defeito do codigo. Tratar como falha jogava o step num loop de
-	retry infinito (o que o usuario viu ao vivo)."""
+class TestValidacaoDeExecucaoUsaBackendIsolado:
+	"""O nvda.exe nunca é usado como Python e falta de sandbox falha fechada."""
 
 	_ADDON = (
 		"import globalPluginHandler\n"
@@ -92,27 +88,38 @@ class TestValidacaoDeExecucaoDegradaSemPython:
 		"\tpass\n"
 	)
 
-	def test_sem_python_real_pula_em_vez_de_reprovar(self, monkeypatch):
+	def test_sem_python_local_ainda_usa_container(self, monkeypatch):
 		from nvdastudio.builder import code_sandbox
+		from types import SimpleNamespace
 
 		monkeypatch.setattr(code_sandbox, "_PYTHON", None)
+		monkeypatch.setattr(
+			code_sandbox.CodeSandbox, "_isolated_python",
+			lambda *_args, **_kwargs: SimpleNamespace(
+				returncode=0, stdout="OK\n", stderr="", error="", timed_out=False,
+				isolated=True, backend="docker",
+			),
+		)
 		r = code_sandbox.CodeSandbox().validate_addon_execution(
 			{"globalPlugins/X/__init__.py": self._ADDON}
 		)
-		assert r.success is True, "sem python, tem que PULAR, nao reprovar (senao loop)"
-		assert "PULADO_SEM_PYTHON" in r.stdout
+		assert r.success is True
+		assert r.isolated is True
+		assert r.isolation_backend == "docker"
 
-	def test_winerror_740_ao_lancar_pula(self, monkeypatch):
+	def test_backend_indisponivel_nao_e_aprovado_como_seguro(self, monkeypatch):
 		from nvdastudio.builder import code_sandbox
+		from types import SimpleNamespace
 
-		monkeypatch.setattr(code_sandbox, "_PYTHON", "python.exe")
-
-		def _lanca_740(*a, **k):
-			raise OSError(740, "A operacao solicitada requer elevacao")
-
-		monkeypatch.setattr(code_sandbox, "_run_hidden", _lanca_740)
+		monkeypatch.setattr(
+			code_sandbox.CodeSandbox, "_isolated_python",
+			lambda *_args, **_kwargs: SimpleNamespace(
+				returncode=-1, stdout="", stderr="", error="ISOLATION_UNAVAILABLE",
+				timed_out=False, isolated=False, backend="",
+			),
+		)
 		r = code_sandbox.CodeSandbox().validate_addon_execution(
 			{"globalPlugins/X/__init__.py": self._ADDON}
 		)
-		assert r.success is True, "740 ao lancar o interpretador tem que PULAR"
-		assert "PULADO_SUBPROCESSO_INDISPONIVEL" in r.stdout
+		assert r.success is False
+		assert r.error == "ISOLATION_UNAVAILABLE"

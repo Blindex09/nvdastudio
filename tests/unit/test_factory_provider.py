@@ -104,8 +104,8 @@ class TestEconomia:
 	def test_padrao_nunca_e_o_modelo_mais_caro(self):
 		"""O padrao do proprio droid e claude-opus-5, o mais caro do catalogo:
 		os 135 mil creditos por plano medidos no spike eram Opus. O padrao
-		daqui e o mesmo heavy que o projeto ja usa nos outros provedores."""
-		assert _DEFAULT_MODEL == "kimi-k2.7-code"
+		daqui e o Auto Model nativo, que escolhe conforme a tarefa."""
+		assert _DEFAULT_MODEL == "auto"
 		assert "opus" not in _DEFAULT_MODEL
 
 	def test_comando_nao_deixa_o_agente_explorar_o_projeto(self):
@@ -282,15 +282,13 @@ class TestCalibracaoDoRoteamento:
 					f"{step}/{complexidade} -> {escolhido}"
 				)
 
-	def test_leve_e_pesado_sao_o_mesmo_por_medicao_e_nao_por_descuido(self):
-		"""Nao ha tier mais barato na Factory: o kimi-k2.7-code, que o projeto
-		ja usa como heavy, e o mais barato do catalogo. Mandar step leve para
-		o Haiku custaria 7,4x A MAIS e ainda erraria o JSON."""
+	def test_alto_delega_ao_roteador_nativo_da_factory(self):
+		"""Factory + Alto deve escolher por tarefa, não fixar um modelo."""
 		from nvdastudio.ai.model_registry import get_provider_step_models
 
 		tiers = get_provider_step_models("factory")
 
-		assert tiers["light"] == tiers["heavy"] == "kimi-k2.7-code"
+		assert tiers["light"] == tiers["heavy"] == "auto"
 
 	def test_nao_ha_frontier_na_factory(self):
 		"""Correcao de uma decisao minha do mesmo dia. A 1.21.0 pos
@@ -311,32 +309,15 @@ class TestCalibracaoDoRoteamento:
 
 		assert "frontier" not in get_provider_step_models("factory")
 
-	def test_complexidade_alta_usa_o_heavy_e_nao_um_modelo_caro(self):
+	def test_toda_complexidade_em_alto_usa_auto_model(self):
 		from nvdastudio.ai.model_router import select_model
 
 		for complexidade in ("low", "medium", "high"):
 			escolhido = select_model(
 				"factory", "code_generation", "alto", complexity=complexidade,
 			)
-			assert escolhido == "kimi-k2.7-code", complexidade
-			assert "sonnet" not in escolhido and "opus" not in escolhido
+			assert escolhido == "auto", complexidade
 
-	def test_factory_e_resgate_valido_para_o_ollama(self):
-		"""O criterio ja escolhido pelo usuario para o resgate e ASSINATURA:
-		'so nao faco isso com os outros, por que os outros nao tenho
-		assinatura'. A Factory e assinatura, mesma categoria do OpenCode Go --
-		e em 2026-09-03 o OpenCode Go ficou sem saldo e o Ollama comecou a
-		devolver 429, deixando o resgate sem para onde ir."""
-		from nvdastudio.ai.model_router import (
-			_ALL_ROUTABLE_PROVIDERS,
-			_OLLAMA_RESCUE_PROVIDERS,
-		)
-
-		assert "factory" in _OLLAMA_RESCUE_PROVIDERS
-		assert "factory" in _ALL_ROUTABLE_PROVIDERS
-		# Provedor pago por token continua fora: o usuario nao tem credito avulso.
-		for pago in ("openai", "anthropic", "gemini", "xai"):
-			assert pago not in _OLLAMA_RESCUE_PROVIDERS
 
 
 class TestSemToolUseFalhaAlto:
@@ -413,7 +394,19 @@ class TestInstrucaoSoTexto:
 		assert prompt.startswith(fc._INSTRUCAO_SO_TEXTO), (
 			"a instrucao 'so texto' tem que vir no TOPO do prompt do droid"
 		)
-		assert "NAO crie" in prompt and "NAO use" in prompt
+		assert "NAO execute ferramentas" in prompt
+		assert "voce nao tem permissao para agir" not in prompt.casefold()
 		# a instrucao nao pode engolir o pedido real do step
 		assert "voce e o assembler" in prompt
 		assert "monte o addon final" in prompt
+
+	def test_limite_do_adaptador_nao_revoga_autorizacao_do_usuario(self):
+		"""Regressao da recusa falsa ao corrigir documentacao e empacotar."""
+		import nvdastudio.ai.factory_client as fc
+
+		instrucao = fc._INSTRUCAO_SO_TEXTO.casefold()
+		assert "não tem permissão" not in instrucao
+		assert "nao tem permissao" not in instrucao
+		assert "autorizam o nvdastudio" in instrucao
+		assert "empacotar" in instrucao
+		assert "usuario nao autorizou" not in instrucao

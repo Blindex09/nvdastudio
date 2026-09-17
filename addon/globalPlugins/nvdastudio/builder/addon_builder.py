@@ -36,7 +36,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.25.0"
+MODULE_VERSION = "4.28.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -49,9 +49,6 @@ _NVDA_WHEEL_ABI = "cp313"
 _SYNTHETIC_FNAME_RE = re.compile(r'^arquivo_\d+\.(py|ini|html)$', re.IGNORECASE)
 
 _logger = get_logger("addon_builder")
-
-# Campos obrigatorios no manifest.ini
-_MANIFEST_REQUIRED_FIELDS = ["name", "summary", "author", "version", "minimumNVDAVersion"]
 
 # Regex para nomes pip validos (PEP 508 basico — sem extras, URLs, paths ou versao).
 # Aceita: "requests", "openai-whisper", "Pillow", "my.package", "pkg_2"
@@ -375,6 +372,40 @@ class AddonBuilderError(Exception):
 # sha256: calculado pelo empacotador, nunca declarado manualmente.
 # configSpec: responsabilidade do codigo Python do addon, nao do manifest.
 _FORBIDDEN_MANIFEST_FIELDS = frozenset({"sha256", "configspec"})
+_MANIFEST_SCALAR_FIELDS = frozenset({
+	"name", "summary", "description", "author", "version", "changelog",
+	"minimumnvdaversion", "lasttestednvdaversion", "url", "docfilename",
+})
+
+
+def _manifest_scalar_errors(code: str) -> list[str]:
+	"""Detecta valores que o ConfigObj do NVDA converteria em lista.
+
+	O parser simplificado usado historicamente pelo NVDAStudio aceitava uma
+	descricao com virgulas. O ConfigObj, usado de verdade pelo NVDA, transforma
+	esse valor nao delimitado em ``list`` e a validacao ``string()`` rejeita o
+	manifesto. Esta checagem reproduz exatamente esse limite sem exigir que a
+	biblioteca interna do NVDA esteja instalada no ambiente de desenvolvimento.
+	"""
+	errors: list[str] = []
+	for line_number, line in enumerate(code.splitlines(), start=1):
+		if not line or line[0].isspace() or line.lstrip().startswith(("#", "[")):
+			continue
+		match = re.match(r"^(\w+)\s*=\s*(.*)$", line)
+		if not match or match.group(1).casefold() not in _MANIFEST_SCALAR_FIELDS:
+			continue
+		value = match.group(2).strip()
+		quoted = (
+			len(value) >= 2
+			and value[0] in {'"', "'"}
+			and value[-1] == value[0]
+		)
+		if "," in value and not quoted:
+			errors.append(
+				f"MANIFEST-001: Campo '{match.group(1)}' na linha {line_number} "
+				"contem virgula sem aspas e seria interpretado como lista pelo NVDA."
+			)
+	return errors
 
 
 def _sanitize_manifest(code: str) -> str:
@@ -417,7 +448,7 @@ def _sanitize_manifest(code: str) -> str:
 	def flush():
 		if current_key is None:
 			return
-		if current_key in _TEXT_FIELDS and current_val_parts:
+		if current_key.casefold() in _TEXT_FIELDS and current_val_parts:
 			# Une todas as partes em uma linha, separando por espaco
 			joined = " ".join(p.strip() for p in current_val_parts if p.strip())
 			# Remove virgulas ao final de cada parte (evita residuos de lista)
@@ -452,6 +483,21 @@ def _sanitize_manifest(code: str) -> str:
 
 	flush()
 	return "\n".join(result)
+
+
+def _is_development_artifact(relative_path: str) -> bool:
+	"""Retorna True para arquivos de desenvolvimento que nao integram o addon."""
+	normalized = relative_path.replace("\\", "/").lstrip("/")
+	parts = normalized.split("/")
+	basename = parts[-1].casefold()
+	development_dirs = {"tests", "test", "e2e_tests", ".pytest_cache", "__pycache__"}
+	return (
+		any(part.casefold() in development_dirs for part in parts[:-1])
+		or basename == "conftest.py"
+		or (basename.startswith("test_") and basename.endswith(".py"))
+		or basename.endswith("_test.py")
+		or basename in {"pytest.ini", "tox.ini", ".coverage", "coverage.xml"}
+	)
 
 
 # ------------------------------------------------------------------
@@ -751,40 +797,59 @@ def extract_code_blocks(text: str) -> list[dict]:
 	return blocks
 
 
+def load_artifact_blocks(workdir: str, files: list[str]) -> list[dict]:
+	"""Carrega artefatos textuais diretamente do workspace do agente.
+
+	Este e o contrato estruturado entre o agente e a interface. Nao transforma
+	arquivos em Markdown para depois extrai-los novamente: documentacao pode
+	conter fences de exemplo e o round-trip antigo interpretava esses exemplos
+	como novos ``module_N.py``.
+
+	Arquivos de verificacao e residuos internos continuam disponiveis no
+	workspace para os gates, mas nunca viram arquivos do addon entregue.
+	"""
+	root = os.path.realpath(workdir)
+	blocks: list[dict] = []
+	ignored_parts = {".git", ".factory", ".droid", ".pytest_cache", "__pycache__", "tests"}
+	ignored_names = {"prompt.txt", "system-prompt.txt"}
+	for relative in files:
+		normalized = (relative or "").replace("\\", "/").lstrip("/")
+		parts = [part for part in normalized.split("/") if part]
+		if not parts or any(part.casefold() in ignored_parts for part in parts):
+			continue
+		name = parts[-1]
+		if name.casefold() in ignored_names or name.casefold().endswith(
+			(".pyc", ".nvda-addon", ".zip"),
+		):
+			continue
+		path = os.path.realpath(os.path.join(root, *parts))
+		try:
+			if os.path.commonpath((root, path)) != root or not os.path.isfile(path):
+				continue
+		except ValueError:
+			continue
+		try:
+			with open(path, encoding="utf-8") as fh:
+				content = fh.read()
+		except (OSError, UnicodeDecodeError):
+			# Recursos binarios sao preservados via artifact_dir no empacotamento.
+			continue
+		lower = name.casefold()
+		if lower.endswith(".py"):
+			language = "python"
+		elif lower.endswith(".ini"):
+			language = "ini"
+		elif lower.endswith((".html", ".htm")):
+			language = "html"
+		else:
+			language = "text"
+		blocks.append({"filename": normalized, "code": content, "language": language})
+	return blocks
+
+
 # ------------------------------------------------------------------
 # Validacao de estrutura
 # ------------------------------------------------------------------
-
-def validate_manifest(code: str) -> list[str]:
-	"""
-	Valida campos obrigatorios no manifest.ini.
-
-	Retorna lista de campos ausentes (vazia = valido).
-	"""
-	missing = []
-	for field in _MANIFEST_REQUIRED_FIELDS:
-		if not re.search(rf"^\s*{field}\s*=", code, re.MULTILINE | re.IGNORECASE):
-			missing.append(field)
-	return missing
-
-
-def validate_python_structure(code: str) -> list[str]:
-	"""
-	Validacao estatica basica do codigo Python gerado.
-	Nao executa o codigo — apenas analisa texto.
-
-	Retorna lista de avisos (vazia = sem problemas encontrados).
-	"""
-	warnings = []
-	if "import" not in code:
-		warnings.append("Nenhum import encontrado no codigo.")
-	if "class GlobalPlugin" not in code and "class AppModule" not in code:
-		if "__init__" in code or "def script_" in code:
-			warnings.append("Classe GlobalPlugin ou AppModule nao encontrada.")
-	return warnings
-
-
-
 
 # Modulos sempre disponiveis no ambiente NVDA
 _NVDA_MODULES: frozenset = frozenset({
@@ -845,16 +910,6 @@ _STDLIB_MODULES: frozenset = frozenset({
 	"pprint", "pickle", "sqlite3", "concurrent", "multiprocessing",
 	"gettext", "codecs", "binascii", "mimetypes",
 })
-
-# Aliases pip-name -> import-root para pacotes comuns
-_PIP_ALIASES: dict = {
-	"openai_whisper": "whisper",
-	"google_generativeai": "google",
-	"pillow": "PIL",
-	"opencv_python": "cv2",
-	"scikit_learn": "sklearn",
-}
-
 
 def _resolve_pip_names(
 	names: list[str],
@@ -931,54 +986,6 @@ def _is_known_module(root: str, bundled_roots: set) -> bool:
 		or root in bundled_roots
 		or root.startswith("_")
 	)
-
-
-def validate_python_imports(
-	code: str,
-	bundled_packages: list | None = None,
-	local_modules: list | set | tuple | None = None,
-) -> list:
-	"""
-	Valida imports do codigo contra NVDA modules, stdlib e pacotes bundlados.
-	Retorna lista de imports desconhecidos — possivelmente precisam ser bundlados.
-	Nao executa codigo (Regra 9).
-	"""
-	bundled_roots: set = {
-		str(module).replace("-", "_").split(".")[0].lower()
-		for module in (local_modules or [])
-	}
-	for pkg in (bundled_packages or []):
-		root = pkg.replace("-", "_").split(".")[0].lower()
-		bundled_roots.add(root)
-		if root in _PIP_ALIASES:
-			bundled_roots.add(_PIP_ALIASES[root])
-
-	try:
-		tree = ast.parse(code)
-	except SyntaxError:
-		return []
-
-	unknown: list = []
-	seen: set = set()
-	for node in ast.walk(tree):
-		if isinstance(node, ast.Import):
-			for alias in node.names:
-				r = alias.name.split(".")[0]
-				if r not in seen and not _is_known_module(r, bundled_roots):
-					seen.add(r)
-					unknown.append(alias.name)
-		elif isinstance(node, ast.ImportFrom):
-			# Relative imports point at files in the generated add-on.  They are
-			# validated structurally after all files have been assembled and must
-			# never be mistaken for missing PyPI dependencies here.
-			if node.level:
-				continue
-			if node.module:
-				r = node.module.split(".")[0]
-				if r not in seen and not _is_known_module(r, bundled_roots):
-					seen.add(r)
-					unknown.append(node.module)
-	return unknown
 
 
 def _validate_html_block(code: str) -> bool:
@@ -1155,10 +1162,8 @@ def _generate_minimal_manifest(addon_name: str) -> str:
 	return (
 		# 4.21.0 -- a secao [add-on] foi REMOVIDA daqui.
 		#
-		# Tres pontos do projeto a proibem: manifest_builder.py ('Never
-		# include the [add-on] section header'), nvda_validator.py (reprova
-		# se a string aparece) e critic.py ('NUNCA deve ter secao [add-on]
-		# ... ERRO grave'). O manifest do NVDA e ConfigObj sem secoes.
+		# O manifest do NVDA usa ConfigObj sem secoes; o cabecalho [add-on]
+		# tornaria o fallback invalido.
 		#
 		# Este fallback so roda quando o manifest_builder JA falhou, entao o
 		# defeito ficava escondido no caminho de excecao: a rede de seguranca
@@ -1178,7 +1183,6 @@ def save_addon_files(
 	output_dir: str,
 	addon_name: str,
 	use_timestamp: bool = True,
-	require_manifest: bool = True,
 	garantir_doc: bool = True,
 ) -> tuple[str, list[str]]:
 	"""
@@ -1210,15 +1214,12 @@ def save_addon_files(
 	# blocos extraidos, gera um manifest minimo deterministico. Sem isso,
 	# o addon nao instala (ESTRUTURA-001). Causa raiz: modelo 503 durante
 	# manifest_builder => nenhum manifest.ini => bloqueador fatal.
-	# 5.50.0 (require_manifest=False): projetos controller_client NUNCA tem
-	# manifest.ini por design (nao sao addons) -- gerar um fake aqui
-	# corromperia a saida com um arquivo que nao deveria existir.
 	_has_manifest = any(
 		(b.get("filename") or "").replace("\\", "/").lstrip("/").lower() == "manifest.ini"
 		or (b.get("filename") or "").replace("\\", "/").lstrip("/").lower().endswith("/manifest.ini")
 		for b in blocks
 	)
-	if not _has_manifest and require_manifest:
+	if not _has_manifest:
 		_fallback_manifest = _generate_minimal_manifest(addon_name)
 		blocks.insert(0, {
 			"filename": "manifest.ini",
@@ -1233,15 +1234,13 @@ def save_addon_files(
 
 	# Guia do usuario: mesma rede de seguranca do manifest acima.
 	#
-	# garantir_doc espelha require_manifest: ligado por padrao (o caminho de
-	# producao nao pode depender de alguem lembrar de passar a flag -- peca
-	# certa desligada de quem decide e o defeito mais comum deste projeto) e
-	# desligavel por quem testa o VALIDADOR e precisa de um addon sem doc/.
+	# O caminho de producao garante documentacao por padrao; testes de validacao
+	# podem desligar somente este fallback com garantir_doc=False.
 	_tem_guia = any(
 		(b.get("filename") or "").replace("\\", "/").lower().endswith(".html")
 		for b in blocks
 	)
-	if garantir_doc and require_manifest and not _tem_guia:
+	if garantir_doc and not _tem_guia:
 		_guia = _generate_minimal_user_guide(addon_name)
 		for _idioma in ("pt_BR", "en"):
 			blocks.append({
@@ -1258,7 +1257,7 @@ def save_addon_files(
 	# Testes gerados pela IA sao uteis para o desenvolvedor, nao para o usuario final.
 	blocks = [
 		b for b in blocks
-		if not (b.get("filename") or "").replace("\\", "/").lstrip("/").startswith("tests/")
+		if not _is_development_artifact(b.get("filename") or "")
 	]
 
 	blocks = _deduplicate_blocks(blocks)
@@ -1639,148 +1638,48 @@ def package_addon(addon_folder: str, output_path: str | None = None) -> str:
 	if not os.path.isdir(addon_folder):
 		raise AddonBuilderError(f"[ERRO] Pasta nao encontrada: {addon_folder}")
 
+	# Ultima fronteira antes da distribuicao: fluxos baseados em artifact_dir
+	# nao passam por save_addon_files(), portanto o manifesto precisa ser
+	# normalizado aqui tambem. O pacote nunca pode depender de qual caminho da
+	# interface foi usado para chegar ao empacotador.
+	manifest_path = os.path.join(addon_folder, "manifest.ini")
+	if os.path.isfile(manifest_path):
+		try:
+			with open(manifest_path, encoding="utf-8", errors="replace") as manifest_file:
+				manifest_content = manifest_file.read()
+			manifest_content = _sanitize_manifest(manifest_content)
+			manifest_errors = _manifest_scalar_errors(manifest_content)
+			if manifest_errors:
+				raise AddonBuilderError("[ERRO] " + " | ".join(manifest_errors))
+			with open(manifest_path, "w", encoding="utf-8", newline="\n") as manifest_file:
+				manifest_file.write(manifest_content)
+		except OSError as exc:
+			raise AddonBuilderError(f"[ERRO] Falha ao preparar manifest.ini: {exc}") from exc
+
 	zip_path = output_path or (addon_folder.rstrip("/\\") + ".nvda-addon")
 
 	with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-		for root, _, files in os.walk(addon_folder):
+		ignored_dirs = {
+			".git", ".factory", ".droid", ".pytest_cache", "__pycache__", "tests",
+			"test", "e2e_tests",
+		}
+		ignored_names = {"prompt.txt", "system-prompt.txt"}
+		for root, dirs, files in os.walk(addon_folder):
+			dirs[:] = [directory for directory in dirs if directory not in ignored_dirs]
 			for file in files:
+				if file in ignored_names or file.endswith((".pyc", ".nvda-addon", ".zip")):
+					continue
 				full_path = os.path.join(root, file)
 				# Base e addon_folder: arcname fica relativo ao conteudo da pasta,
 				# sem incluir o nome da pasta no ZIP.
 				# Exemplo: addon_folder/manifest.ini -> manifest.ini (raiz do ZIP)
 				# Exemplo: addon_folder/globalPlugins/x/__init__.py -> globalPlugins/x/__init__.py
 				arcname = os.path.relpath(full_path, addon_folder).replace("\\", "/")
+				if _is_development_artifact(arcname):
+					continue
 				zf.write(full_path, arcname)
 
 	_logger.info("[OK] Addon empacotado: %s", zip_path)
-	return zip_path
-
-
-# -----------------------------------------------------------------------
-# Export: Relatorio Markdown + ZIP completo para distribuicao
-# -----------------------------------------------------------------------
-
-def generate_quality_report(
-	addon_name: str,
-	plan_id: str,
-	step_results: list,
-	total_tokens: int = 0,
-) -> str:
-	"""
-	Gera relatorio de qualidade em Markdown com sumario dos steps,
-	issues encontrados e metricas da sessao.
-
-	addon_name: nome do addon gerado
-	plan_id: ID do plano de execucao
-	step_results: lista de StepResult (ou dicts com step_id, step_type, approved, score, issues)
-	total_tokens: total de tokens consumidos (contador da sessao)
-
-	Retorna: string Markdown pronta para salvar em arquivo.
-	Regra 9: apenas leitura de metadados — nunca executa codigo gerado.
-	"""
-
-	lines = [
-		f"# Relatorio de Qualidade — {addon_name}",
-		"",
-		f"**Plano:** {plan_id}  ",
-		f"**Gerado em:** {datetime.now().strftime('%Y-%m-%d %H:%M')}  ",
-	]
-	if total_tokens > 0:
-		lines.append(f"**Tokens consumidos:** {total_tokens:,}  ")
-	lines.append("")
-
-	ok = sum(1 for r in step_results if (r.approved if hasattr(r, "approved") else r.get("approved", False)))
-	total = len(step_results)
-	lines += [
-		"## Resumo",
-		"",
-		f"- Steps aprovados: {ok}/{total}",
-		f"- Status geral: {'OK' if ok == total else 'PARCIAL' if ok > 0 else 'FALHA'}",
-		"",
-		"## Detalhes por Step",
-		"",
-	]
-
-	for r in step_results:
-		if hasattr(r, "step_id"):
-			step_id   = r.step_id
-			step_type = r.step_type
-			approved  = r.approved
-			score     = r.score
-			issues    = r.issues
-		else:
-			step_id   = r.get("step_id", "?")
-			step_type = r.get("step_type", "?")
-			approved  = r.get("approved", False)
-			score     = r.get("score", 0)
-			issues    = r.get("issues", [])
-
-		status = "APROVADO" if approved else "REPROVADO"
-		lines += [
-			f"### {step_type} [{step_id}] — {status} (score {score})",
-			"",
-		]
-		if issues:
-			lines.append("**Issues encontrados:**")
-			lines.append("")
-			for issue in issues:
-				lines.append(f"- {issue}")
-			lines.append("")
-		else:
-			lines.append("Nenhum issue encontrado.")
-			lines.append("")
-
-	lines += [
-		"---",
-		"",
-		"*Gerado pelo NVDAStudio — NVDAStudio e um criador autonomo de addons NVDA com IA.*",
-	]
-
-	return "\n".join(lines)
-
-
-def export_addon_zip(
-	addon_folder: str,
-	addon_name: str,
-	report_md: str = "",
-	out_dir: str | None = None,
-) -> str:
-	"""
-	Empacota o addon gerado em ZIP de distribuicao com estrutura completa:
-	  - manifest.ini (raiz)
-	  - globalPlugins/ (ou appModules/)
-	  - lib/ (dependencias bundladas, se existir)
-	  - QUALITY_REPORT.md (relatorio de qualidade, se fornecido)
-
-	Diferente de package_addon() que gera .nvda-addon (para instalar),
-	este gera um .zip legivel para inspecao e distribuicao de codigo fonte.
-
-	out_dir: diretorio de saida do ZIP. Se None, usa o diretorio pai de addon_folder.
-
-	Retorna o caminho do ZIP gerado.
-	Regra 9: apenas empacota arquivos existentes — nao executa codigo.
-	"""
-	if not os.path.isdir(addon_folder):
-		raise AddonBuilderError(f"[ERRO] Pasta nao encontrada: {addon_folder}")
-
-	safe_name = addon_name.replace(" ", "_")
-	_zip_dir = out_dir if out_dir else os.path.dirname(addon_folder)
-	zip_path = os.path.join(_zip_dir, f"{safe_name}_source.zip")
-
-	with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-		# Arquivos do addon
-		for root, _, files in os.walk(addon_folder):
-			for file in files:
-				full_path = os.path.join(root, file)
-				arcname = os.path.join(safe_name, os.path.relpath(full_path, addon_folder))
-				arcname = arcname.replace("\\", "/")
-				zf.write(full_path, arcname)
-
-		# Relatorio de qualidade (opcional)
-		if report_md:
-			zf.writestr(f"{safe_name}/QUALITY_REPORT.md", report_md.encode("utf-8"))
-
-	_logger.info("[OK] ZIP de distribuicao gerado: %s", zip_path)
 	return zip_path
 
 
@@ -2321,11 +2220,29 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 					except OSError:
 						continue
 
-	# NVDA-002: Bloqueio thread principal
+	def _tree(source: str) -> ast.Module | None:
+		try:
+			return ast.parse(source)
+		except SyntaxError:
+			return None
+
+	def _call_name(node: ast.Call) -> str:
+		func = node.func
+		if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+			return f"{func.value.id}.{func.attr}"
+		if isinstance(func, ast.Attribute):
+			return func.attr
+		return func.id if isinstance(func, ast.Name) else ""
+
+	# NVDA-002: apenas chamadas reais em módulo que participa da UI do NVDA.
+	# Procurar texto cru confundia documentação/prompts com código executável.
 	for rel, code in all_py:
-		if "time.sleep(" in code and "threading" not in code:
+		tree = _tree(code)
+		calls = [_call_name(node) for node in ast.walk(tree) if isinstance(node, ast.Call)] if tree else []
+		ui_module = "globalPluginHandler" in code or "appModuleHandler" in code
+		if ui_module and "time.sleep" in calls and "threading" not in code:
 			problems.append(f"NVDA-002: {rel}: time.sleep() bloqueia thread principal. Use threading.Thread + wx.CallAfter.")
-		if re.search(r"requests\.(get|post|put|delete)\(", code) and "threading" not in code:
+		if ui_module and any(call in {"requests.get", "requests.post", "requests.put", "requests.delete"} for call in calls) and "threading" not in code:
 			problems.append(f"NVDA-002: {rel}: HTTP sincrono bloqueia thread principal. Use threading.Thread.")
 
 	# NVDA-005: Formato de versao
@@ -2335,27 +2252,60 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 
 	# NVDA-006: Monkey-patching
 	for rel, code in all_py:
-		if re.search(r"^\s*\w+\.\w+\s*=\s*(lambda|def)", code, re.MULTILINE):
-			if "extensionPoints" not in code:
+		tree = _tree(code)
+		if tree is None or "extensionPoints" in code:
+			continue
+		imported_modules = {
+			alias.asname or alias.name.split(".")[0]
+			for node in tree.body if isinstance(node, ast.Import)
+			for alias in node.names
+		}
+		patches = [
+			node for node in ast.walk(tree) if isinstance(node, (ast.Assign, ast.AnnAssign))
+			and isinstance(node.value, ast.Lambda)
+		]
+		for patch_node in patches:
+			targets = patch_node.targets if isinstance(patch_node, ast.Assign) else [patch_node.target]
+			if any(
+				isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name)
+				and target.value.id in imported_modules
+				and not (target.value.id == "builtins" and target.attr == "_")
+				for target in targets
+			):
 				problems.append(f"NVDA-006: {rel}: possivel monkey-patching. Use extension points.")
+				break
 
 	# NVDA-010: UI update sem wx.CallAfter
 	for rel, code in all_py:
-		if "threading.Thread" in code:
-			if "ui.message(" in code and "wx.CallAfter" not in code:
+		tree = _tree(code)
+		calls = [_call_name(node) for node in ast.walk(tree) if isinstance(node, ast.Call)] if tree else []
+		if "threading.Thread" in calls:
+			if "ui.message" in calls and "wx.CallAfter" not in calls:
 				problems.append(f"NVDA-010: {rel}: ui.message() em thread sem wx.CallAfter().")
-			if ".SetLabel(" in code and "wx.CallAfter" not in code:
+			if "SetLabel" in calls and "wx.CallAfter" not in calls:
 				problems.append(f"NVDA-010: {rel}: .SetLabel() em thread sem wx.CallAfter().")
 
 	# NVDA-011: Driver sem check()
 	for rel, code in all_py:
-		if "SynthDriver" in code or "BrailleDisplayDriver" in code:
-			if "def check(" not in code:
+		tree = _tree(code)
+		for class_node in ast.walk(tree) if tree else []:
+			if not isinstance(class_node, ast.ClassDef):
+				continue
+			bases = {
+				base.id if isinstance(base, ast.Name) else base.attr
+				for base in class_node.bases if isinstance(base, (ast.Name, ast.Attribute))
+			}
+			if bases.intersection({"SynthDriver", "BrailleDisplayDriver"}) and not any(
+				isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == "check"
+				for item in class_node.body
+			):
 				problems.append(f"NVDA-011: {rel}: Driver sem metodo check().")
+				break
 
 	# NVDA-012: except: bare
 	for rel, code in all_py:
-		if re.search(r"except\s*:", code):
+		tree = _tree(code)
+		if tree and any(isinstance(node, ast.ExceptHandler) and node.type is None for node in ast.walk(tree)):
 			problems.append(f"NVDA-012: {rel}: except: bare. Especifique a excecao.")
 
 	# NVDA-013: API version range
@@ -2392,7 +2342,26 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 
 	# NVDA-016: shouldWriteToDisk ausente
 	for rel, code in all_py:
-		if re.search(r"open\(.*['\"]w['\"]", code) and "shouldWriteToDisk" not in code:
+		tree = _tree(code)
+		write_calls: list[ast.Call] = []
+		for call_node in ast.walk(tree) if tree else []:
+			if not isinstance(call_node, ast.Call) or _call_name(call_node) != "open":
+				continue
+			mode_node = call_node.args[1] if len(call_node.args) > 1 else next(
+				(keyword.value for keyword in call_node.keywords if keyword.arg == "mode"), None,
+			)
+			if isinstance(mode_node, ast.Constant) and isinstance(mode_node.value, str) and any(
+				flag in mode_node.value for flag in ("w", "a", "x", "+")
+			):
+				write_calls.append(call_node)
+		# Escritas em diretório temporário/workspace de build e escritas já
+		# submetidas ao callback humano não são persistência de configuração.
+		guarded_or_ephemeral = any(
+			marker in code for marker in (
+				"shouldWriteToDisk", "tempfile", "workdir", "permission_callback",
+			)
+		)
+		if write_calls and not guarded_or_ephemeral:
 			problems.append(f"NVDA-016: {rel}: escrita em disco sem shouldWriteToDisk().")
 
 	# NVDA-018: minimumNVDAVersion < 2019.3
@@ -2401,7 +2370,12 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 
 	# NVDA-020: Import re-export
 	for rel, code in all_py:
-		if "from NVDAObjects import" in code and "IAccessible" in code:
+		tree = _tree(code)
+		if tree and any(
+			isinstance(node, ast.ImportFrom) and node.module == "NVDAObjects"
+			and any(alias.name == "IAccessible" for alias in node.names)
+			for node in ast.walk(tree)
+		):
 			problems.append(f"NVDA-020: {rel}: from NVDAObjects import IAccessible. Use from NVDAObjects.IAccessible import IAccessible.")
 
 	# NVDA-027: WebView2 sem disableBrowseMode
@@ -2410,10 +2384,9 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 			if "class AppModule" in code and "disableBrowseModeByDefault" not in code:
 				problems.append(f"NVDA-027: {rel}: AppModule msedgewebview2 sem disableBrowseModeByDefault.")
 
-	# NVDA-028: Type hints legados
-	for rel, code in all_py:
-		if "from typing import Optional" in code or "from typing import Union" in code:
-			problems.append(f"NVDA-028: {rel}: usa Optional/Union. Use X | None e X | Y nativos.")
+	# NVDA-028 não é um erro de compatibilidade: Optional/Union continuam
+	# suportados no Python do NVDA. Modernização de estilo pertence ao lint e
+	# não pode invalidar um pacote funcional.
 
 	# NVDA-029: CRLF
 	for rel, code in all_py:
@@ -2422,15 +2395,28 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 
 	# NVDA-030: __init__ sem super().__init__(*args, **kwargs)
 	for rel, code in all_py:
-		if "class GlobalPlugin" in code or "class AppModule" in code:
-			if "def __init__" in code and "super().__init__(*args, **kwargs)" not in code:
+		tree = _tree(code)
+		for cls in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)) if tree else []:
+			if cls.name not in {"GlobalPlugin", "AppModule"}:
+				continue
+			initializer = next((node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "__init__"), None)
+			if initializer and not any(
+				isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+				and node.func.attr == "__init__" and isinstance(node.func.value, ast.Call)
+				and isinstance(node.func.value.func, ast.Name) and node.func.value.func.id == "super"
+				for node in ast.walk(initializer)
+			):
 				problems.append(f"NVDA-030: {rel}: __init__ sem super().__init__(*args, **kwargs).")
+				break
 
 	# NVDA-031: SynthDriver sem cancel()
 	for rel, code in all_py:
-		if "SynthDriver" in code and "synthDriverHandler" in code:
-			if "def cancel(" not in code:
+		tree = _tree(code)
+		for cls in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)) if tree else []:
+			bases = {base.id if isinstance(base, ast.Name) else base.attr for base in cls.bases if isinstance(base, (ast.Name, ast.Attribute))}
+			if "SynthDriver" in bases and not any(isinstance(node, ast.FunctionDef) and node.name == "cancel" for node in cls.body):
 				problems.append(f"NVDA-031: {rel}: SynthDriver sem cancel().")
+				break
 
 	# NVDA-032: Extension point sem unregister
 	for rel, code in all_py:
@@ -2440,7 +2426,12 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 
 	# NVDA-033: event_NVDAObject_init em GlobalPlugin
 	for rel, code in all_py:
-		if "class GlobalPlugin" in code and "event_NVDAObject_init" in code:
+		tree = _tree(code)
+		if tree and any(
+			isinstance(cls, ast.ClassDef) and cls.name == "GlobalPlugin"
+			and any(isinstance(node, ast.FunctionDef) and node.name == "event_NVDAObject_init" for node in cls.body)
+			for cls in ast.walk(tree)
+		):
 			problems.append(f"NVDA-033: {rel}: event_NVDAObject_init em GlobalPlugin. So funciona em AppModule.")
 
 	# NVDA-034: AppModule self-voicing sem sleepMode
@@ -2451,34 +2442,51 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 
 	# NVDA-035: SynthDriver sem pause()
 	for rel, code in all_py:
-		if "SynthDriver" in code and "synthDriverHandler" in code:
-			if "def pause(" not in code:
+		tree = _tree(code)
+		for cls in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)) if tree else []:
+			bases = {base.id if isinstance(base, ast.Name) else base.attr for base in cls.bases if isinstance(base, (ast.Name, ast.Attribute))}
+			if "SynthDriver" in bases and not any(isinstance(node, ast.FunctionDef) and node.name == "pause" for node in cls.body):
 				problems.append(f"NVDA-035: {rel}: SynthDriver sem pause().")
+				break
 
 	# NVDA-036: SynthDriver sem speak()
 	for rel, code in all_py:
-		if "SynthDriver" in code and "synthDriverHandler" in code:
-			if "def speak(" not in code:
+		tree = _tree(code)
+		for cls in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)) if tree else []:
+			bases = {base.id if isinstance(base, ast.Name) else base.attr for base in cls.bases if isinstance(base, (ast.Name, ast.Attribute))}
+			if "SynthDriver" in bases and not any(isinstance(node, ast.FunctionDef) and node.name == "speak" for node in cls.body):
 				problems.append(f"NVDA-036: {rel}: SynthDriver sem speak().")
+				break
 
 	# NVDA-037: BrailleDisplayDriver sem campos obrigatorios
 	for rel, code in all_py:
-		if "BrailleDisplayDriver" in code:
+		tree = _tree(code)
+		for cls in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)) if tree else []:
+			bases = {base.id if isinstance(base, ast.Name) else base.attr for base in cls.bases if isinstance(base, (ast.Name, ast.Attribute))}
+			if "BrailleDisplayDriver" not in bases:
+				continue
 			missing = []
-			if "numCols" not in code:
+			attributes = {target.id for node in cls.body if isinstance(node, (ast.Assign, ast.AnnAssign)) for target in (node.targets if isinstance(node, ast.Assign) else [node.target]) if isinstance(target, ast.Name)}
+			methods = {node.name for node in cls.body if isinstance(node, ast.FunctionDef)}
+			if "numCols" not in attributes:
 				missing.append("numCols")
-			if "def display(" not in code:
+			if "display" not in methods:
 				missing.append("display()")
-			if "isThreadSafe" not in code:
+			if "isThreadSafe" not in attributes:
 				missing.append("isThreadSafe")
 			if missing:
 				problems.append(f"NVDA-037: {rel}: BrailleDisplayDriver sem: {', '.join(missing)}.")
+			break
 
 	# NVDA-038: SynthDriver sem supportedNotifications
 	for rel, code in all_py:
-		if "SynthDriver" in code:
-			if "supportedNotifications" not in code:
+		tree = _tree(code)
+		for cls in (node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)) if tree else []:
+			bases = {base.id if isinstance(base, ast.Name) else base.attr for base in cls.bases if isinstance(base, (ast.Name, ast.Attribute))}
+			attributes = {target.id for node in cls.body if isinstance(node, (ast.Assign, ast.AnnAssign)) for target in (node.targets if isinstance(node, ast.Assign) else [node.target]) if isinstance(target, ast.Name)}
+			if "SynthDriver" in bases and "supportedNotifications" not in attributes:
 				problems.append(f"NVDA-038: {rel}: SynthDriver sem supportedNotifications.")
+				break
 
 	# NVDA-039: AppModules duplicados
 	app_modules_dir = os.path.join(addon_folder, "appModules")
@@ -2574,32 +2582,62 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 	# o critic (LLM), que reprovava mas sem um sinal mecanico claro pro retry
 	# convergir.
 	for rel, code in all_py:
-		if "wx.MessageDialog" in code:
+		tree = _tree(code)
+		calls = [_call_name(node) for node in ast.walk(tree) if isinstance(node, ast.Call)] if tree else []
+		if "wx.MessageDialog" in calls:
 			problems.append(f"NVDA-049: {rel}: wx.MessageDialog proibido. Use gui.message.MessageDialog.")
-		if re.search(r"\bwx\.MessageBox\s*\(", code):
+		if "wx.MessageBox" in calls:
 			problems.append(f"NVDA-049: {rel}: wx.MessageBox proibido. Use gui.message.MessageDialog.")
 
 	# NVDA-050: NVDAObject overlay herda de base
 	for rel, code in all_py:
-		if "chooseNVDAObjectOverlayClasses" in code or "initOverlayClass" in code:
-			if re.search(r"class\s+\w+\(NVDAObject\)", code):
-				problems.append(f"NVDA-050: {rel}: overlay class herda de NVDAObject base. Use IAccessible/UIA/Window/JABObject.")
+		tree = _tree(code)
+		if tree and any(
+			isinstance(cls, ast.ClassDef)
+			and any(isinstance(base, ast.Name) and base.id == "NVDAObject" for base in cls.bases)
+			for cls in ast.walk(tree)
+		):
+			problems.append(f"NVDA-050: {rel}: overlay class herda de NVDAObject base. Use IAccessible/UIA/Window/JABObject.")
 
 	# NVDA-052: Uso de APIs legadas winUser/winKernel/winGDI/shellapi/ftdi2
 	for rel, code in all_py:
-		if re.search(r"\bimport\s+(winUser|winKernel|winGDI|shellapi)\b", code) or re.search(r"\bfrom\s+(winUser|winKernel|winGDI|shellapi)\s+import\b", code):
+		tree = _tree(code)
+		if tree is None:
+			continue
+		legacy_imports = {
+			alias.name.split(".")[0]
+			for node in ast.walk(tree) if isinstance(node, ast.Import)
+			for alias in node.names
+		}
+		legacy_imports.update(
+			node.module.split(".")[0] for node in ast.walk(tree)
+			if isinstance(node, ast.ImportFrom) and node.module
+		)
+		if legacy_imports.intersection({"winUser", "winKernel", "winGDI", "shellapi"}):
 			problems.append(f"NVDA-052: {rel}: uso de import legado de winUser/winKernel/winGDI/shellapi. Migre para winBindings.")
-		elif re.search(r"\bimport\s+ftdi2\b", code) or re.search(r"\bfrom\s+ftdi2\s+import\b", code):
+		elif "ftdi2" in legacy_imports:
 			problems.append(f"NVDA-052: {rel}: uso de import legado de ftdi2. Migre para o subpacote ftdi2 com snake_case.")
 
 	# NVDA-053: SAPI 4/5 32-bit voices
 	for rel, code in all_py:
-		if '"sapi4"' in code or "'sapi4'" in code:
+		tree = _tree(code)
+		if tree and any(
+			isinstance(node, (ast.Assign, ast.AnnAssign))
+			and isinstance(node.value, ast.Constant)
+			and isinstance(node.value.value, str)
+			and node.value.value.lower() == "sapi4"
+			for node in ast.walk(tree)
+		):
 			problems.append(f"NVDA-053: {rel}: uso de sapi4 legado. Use sapi4_32 para vozes de 32 bits (sem suporte a audio ducking).")
 
 	# NVDA-054: typing_extensions removida no NVDA 2026.1
 	for rel, code in all_py:
-		if "import typing_extensions" in code or "from typing_extensions import" in code:
+		tree = _tree(code)
+		if tree and any(
+			(isinstance(node, ast.Import) and any(alias.name == "typing_extensions" for alias in node.names))
+			or (isinstance(node, ast.ImportFrom) and node.module == "typing_extensions")
+			for node in ast.walk(tree)
+		):
 			problems.append(f"NVDA-054: {rel}: uso de typing_extensions. Remova e use o suporte nativo do Python 3.13 no NVDA 2026.1+.")
 
 	return problems
@@ -2883,6 +2921,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 		try:
 			with open(manifest_path, encoding="utf-8", errors="replace") as fh:
 				manifest_content = fh.read()
+			problems.extend(_manifest_scalar_errors(manifest_content))
 			for line in manifest_content.splitlines():
 				if "=" in line and not line.strip().startswith("#"):
 					key, _, value = line.partition("=")
@@ -2918,16 +2957,19 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 			for fname in files:
 				if fname.endswith(".py"):
 					py_files.append(os.path.join(root, fname))
+		# Quando existe globalPlugins/<Addon>/__init__.py, o __init__.py na raiz
+		# e apenas marcador de pacote. O formato legado diretamente na raiz so
+		# vale quando nao ha um subdiretorio de plugin real.
+		plugin_subdirs_com_init = [
+			d for d in os.listdir(gp_dir)
+			if os.path.isdir(os.path.join(gp_dir, d))
+			and os.path.isfile(os.path.join(gp_dir, d, "__init__.py"))
+		]
 
 		if not py_files:
 			problems.append("ESTRUTURA-004: Nenhum arquivo .py encontrado em globalPlugins/.")
 		else:
 			# B6: detecta multiplas pastas de plugin (cada uma com __init__.py)
-			plugin_subdirs_com_init = [
-				d for d in os.listdir(gp_dir)
-				if os.path.isdir(os.path.join(gp_dir, d))
-				and os.path.isfile(os.path.join(gp_dir, d, "__init__.py"))
-			]
 			if len(plugin_subdirs_com_init) > 1:
 				nomes = ", ".join(plugin_subdirs_com_init)
 				problems.append(
@@ -2996,7 +3038,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 			_py_dir = os.path.normpath(os.path.dirname(py_path))
 			_gp_dir_norm = os.path.normpath(gp_dir)
 			_e_init_principal = fname == "__init__.py" and (
-				_py_dir == _gp_dir_norm
+				(_py_dir == _gp_dir_norm and not plugin_subdirs_com_init)
 				or os.path.dirname(_py_dir) == _gp_dir_norm
 			)
 			# NVDA-003 em MODULO AUXILIAR: gettext sem inicializacao.
@@ -3546,34 +3588,6 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 		_logger.info("[OK] validate_addon_structure: estrutura correta.")
 
 	return problems
-
-
-# Codigos estruturais que impedem o addon de carregar no NVDA.
-# Sao bloqueadores reais: sem eles, instalar gera um .nvda-addon inutil que
-# falha em silencio (NVDA pula o addon sem mensagem ao usuario). Plano aa1600dd
-# (2026-05-10) ensinou que empacotar com ESTRUTURA-004 = lixo entregue ao usuario.
-_BLOCKING_STRUCTURAL_CODES = (
-	"ESTRUTURA-000",  # pasta do addon nao encontrada
-	"ESTRUTURA-001",  # manifest.ini ausente
-	"ESTRUTURA-003",  # pasta globalPlugins/ ausente
-	"ESTRUTURA-004",  # nenhum .py em globalPlugins/
-	"ESTRUTURA-005",  # GlobalPlugin/AppModule ausente em __init__.py
-	"ESTRUTURA-007",  # multiplas pastas de plugin (carrega dois GlobalPlugin)
-)
-
-
-def get_blocking_structural_issues(problems: list[str]) -> list[str]:
-	"""Filtra apenas problemas que impedem o NVDA de carregar o addon.
-
-	Recebe a lista retornada por validate_addon_structure() e devolve apenas
-	os codigos bloqueadores listados em _BLOCKING_STRUCTURAL_CODES.
-
-	Qualquer item na lista de retorno justifica abortar o empacotamento em
-	vez de gerar um .nvda-addon que falha em silencio. Avisos nao bloqueadores
-	(NVDA-003, NVDA-047, POLITICA-001, ESTRUTURA-006 etc.) continuam sendo
-	exibidos como warnings normais.
-	"""
-	return [p for p in problems if p.startswith(_BLOCKING_STRUCTURAL_CODES)]
 
 
 def fix_addon_structure(addon_folder: str) -> list[str]:

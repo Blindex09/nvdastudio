@@ -101,7 +101,7 @@ def _rodar_pipeline(addon_name: str, query: str, tmpdir: str) -> AddonResult:
     )
 
     try:
-        orch._run_pipeline(query)
+        orch._run_until_complete(query)
     except Exception as e:
         result.errors.append(f"Pipeline: {e}")
         result.duration_seconds = time.time() - t0

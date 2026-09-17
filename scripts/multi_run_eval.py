@@ -86,9 +86,8 @@ def _print_report(all_stats: list[dict]) -> None:
 def _run_live(test_path: str, n: int, confirmado: bool) -> int:
 	custo_estimado = (
 		f"MODO EXECUCAO: rodar '{test_path}' {n}x em sequencia. "
-		f"Cada rodada gasta API real (custo real de tokens, minutos de execucao "
-		f"por rodada -- ver docs/plans/2026-08-09-eval-maturity-e-proxima-etapa.md "
-		f"pro custo tipico de 1 rodada deste tipo de teste)."
+		f"Cada rodada gasta API real (custo real de tokens e minutos de execucao "
+		f"por rodada)."
 	)
 	print(custo_estimado)
 	if not confirmado:

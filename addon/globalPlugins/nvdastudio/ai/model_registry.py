@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field
 from enum import Enum
 import os
-from typing import Optional
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.22.0"
+MODULE_VERSION = "1.23.0"
 _logger = get_logger("model_registry")
 
 ALTO_MODEL = "alto"
@@ -369,9 +368,7 @@ _MODEL_REGISTRY: dict[str, ModelInfo] = {
         # demais (nao e o modelo mais leve do catalogo, gpt-oss:20b/
         # nemotron-3-nano:30b/gemma4:31b sao os reais "low").
         cost_tier="medium",
-        # 1M confirmado por pesquisa dedicada (2026-08-03) -- context_compressor.py
-        # tinha 64000 hardcoded pra este modelo (achado real desta auditoria, ver
-        # changelog do context_compressor.py 3.0.0).
+		# Janela de contexto centralizada no registry para todos os consumidores.
         context_window=1_000_000,
     ),
     "glm-5.2": ModelInfo(
@@ -612,10 +609,12 @@ _PROVIDER_TIER_MODELS: dict[str, dict[str, str]] = {
         "frontier": "qwen3.5:397b",
     },
     "factory": {
-        "heavy": "kimi-k2.7-code",
-        # Mesmo modelo do heavy: medido, nao ha nada mais barato na
-        # Factory. Ver a escada acima.
-        "light": "kimi-k2.7-code",
+        # O Droid expoe `auto` como Auto Model. Quando o usuario escolhe
+        # Alto, a Factory seleciona o modelo conforme a tarefa e conforme
+        # seu catalogo vivo. Antes os dois tiers apontavam para
+        # kimi-k2.7-code e a geracao ficava fixa apesar do rotulo automatico.
+        "heavy": "auto",
+        "light": "auto",
         # SEM frontier, e isso e correcao de uma decisao minha do mesmo dia.
         #
         # A 1.21.0 pos claude-sonnet-5 aqui, justificando 15,7x com "um
@@ -640,13 +639,7 @@ _PROVIDER_TIER_MODELS: dict[str, dict[str, str]] = {
         # aceitacao por ressalva (score 87) e o cg_settings reprovou. Nao
         # ha evidencia de que o modelo caro entregou melhor.
         #
-        # Sem a chave "frontier", get_provider_step_models() nao devolve
-        # nenhum, e select_model() usa o heavy tambem em complexity="high"
-        # -- comportamento ja suportado (o registry documenta "cai pra
-        # heavy quando nao tem").
-        #
-        # Candidato para um frontier barato existe e NAO foi medido:
-        # `kimi-k3` esta no catalogo da Factory. Medir antes de por aqui.
+        # Sem frontier local: o Auto Model tambem decide pedidos complexos.
     },
     "anthropic": {
         "heavy": "claude-opus-5",
@@ -875,10 +868,6 @@ def resolve_alto_model(provider: str, configured_model: str = ALTO_MODEL) -> str
     return resolve_provider_tier_model(provider, "heavy", configured_model)
 
 
-def clear_model_resolution_cache() -> None:
-	"""Mantido para compatibilidade; a resolucao atual nao usa cache externo."""
-	return None
-
 # ---------------------------------------------------------------------------
 # Aliases — resolvem para o modelo mais recente
 # ---------------------------------------------------------------------------
@@ -899,7 +888,7 @@ class ModelRegistry:
     def __init__(self):
         self._warnings_issued: set[str] = set()
 
-    def get_model_info(self, model_id: str) -> Optional[ModelInfo]:
+    def get_model_info(self, model_id: str) -> ModelInfo | None:
         """Retorna informacao sobre um modelo, resolvendo aliases."""
         resolved = _ALIASES.get(model_id, model_id)
         return _MODEL_REGISTRY.get(resolved)
@@ -918,7 +907,7 @@ class ModelRegistry:
             return True  # desconhecido = assume ativo (fail-open)
         return info.status in (ModelStatus.ACTIVE, ModelStatus.PREVIEW)
 
-    def get_migration_target(self, model_id: str) -> Optional[str]:
+    def get_migration_target(self, model_id: str) -> str | None:
         """Retorna o modelo de migracao recomendado, se disponivel."""
         info = self.get_model_info(model_id)
         if info is None:
@@ -978,7 +967,7 @@ class ModelRegistry:
         chain = [m for m in chain if m != model_id]
         return [model_id] + chain
 
-    def get_active_models(self, provider: Optional[str] = None) -> list[ModelInfo]:
+    def get_active_models(self, provider: str | None = None) -> list[ModelInfo]:
         """Retorna todos os modelos ativos, opcionalmente filtrados por provider."""
         active = [
             info for info in _MODEL_REGISTRY.values()

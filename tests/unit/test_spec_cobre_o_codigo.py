@@ -5,13 +5,8 @@ A Regra 1 do README declara `AI_MODULE_SPEC.md` como contrato central do
 projeto. Auditoria de 2026-09-02: cinco modulos reais estavam FORA dele, e o
 mais consequente era `ai/model_router.py`.
 
-Consequencia concreta e medida, nao hipotetica: eu escrevi
-`_modelo_de_outro_provedor()` no orchestrator percorrendo uma lista fixa de
-provedores, sem saber que `model_router.select_model_and_provider()` ja fazia
-isso -- e melhor, pontuando candidatos e restringindo o resgate para nao cair
-num provedor pago sem assinatura. Duplicacao de fluxo (Regra 5), pior que o
-original, removida depois. Quem le o contrato central nao ficava sabendo que a
-funcao existia.
+O roteador e uma costura central: se ficar fora do contrato, outro modulo pode
+duplicar sua selecao e criar comportamento divergente.
 
 Um contrato incompleto nao e questao de arrumacao: e a causa de reinventar o
 que ja existe.
@@ -25,12 +20,7 @@ _SPEC = _RAIZ / "AI_MODULE_SPEC.md"
 # Modulos que a spec cobre COLETIVAMENTE, sem linha propria -- cada um com o
 # motivo. `builtins/` sao as ferramentas do tool_system, descritas em conjunto
 # porque compartilham contrato e ciclo de vida.
-_COBERTOS_EM_CONJUNTO: dict[str, str] = {
-	"ast_parser.py": "descrito na linha coletiva `builtins/` do tool_system",
-	"file_editor.py": "descrito na linha coletiva `builtins/` do tool_system",
-	"file_reader.py": "descrito na linha coletiva `builtins/` do tool_system",
-	"nvda_validator.py": "descrito na linha coletiva `builtins/` do tool_system",
-}
+_COBERTOS_EM_CONJUNTO: dict[str, str] = {}
 
 # Arquivos que nao sao modulo do produto.
 _FORA_DO_CONTRATO = {"__init__.py"}
@@ -39,7 +29,9 @@ _FORA_DO_CONTRATO = {"__init__.py"}
 def _modulos_reais() -> set[str]:
 	return {
 		p.name for p in _RAIZ.rglob("*.py")
-		if "nvda_docs_cache" not in str(p) and p.name not in _FORA_DO_CONTRATO
+		if "nvda_docs_cache" not in str(p)
+		and "lib" not in p.relative_to(_RAIZ).parts
+		and p.name not in _FORA_DO_CONTRATO
 	}
 
 
@@ -62,15 +54,6 @@ def test_o_roteador_de_modelo_esta_documentado():
 	duplicado por causa disso."""
 	spec = _SPEC.read_text(encoding="utf-8")
 	assert "model_router.py" in spec
-	assert "select_model_and_provider" in spec, (
-		"a funcao duplicada por desconhecimento precisa estar visivel no contrato"
+	assert "select_model" in spec, (
+		"a selecao ativa precisa estar visivel no contrato"
 	)
-
-
-def test_justificativas_de_cobertura_coletiva_continuam_validas():
-	"""Se a linha coletiva sumir, os modulos passam a estar realmente ausentes
-	e a excecao vira mentira."""
-	spec = _SPEC.read_text(encoding="utf-8")
-	assert "builtins/" in spec
-	for nome, motivo in _COBERTOS_EM_CONJUNTO.items():
-		assert len(motivo) > 25, f"{nome}: justificativa vaga demais"

@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 
 from nvdastudio.builder.code_sandbox import MODULE_VERSION, CodeSandbox
 
-assert MODULE_VERSION == "1.13.0"
+assert MODULE_VERSION == "1.14.0"
 
 
 _ADDON_LIMPO = (

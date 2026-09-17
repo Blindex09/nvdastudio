@@ -40,7 +40,7 @@ class AgenticBackend(Protocol):
 		...
 
 	def build_command(
-		self, cli: str, *, workdir: str, system_prompt_path: str,
+		self, cli: str, *, workdir: str,
 		prompt_path: str, model_id: str, autonomy: str,
 	) -> list[str]:
 		"""Linha de comando que roda o agente no workdir, com o system prompt e o
@@ -53,13 +53,25 @@ class AgenticBackend(Protocol):
 
 
 def parse_droid_tokens(stdout: str) -> int:
-	"""Soma tokens NOVOS (input + output + criacao de cache) do envelope JSON do
-	`droid exec -o json`. A leitura de cache (cache_read_input_tokens) fica de
-	fora -- e fracao do preco; somar a peso cheio penalizaria o mecanismo que
-	barateia. Mesma conta que ai/factory_client.py::_ler_envelope. Robusto: pega
-	a ULTIMA linha que parseia como JSON com `usage` (o droid pode logar antes)."""
+	"""Soma tokens cobrados tanto no envelope antigo quanto no stream RPC."""
 	import json
-	total = 0
+	def _usage(obj):
+		if isinstance(obj, dict):
+			for chave in ("usage", "tokenUsage", "cumulativeTokenUsage"):
+				uso = obj.get(chave)
+				if isinstance(uso, dict):
+					return uso
+			for valor in obj.values():
+				achado = _usage(valor)
+				if achado:
+					return achado
+		elif isinstance(obj, list):
+			for valor in obj:
+				achado = _usage(valor)
+				if achado:
+					return achado
+		return None
+
 	for linha in reversed((stdout or "").splitlines()):
 		linha = linha.strip()
 		if not linha.startswith("{"):
@@ -68,15 +80,14 @@ def parse_droid_tokens(stdout: str) -> int:
 			env = json.loads(linha)
 		except (json.JSONDecodeError, ValueError):
 			continue
-		uso = env.get("usage") if isinstance(env, dict) else None
+		uso = _usage(env)
 		if isinstance(uso, dict):
-			total = (
-				int(uso.get("input_tokens") or 0)
-				+ int(uso.get("output_tokens") or 0)
-				+ int(uso.get("cache_creation_input_tokens") or 0)
+			return (
+				int(uso.get("input_tokens", uso.get("inputTokens")) or 0)
+				+ int(uso.get("output_tokens", uso.get("outputTokens")) or 0)
+				+ int(uso.get("cache_creation_input_tokens", uso.get("cacheCreationTokens")) or 0)
 			)
-			break
-	return total
+	return 0
 
 
 class DroidBackend:
@@ -89,17 +100,16 @@ class DroidBackend:
 		return _achar_droid()
 
 	def build_command(
-		self, cli: str, *, workdir: str, system_prompt_path: str,
+		self, cli: str, *, workdir: str,
 		prompt_path: str, model_id: str, autonomy: str,
 	) -> list[str]:
 		return [
 			cli, "exec",
-			"-o", "json",  # envelope com usage -- captura tokens (comparacao de custo)
+			"--input-format", "stream-jsonrpc",
+			"--output-format", "stream-jsonrpc",
 			"--auto", autonomy,
 			"--cwd", workdir,
 			"-m", model_id,
-			"--append-system-prompt-file", system_prompt_path,
-			"-f", prompt_path,
 		]
 
 	def parse_tokens(self, stdout: str) -> int:

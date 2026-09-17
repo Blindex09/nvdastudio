@@ -6,14 +6,14 @@ import pytest
 
 from nvdastudio.builder.addon_builder import (
     extract_code_blocks,
-    validate_manifest,
-    validate_python_structure,
     save_addon_files,
     package_addon,
+    load_artifact_blocks,
     AddonBuilderError,
     name_from_manifest_blocks,
     validate_addon_structure,
     _sanitize_manifest,
+    _manifest_scalar_errors,
 )
 
 
@@ -107,51 +107,6 @@ class TestExtractCodeBlocks:
         assert "globalPlugins/X/__init__.py" in fnames
         assert "manifest.ini" in fnames
         assert any(".html" in f for f in fnames)
-
-
-class TestValidateManifest:
-    """Testes de validacao de manifest.ini."""
-
-    def test_manifest_valido_sem_erros(self, sample_manifest_ini):
-        missing = validate_manifest(sample_manifest_ini)
-        assert missing == [], f"Campos ausentes inesperados: {missing}"
-
-    def test_manifest_sem_name_reporta_ausencia(self):
-        conteudo = "summary = x\nversion = 1.0.0\nminimumNVDAVersion = 2026.1.1\n"
-        missing = validate_manifest(conteudo)
-        assert "name" in missing
-
-    def test_manifest_sem_version_reporta_ausencia(self):
-        conteudo = "name = x\nsummary = y\nminimumNVDAVersion = 2026.1.1\n"
-        missing = validate_manifest(conteudo)
-        assert "version" in missing
-
-    def test_manifest_sem_minimum_nvda_reporta_ausencia(self):
-        conteudo = "name = x\nsummary = y\nversion = 1.0.0\n"
-        missing = validate_manifest(conteudo)
-        assert "minimumNVDAVersion" in missing
-
-    def test_manifest_vazio_reporta_todos_campos(self):
-        missing = validate_manifest("")
-        assert len(missing) == 5
-
-
-class TestValidatePythonStructure:
-    """Testes de validacao estatica do codigo Python gerado."""
-
-    def test_codigo_valido_sem_avisos(self, sample_addon_code):
-        warnings = validate_python_structure(sample_addon_code)
-        assert warnings == [], f"Avisos inesperados: {warnings}"
-
-    def test_codigo_sem_imports_gera_aviso(self):
-        codigo = "class GlobalPlugin:\n    pass\n"
-        warnings = validate_python_structure(codigo)
-        assert any("import" in w.lower() for w in warnings)
-
-    def test_codigo_sem_global_plugin_gera_aviso(self):
-        codigo = "import ui\n\ndef script_teste(gesture):\n    ui.message('x')\n"
-        warnings = validate_python_structure(codigo)
-        assert len(warnings) > 0
 
 
 class TestSaveAddonFiles:
@@ -378,74 +333,105 @@ class TestPackageAddon:
                 f"Arcname '{name}' tem prefixo invalido '{parts[0]}' na raiz do ZIP"
             )
 
+    def test_nao_empacota_testes_prompts_caches_ou_pacote_intermediario(self, tmp_path):
+        (tmp_path / "manifest.ini").write_text("name = x\n", encoding="utf-8")
+        plugin = tmp_path / "globalPlugins" / "x"
+        plugin.mkdir(parents=True)
+        (plugin / "__init__.py").write_text("pass\n", encoding="utf-8")
+        (tmp_path / "prompt.txt").write_text("instrucao privada", encoding="utf-8")
+        (tmp_path / "system-prompt.txt").write_text("regras privadas", encoding="utf-8")
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_x.py").write_text("assert True\n", encoding="utf-8")
+        (tmp_path / "test_ami.py").write_text("assert True\n", encoding="utf-8")
+        (tmp_path / "e2e_tests").mkdir()
+        (tmp_path / "e2e_tests" / "scenario.py").write_text("assert True\n", encoding="utf-8")
+        (tmp_path / ".pytest_cache").mkdir()
+        (tmp_path / ".pytest_cache" / "README.md").write_text("cache", encoding="utf-8")
+        (plugin / "__pycache__").mkdir()
+        (plugin / "__pycache__" / "x.pyc").write_bytes(b"cache")
+        (tmp_path / "old.nvda-addon").write_bytes(b"old")
 
-# -----------------------------------------------------------------------
-# validate_python_imports
-# -----------------------------------------------------------------------
+        package = package_addon(str(tmp_path), str(tmp_path.parent / "x.nvda-addon"))
 
-class TestValidatePythonImports:
+        with zipfile.ZipFile(package) as archive:
+            names = archive.namelist()
+        assert "manifest.ini" in names
+        assert "globalPlugins/x/__init__.py" in names
+        assert not any(name.startswith("tests/") for name in names)
+        assert not any(name.startswith("e2e_tests/") for name in names)
+        assert not any(name.startswith(".pytest_cache/") for name in names)
+        assert not any("__pycache__" in name for name in names)
+        assert "prompt.txt" not in names
+        assert "system-prompt.txt" not in names
+        assert "old.nvda-addon" not in names
+        assert "test_ami.py" not in names
 
-    def test_import_nvda_modulo_nao_desconhecido(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        code = "import globalPluginHandler\nimport addonHandler\nimport ui\n"
-        result = validate_python_imports(code)
-        assert result == []
-
-    def test_import_stdlib_nao_desconhecido(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        code = "import os\nimport sys\nimport threading\nimport json\n"
-        result = validate_python_imports(code)
-        assert result == []
-
-    def test_import_desconhecido_reportado(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        code = "import google.generativeai as genai\n"
-        result = validate_python_imports(code)
-        assert len(result) > 0
-
-    def test_import_bundlado_nao_desconhecido(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        code = "import google.generativeai as genai\n"
-        result = validate_python_imports(code, bundled_packages=["google-generativeai"])
-        assert result == []
-
-    def test_from_import_stdlib_nao_desconhecido(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        code = "from scriptHandler import script\nfrom typing import Optional\n"
-        result = validate_python_imports(code)
-        assert result == []
-
-    def test_import_relativo_nao_vira_dependencia_pypi(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        code = "from .settings_panel import SettingsPanel\nfrom . import history_manager\n"
-        assert validate_python_imports(code) == []
-
-    def test_modulo_local_absoluto_nao_vira_dependencia_pypi(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        code = "from settings_panel import SettingsPanel\nimport history_manager\n"
-        result = validate_python_imports(
-            code,
-            local_modules={"settings_panel", "history_manager"},
+    def test_empacotamento_sanitiza_manifesto_vindo_de_artifact_dir(self, tmp_path):
+        """Regressao: artifact_dir pulava save_addon_files e o NVDA rejeitava
+        description com virgulas como uma lista ConfigObj."""
+        (tmp_path / "manifest.ini").write_text(
+            "name = x\nsummary = X\nauthor = Tester\nversion = 1.0.0\n"
+            "description = Audio, video, imagem e PDF\n"
+            "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.2.0\n",
+            encoding="utf-8",
         )
-        assert result == []
+        plugin = tmp_path / "globalPlugins" / "x"
+        plugin.mkdir(parents=True)
+        (plugin / "__init__.py").write_text("pass\n", encoding="utf-8")
 
-    def test_stdlib_atual_do_python_nao_depende_de_allowlist_manual(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        assert validate_python_imports("import socketserver\n") == []
+        package = package_addon(str(tmp_path), str(tmp_path.parent / "x.nvda-addon"))
 
-    def test_import_com_sintaxe_invalida_retorna_vazio(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        code = "def foo(\n"  # SyntaxError — nao crashar
-        result = validate_python_imports(code)
-        assert isinstance(result, list)
+        with zipfile.ZipFile(package) as archive:
+            manifest = archive.read("manifest.ini").decode("utf-8")
+        assert 'description = "Audio, video, imagem e PDF"' in manifest
+        assert _manifest_scalar_errors(manifest) == []
 
-    def test_nao_executa_codigo(self):
-        from nvdastudio.builder.addon_builder import validate_python_imports
-        import os
-        marker = os.path.join(os.path.expanduser("~"), "_nvdastudio_import_test.txt")
-        code = f"open(r'{marker}', 'w').write('EXEC')\nimport os\n"
-        validate_python_imports(code)
-        assert not os.path.exists(marker), "validate_python_imports executou codigo"
+
+def test_validador_detecta_string_configobj_convertida_em_lista(tmp_path):
+    (tmp_path / "manifest.ini").write_text(
+        "name = x\nsummary = X\nauthor = Tester\nversion = 1.0.0\n"
+        "description = Audio, video, imagem e PDF\n"
+        "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.2.0\n",
+        encoding="utf-8",
+    )
+    problems = validate_addon_structure(str(tmp_path))
+    assert any("MANIFEST-001" in problem for problem in problems)
+
+
+def test_save_addon_files_descarta_teste_na_raiz(tmp_path):
+    blocks = [
+        {"filename": "test_ami.py", "language": "python", "code": "assert True\n"},
+        {"filename": "globalPlugins/x/__init__.py", "language": "python", "code": "pass\n"},
+    ]
+    _, saved = save_addon_files(blocks, str(tmp_path), "x", garantir_doc=False)
+    assert not any(os.path.basename(path) == "test_ami.py" for path in saved)
+
+
+def test_structured_artifacts_do_not_turn_documentation_fences_into_modules(tmp_path):
+    """Regressao da sessao 83: exemplo no readme virava module_1.py."""
+    (tmp_path / "manifest.ini").write_text("name = X\n", encoding="utf-8")
+    plugin = tmp_path / "globalPlugins" / "X"
+    plugin.mkdir(parents=True)
+    (plugin / "__init__.py").write_text("value = 1\n", encoding="utf-8")
+    (tmp_path / "readme.html").write_text(
+        "<pre>```python\nprint('exemplo')\n```</pre>", encoding="utf-8",
+    )
+    cache = tmp_path / ".pytest_cache"
+    cache.mkdir()
+    (cache / "README.md").write_text("cache", encoding="utf-8")
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_x.py").write_text("assert True\n", encoding="utf-8")
+
+    blocks = load_artifact_blocks(str(tmp_path), [
+        "manifest.ini", "globalPlugins/X/__init__.py", "readme.html",
+        ".pytest_cache/README.md", "tests/test_x.py",
+    ])
+
+    assert [block["filename"] for block in blocks] == [
+        "manifest.ini", "globalPlugins/X/__init__.py", "readme.html",
+    ]
+    assert not any(block["filename"].startswith("module_") for block in blocks)
 
 
 # -----------------------------------------------------------------------
@@ -1493,50 +1479,6 @@ class TestValidateAddonStructureNVDA025:
 # ===========================================================================
 # Plano aa1600dd (2026-05-10): testes de regressao das fixes
 # ===========================================================================
-
-class TestGetBlockingStructuralIssues:
-	"""get_blocking_structural_issues filtra apenas bloqueadores de carga."""
-
-	def test_estrutura_004_e_bloqueador(self):
-		from nvdastudio.builder.addon_builder import get_blocking_structural_issues
-		problems = [
-			"ESTRUTURA-004: Nenhum arquivo .py encontrado em globalPlugins/.",
-		]
-		assert get_blocking_structural_issues(problems) == problems
-
-	def test_estrutura_001_005_007_sao_bloqueadores(self):
-		from nvdastudio.builder.addon_builder import get_blocking_structural_issues
-		problems = [
-			"ESTRUTURA-001: manifest.ini ausente na raiz do addon.",
-			"ESTRUTURA-005: __init__.py: classe GlobalPlugin ou AppModule ausente.",
-			"ESTRUTURA-007: Multiplas pastas de plugin com __init__.py: a, b.",
-		]
-		assert get_blocking_structural_issues(problems) == problems
-
-	def test_avisos_nao_bloqueadores_filtrados(self):
-		"""ESTRUTURA-006, NVDA-047, POLITICA-001 sao warnings, nao bloqueadores."""
-		from nvdastudio.builder.addon_builder import get_blocking_structural_issues
-		problems = [
-			"ESTRUTURA-006: Pasta doc/ ausente — userGuide.html nao gerado.",
-			"NVDA-047: manifest.ini: campo 'url' esta vazio.",
-			"POLITICA-001: minimumNVDAVersion = 2025.1 abaixo do baseline.",
-			"NVDA-003: __init__.py: addonHandler.initTranslation() ausente.",
-		]
-		assert get_blocking_structural_issues(problems) == []
-
-	def test_mistura_separa_corretamente(self):
-		from nvdastudio.builder.addon_builder import get_blocking_structural_issues
-		problems = [
-			"ESTRUTURA-004: Nenhum arquivo .py encontrado em globalPlugins/.",
-			"ESTRUTURA-006: Pasta doc/ ausente.",
-			"NVDA-047: manifest.ini: url vazio.",
-			"ESTRUTURA-007: Multiplas pastas de plugin.",
-		]
-		bloqueadores = get_blocking_structural_issues(problems)
-		assert len(bloqueadores) == 2
-		assert any("ESTRUTURA-004" in b for b in bloqueadores)
-		assert any("ESTRUTURA-007" in b for b in bloqueadores)
-
 
 class TestNvda047UrlVazio:
 	"""Bug regressao: regex consumia newline e capturava version= da linha seguinte."""
