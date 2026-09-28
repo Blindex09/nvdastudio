@@ -32,7 +32,10 @@ def test_replay_messages_are_not_prompts_or_duplicate_tokens():
 	text = "Vou verificar o arquivo .nvda-addon e corrigir o menu."
 	for chunk in (text[:24], text[24:31], text[31:]):
 		assert not p.consume(event("assistant_text_delta", messageId="a", blockIndex=1, textDelta=chunk))
-	assert p.consume(event("assistant_text_complete", messageId="a", blockIndex=1)) == [text]
+	# O texto sai ao vivo, token a token; o bloco completo nao se repete.
+	assert "".join(p.drain_stream()) == text
+	assert p.consume(event("assistant_text_complete", messageId="a", blockIndex=1)) == []
+	assert p.drain_stream() == ["\n"]
 	assert not p.consume(event("create_message", message={"id": "a", "role": "assistant", "content": [
 		{"type": "thinking", "thinking": "privado"}, {"type": "text", "text": text},
 	]}))
@@ -189,7 +192,7 @@ def test_creation_passes_packaging_contract_to_orchestrator(dialog_class):
 	d._trigger_creation_pipeline("Criar addon completo")
 
 	d._orchestrator.run_async.assert_called_once_with(
-		"Criar addon completo", package_requested=True,
+		"Criar addon completo", package_requested=True, hints=None,
 	)
 
 
@@ -361,8 +364,9 @@ def test_initial_chat_preserves_packaging_request(dialog_class):
 	assert d._package_after_current_build is True
 	request = d._trigger_creation_pipeline.call_args.args[0]
 	assert request.startswith("Corrigir o menu")
-	assert "[TASK-COMPLEXITY: medium]" in request
-	assert "[ROUTING-PREFERENCE: balanced]" in request
+	assert "TASK-COMPLEXITY" not in request and "ROUTING-PREFERENCE" not in request
+	assert d._routing_hints.complexity == "medium"
+	assert d._routing_hints.preference == "balanced"
 
 
 def test_chat_schema_diz_que_limite_textual_nao_revoga_autorizacao(dialog_class):
@@ -377,23 +381,32 @@ def test_chat_schema_diz_que_limite_textual_nao_revoga_autorizacao(dialog_class)
 	assert "autorizacao expressa" in message_help
 
 
-def test_packaging_followup_with_tests_does_not_call_intent_llm(dialog_class):
-	"""Regressao: "testes, execute e depois empacote" tinha roteamento claro,
-	mas ainda chamava a IA e registrava duas falhas de JSON vazio no log."""
-	d = object.__new__(dialog_class)
-	d._package_after_current_build = False
-	d._trigger_iterative_pipeline = MagicMock()
-	d._run_packaging_process = MagicMock()
-	d._get_quick_chat_model = MagicMock(side_effect=AssertionError("LLM nao deveria ser chamada"))
+def test_packaging_followup_e_decidido_pela_ia_e_nao_por_palavra(dialog_class):
+	"""A decisao "modificar e depois empacotar" e da IA (schema), nunca de uma
+	palavra-chave no texto: o mesmo texto com outra decisao da IA muda o fluxo."""
+	ns = dialog_class._process_packaging_decision.__globals__
+	original = ns["call_with_structured_output"]
+	texto = "gere os testes, execute e depois empacote"
 
-	d._process_packaging_decision("gere os testes, execute e depois empacote")
+	def _rodar(decisao):
+		d = object.__new__(dialog_class)
+		d._package_after_current_build = False
+		d._trigger_iterative_pipeline = MagicMock()
+		d._run_packaging_process = MagicMock()
+		ns["call_with_structured_output"] = lambda *a, **kw: SimpleNamespace(content=json.dumps(decisao))
+		try:
+			d._process_packaging_decision(texto)
+		finally:
+			ns["call_with_structured_output"] = original
+		return d
 
+	d = _rodar({"intent": "modify", "package_after_modification": True})
 	assert d._package_after_current_build is True
-	d._trigger_iterative_pipeline.assert_called_once_with(
-		"gere os testes, execute e depois empacote"
-	)
+	d._trigger_iterative_pipeline.assert_called_once_with(texto)
 	d._run_packaging_process.assert_not_called()
-	d._get_quick_chat_model.assert_not_called()
+
+	d = _rodar({"intent": "modify", "package_after_modification": False})
+	assert d._package_after_current_build is False
 
 
 def test_accessible_text_preserves_filenames_and_shortcuts():

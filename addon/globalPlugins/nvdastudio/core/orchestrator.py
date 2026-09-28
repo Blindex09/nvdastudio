@@ -5,6 +5,7 @@ import threading
 from typing import Callable
 
 from ..ai.model_registry import resetar_saida_estruturada
+from ..ai.model_router import RoutingHints
 from ..builder.addon_builder import load_artifact_blocks
 from ..tool_system.approval import ApprovalWorkflow
 from ..utils.logger import get_logger
@@ -27,10 +28,10 @@ def _agentic_files_to_blocks(workdir: str, files: list[str]) -> str:
 	)
 
 
-def _get_agentic_routes(request: str = ""):
+def _get_agentic_routes(request: str = "", hints: RoutingHints | None = None):
 	"""Monta a rota manual ou o ranking cross-provider do modo Studio."""
 	try:
-		from ..ai.model_router import extract_required_capabilities, select_routes
+		from ..ai.model_router import select_routes
 		from ..gui.settings_panel import (
 			get_llm_model,
 			get_llm_provider,
@@ -39,14 +40,14 @@ def _get_agentic_routes(request: str = ""):
 
 		provider = get_llm_provider()
 		configured_model = get_llm_model()
-		required = frozenset({"tool_use"}) | extract_required_capabilities(request)
 		return select_routes(
 			provider, STEP_CODE_GENERATION, configured_model,
 			request=request,
+			hints=hints,
 			available_providers=(
 				get_studio_available_providers() if provider == "studio" else None
 			),
-			required_capabilities=required,
+			required_capabilities=frozenset({"tool_use"}),
 		)
 	except Exception as exc:
 		_logger.warning("[AGENTIC] falha ao resolver rota configurada: %s", exc)
@@ -67,6 +68,7 @@ class Orchestrator:
 		self._last_result: OrchestrationResult | None = None
 		self._agentic_workdir: str | None = None
 		self._package_requested = False
+		self._routing_hints = RoutingHints()
 		self._suppress_complete_callback = False
 		self._approval_workflow = ApprovalWorkflow()
 
@@ -104,12 +106,14 @@ class Orchestrator:
 		*,
 		workdir: str | None = None,
 		package_requested: bool = False,
+		hints: RoutingHints | None = None,
 	) -> None:
 		if self._running:
 			_logger.warning("[AVISO] Orchestrator ja esta rodando.")
 			return
 		self._agentic_workdir = workdir
 		self._package_requested = package_requested
+		self._routing_hints = hints or RoutingHints()
 		self._cancel_requested = False
 		self._agentic_cancel.clear()
 		self._drain_steer()
@@ -169,7 +173,7 @@ class Orchestrator:
 
 		self._emit("PLANEJANDO")
 		self._emit("EXECUTANDO", STEP_CODE_GENERATION)
-		routes = _get_agentic_routes(user_query)
+		routes = _get_agentic_routes(user_query, self._routing_hints)
 		if not routes:
 			self._finish(self._failure_result(
 				user_query,
@@ -214,7 +218,9 @@ class Orchestrator:
 					build = run_agentic_build(attempt_request, **common)
 				else:
 					build = run_provider_agentic_build(
-						attempt_request, provider=provider, **common,
+						attempt_request, provider=provider,
+						token_callback=lambda token: self._emit("TOKEN", token),
+						**common,
 					)
 			except Exception as exc:
 				_logger.exception("[AGENTIC] rota %s falhou", provider)
@@ -259,7 +265,6 @@ class Orchestrator:
 		build.tokens = total_tokens
 
 		try:
-			from ..ai.model_router import extract_task_complexity
 			from ..memory.session_memory import memory
 
 			evaluation = evaluate_agent_run(build)
@@ -269,7 +274,7 @@ class Orchestrator:
 				bool(build.success),
 				retries=max(0, int(getattr(build, "rounds", 1)) - 1),
 				tokens=int(getattr(build, "tokens", 0)),
-				complexity_level=extract_task_complexity(user_query),
+				complexity_level=self._routing_hints.complexity,
 				model_id=model,
 				provider=provider,
 				trajectory=evaluation.trajectory,

@@ -29,7 +29,7 @@ def _factory_por_padrao(monkeypatch):
 	"""Casos legados deste arquivo exercitam o backend Droid."""
 	monkeypatch.setattr(
 		"nvdastudio.core.orchestrator._get_agentic_routes",
-		lambda _request="": [_route()],
+		lambda _request="", _hints=None: [_route()],
 	)
 
 
@@ -105,7 +105,7 @@ class TestRunPipelineAgentico:
 		droid = MagicMock(side_effect=AssertionError("Droid nao deve executar outro provedor"))
 		monkeypatch.setattr(
 			"nvdastudio.core.orchestrator._get_agentic_routes",
-			lambda _request="": [_route(provider, f"modelo-{provider}")],
+			lambda _request="", _hints=None: [_route(provider, f"modelo-{provider}")],
 		)
 		with (
 			patch("nvdastudio.builder.agentic_driver.run_provider_agentic_build", native),
@@ -123,7 +123,7 @@ class TestRunPipelineAgentico:
 		o._suppress_complete_callback = False
 		monkeypatch.setattr(
 			"nvdastudio.core.orchestrator._get_agentic_routes",
-			lambda _request="": [
+			lambda _request="", _hints=None: [
 				_route("openai", "modelo-a"),
 				_route("gemini", "modelo-b"),
 			],

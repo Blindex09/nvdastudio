@@ -299,3 +299,18 @@ def _reset_saida_estruturada():
     _reset()
     yield
     _reset()
+
+
+@pytest.fixture(autouse=True)
+def _consultor_de_rota_sem_rede(monkeypatch):
+    """O ranking por IA nunca faz chamada real nos testes: cai na contingência.
+
+    Testes do consultor sobrescrevem ``_ask_model`` com a resposta que querem.
+    """
+    from nvdastudio.ai import route_advisor
+
+    def _indisponivel(prompt, schema):
+        raise RuntimeError("consultor de rota desligado nos testes")
+
+    monkeypatch.setattr(route_advisor, "_ask_model", _indisponivel)
+    route_advisor._state.cache.clear()

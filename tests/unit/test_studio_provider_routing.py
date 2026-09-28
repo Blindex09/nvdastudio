@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from nvdastudio.ai.llm_client import LLMClientError, LLMResponse
 from nvdastudio.ai import model_router
 from nvdastudio.ai.model_router import (
-	extract_required_capabilities,
+	RoutingHints,
 	record_provider_outcome,
 	select_routes,
 )
@@ -20,7 +20,8 @@ def teardown_function():
 def test_provedor_manual_nunca_faz_roteamento_cruzado():
 	routes = select_routes(
 		"openai", "code_generation", "alto",
-		request="crie um addon [TASK-COMPLEXITY: high]",
+		request="crie um addon",
+		hints=RoutingHints.declared("high"),
 		available_providers=["openai", "gemini"],
 		required_capabilities=frozenset({"tool_use"}),
 	)
@@ -29,17 +30,17 @@ def test_provedor_manual_nunca_faz_roteamento_cruzado():
 	assert "manualmente" in routes[0].reason
 
 
-def test_capacidade_multimodal_vem_de_metadado_semantico_explicito():
-	assert extract_required_capabilities(
-		"addon de áudio [MODEL-CAPABILITIES: vision,audio,inventada]"
-	) == frozenset({"vision", "audio"})
-	assert extract_required_capabilities("crie um addon que processará áudio") == frozenset()
+def test_capacidade_multimodal_vem_da_declaracao_tipada_da_ia():
+	hints = RoutingHints.declared(capabilities=["vision", "audio", "inventada"])
+	assert hints.capabilities == frozenset({"vision", "audio"})
+	assert RoutingHints().capabilities == frozenset()
 
 
 def test_studio_classifica_todos_os_provedores_disponiveis():
 	routes = select_routes(
 		"studio", "code_generation", "alto",
-		request="crie um addon [TASK-COMPLEXITY: high]",
+		request="crie um addon",
+		hints=RoutingHints.declared("high"),
 		available_providers=["openai", "gemini", "anthropic"],
 		required_capabilities=frozenset({"tool_use"}),
 	)
@@ -51,7 +52,7 @@ def test_studio_classifica_todos_os_provedores_disponiveis():
 def test_preferencia_privacidade_impede_replicar_contexto_em_failover():
 	routes = select_routes(
 		"studio", "code_generation", "alto",
-		request="[ROUTING-PREFERENCE: privacy]",
+		hints=RoutingHints.declared(preference="privacy"),
 		available_providers=["openai", "gemini", "anthropic"],
 		required_capabilities=frozenset({"tool_use"}),
 	)

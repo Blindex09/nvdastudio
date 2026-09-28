@@ -31,6 +31,11 @@ build/
 logs/
 *.log
 
+# Relatorios de E2E real: gerados a cada rodada que gasta API de verdade,
+# nunca lidos de volta por nenhum teste (write-only). Sem consumidor real
+# no repo, so acumulam (achado de auditoria 2026-09-28).
+tests/e2e/relatorios/*.json
+
 # OS / editor
 .DS_Store
 Thumbs.db

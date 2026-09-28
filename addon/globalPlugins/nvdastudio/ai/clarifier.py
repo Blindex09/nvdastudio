@@ -2,8 +2,8 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from .llm_client import LLMClientError
 from .llm_factory import call_with_structured_output
+from .model_router import RoutingHints
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 
 MODULE_VERSION = "2.1.0"
@@ -169,6 +169,13 @@ class ClarificationResult:
 	required_model_capabilities: list[str] = field(default_factory=list)
 	package_requested: bool = False  # decisao semantica; nunca inferida por palavra-chave
 
+	def routing_hints(self, task_summary: str = "") -> RoutingHints:
+		"""Decisão de roteamento da IA como dado tipado (nunca como texto do pedido)."""
+		return RoutingHints.declared(
+			self.task_complexity, self.routing_preference,
+			self.required_model_capabilities, task_summary,
+		)
+
 
 def analyze_query(query: str) -> ClarificationResult:
 	"""
@@ -238,15 +245,10 @@ def analyze_query(query: str) -> ClarificationResult:
 			return _parse_clarifier_json(data)
 		except (json.JSONDecodeError, KeyError) as exc2:
 			return _safe_clarification_fallback(f"resposta inválida: {exc2}")
-	except (LLMClientError, Exception) as exc:
-		exc_str = str(exc)
-		if "400" in exc_str or "Bad Request" in exc_str:
-			_logger.warning("[AVISO] Clarifier: conteudo bloqueado pela API (%s). Retornando forbidden.", exc)
-			return ClarificationResult(
-				needs_clarification=False, questions=[],
-				forbidden=True, intent="forbidden",
-				refusal_reason="Pedido bloqueado pela politica de conteudo da API.",
-			)
+	except Exception as exc:
+		# Um erro de API nunca é decisão semântica: só a IA, pelo schema, declara
+		# "forbidden". Indisponibilidade ou HTTP 400 por outro motivo (schema,
+		# contexto grande) viram uma pergunta segura, não recusa ao usuário.
 		return _safe_clarification_fallback(f"falha na API: {exc}")
 
 
@@ -388,14 +390,13 @@ def build_enriched_query(
 	answers: list[str],
 	user_level: str = "intermediario",
 	addon_architecture: str = "external",
-	task_complexity: str = "medium",
-	routing_preference: str = "balanced",
-	required_model_capabilities: list[str] | None = None,
 ) -> str:
 	"""
 	Monta query enriquecida com respostas do usuario, nivel e arquitetura detectada.
-	O nivel e arquitetura sao passados ao Planner para gerar o tipo correto de addon.
-	Regra 5: combinacao deterministica -- nao LLM.
+	O nivel e arquitetura sao passados ao agente para gerar o tipo correto de addon.
+	A decisao de roteamento (complexidade, preferencia, capacidades) NAO entra no
+	texto: segue como ``ClarificationResult.routing_hints()``, dado tipado que o
+	texto digitado pelo usuario nao consegue forjar.
 	"""
 	parts = [original_query]
 
@@ -406,17 +407,8 @@ def build_enriched_query(
 				parts.append(f"- {q}: {a.strip()}")
 
 	parts.append(f"\n[Nivel do usuario detectado: {user_level}]")
-	complexity = task_complexity if task_complexity in ("low", "medium", "high") else "medium"
-	parts.append(f"[TASK-COMPLEXITY: {complexity}]")
-	preference = routing_preference if routing_preference in (
-		"balanced", "quality", "cost", "speed", "privacy",
-	) else "balanced"
-	parts.append(f"[ROUTING-PREFERENCE: {preference}]")
-	capabilities = sorted(set(required_model_capabilities or []) & {"vision", "audio", "video"})
-	if capabilities:
-		parts.append(f"[MODEL-CAPABILITIES: {','.join(capabilities)}]")
 
-	# Injeta arquitetura apenas quando relevante para o Planner
+	# Injeta arquitetura apenas quando relevante para o agente
 	if addon_architecture and addon_architecture != "external":
 		parts.append(f"[Arquitetura detectada: {addon_architecture}]")
 

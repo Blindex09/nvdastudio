@@ -14,7 +14,7 @@ Há um único fluxo de criação e correção:
 4. Gates objetivos verificam sintaxe, estrutura NVDA, acessibilidade, execução isolada e integridade.
 5. Se o usuário pediu empacotamento, o addon é gerado no formato `.nvda-addon` e validado antes da entrega.
 
-O provedor `Studio`, com o modelo `Alto`, compara os provedores já configurados por capacidade, complexidade, contexto, qualidade, custo, velocidade e confiabilidade observada. Se uma rota falhar, preserva os arquivos e tenta outra rota compatível. A preferência de privacidade limita a execução a um único provedor para não replicar contexto entre serviços.
+O provedor `Studio`, com o modelo `Alto`, entrega à IA os candidatos que satisfazem fatos objetivos (provedor saudável, capacidade exigida, contexto que cabe) junto com preço, janela de contexto e confiabilidade observada; a IA ordena qual cobre melhor a tarefa (tarefa simples vai para modelo econômico, tarefa difícil para o mais capaz). A decisão é uma chamada barata e em cache por situação; se a IA não responder, vale uma ordem de contingência por confiabilidade observada. Se uma rota falhar, preserva os arquivos e tenta outra rota compatível. A preferência de privacidade limita a execução a um único provedor para não replicar contexto entre serviços.
 
 Factory usa também o roteamento automático nativo do Droid. Ollama, OpenAI, Gemini, Anthropic, xAI e OpenCode Go usam o mesmo contrato agêntico e as mesmas ferramentas do projeto.
 
@@ -37,7 +37,7 @@ Código determinístico decide somente fronteiras objetivas:
 - sintaxe e contratos verificáveis do NVDA/wxPython;
 - integridade do pacote instalável.
 
-Não há roteamento semântico por palavras-chave, pipeline staged, plano obrigatório por fases, editores paralelos, subagentes fixos ou lógica antiga mantida por compatibilidade.
+Complexidade, preferência e capacidades declaradas pela IA viajam como dado tipado, nunca como marcadores dentro do texto do usuário. A fala do assistente aparece token a token, no chat e durante a execução. Não há roteamento semântico por palavras-chave, pipeline staged, plano obrigatório por fases, editores paralelos, subagentes fixos ou lógica antiga mantida por compatibilidade.
 
 ## Configuração
 
@@ -52,24 +52,24 @@ O baseline do projeto é NVDA `2026.1.1+`. Addons novos devem usar:
 
 ## Desenvolvimento
 
-O contrato central da arquitetura está em [AI_MODULE_SPEC.md](C:/nvdastudio/addon/globalPlugins/NVDAStudio/AI_MODULE_SPEC.md). As regras operacionais estão em [CLAUDE.md](C:/nvdastudio/CLAUDE.md), fonte única para qualquer agente; não manter cópias.
+O contrato central da arquitetura está em [AI_MODULE_SPEC.md](addon/globalPlugins/nvdastudio/AI_MODULE_SPEC.md). As regras operacionais estão em [CLAUDE.md](CLAUDE.md), fonte única para qualquer agente; não manter cópias.
 
 Verificação mínima para qualquer alteração:
 
 ```powershell
-python -m ruff check addon/globalPlugins/NVDAStudio tests build.py --exclude addon/globalPlugins/NVDAStudio/lib --exclude addon/globalPlugins/NVDAStudio/nvda_docs_cache
-python -m mypy addon/globalPlugins/NVDAStudio
+python -m ruff check addon/globalPlugins/nvdastudio tests build.py --exclude addon/globalPlugins/nvdastudio/lib --exclude addon/globalPlugins/nvdastudio/nvda_docs_cache
+python -m mypy addon/globalPlugins/nvdastudio
 python -m pytest -q tests/unit tests/integration
 python build.py
 ```
 
-Bibliotecas vendorizadas em `addon/globalPlugins/NVDAStudio/lib/` e o cache de fonte do NVDA em `nvda_docs_cache/` não são código próprio e ficam fora do lint/mypy.
+Bibliotecas vendorizadas em `addon/globalPlugins/nvdastudio/lib/` e o cache de fonte do NVDA em `nvda_docs_cache/` não são código próprio e ficam fora do lint/mypy.
 
 ## Regras de manutenção
 
 - Não manter código, arquivos, shims ou documentação sem consumidor real.
 - Não duplicar registries, ferramentas, endpoints ou caminhos de execução.
-- Não substituir compreensão semântica da IA por regex ou listas de palavras.
+- Não substituir compreensão semântica da IA por regex, listas de palavras ou tabelas de pontuação de modelos escritas à mão.
 - Todo bug real corrigido recebe teste de regressão.
 - Saída de IA não é executada diretamente no processo do NVDA.
 - Logs devem redigir segredos e permanecer úteis para diagnóstico.
@@ -79,7 +79,7 @@ Bibliotecas vendorizadas em `addon/globalPlugins/NVDAStudio/lib/` e o cache de f
 ## Estrutura
 
 ```text
-addon/globalPlugins/NVDAStudio/
+addon/globalPlugins/nvdastudio/
   ai/           clientes, registry e roteamento de modelos
   builder/      agente, ferramentas, workspace, validação e pacote
   core/         orquestração e tipos de resultado

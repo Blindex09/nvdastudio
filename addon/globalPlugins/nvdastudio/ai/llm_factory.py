@@ -1,3 +1,5 @@
+from typing import Callable
+
 from .llm_client import LLMClientError, LLMClientProtocol, LLMResponse
 from .model_registry import ALTO_MODEL, is_alto_model, resolve_alto_model
 from ..utils.logger import get_logger
@@ -140,6 +142,8 @@ def call_with_structured_output(
 	system_override: str | None = None,
 	reasoning_effort: str | None = None,
 	step_type: str = "",
+	on_chunk: Callable[[str], None] | None = None,
+	on_failover: Callable[[], None] | None = None,
 ) -> LLMResponse:
 	"""
 	Chama .chat() com response_format usando a cadeia verificada ao vivo de
@@ -153,6 +157,11 @@ def call_with_structured_output(
 	retry no mesmo modelo. So levanta excecao se a cadeia INTEIRA falhar.
 
 	Usado pelas decisoes semanticas estruturadas da interface e do Clarifier.
+
+	on_chunk: recebe cada fragmento do JSON em construcao (cliente que nao faz
+	streaming simplesmente nunca chama). on_failover: chamado quando um modelo
+	falha e a chamada recomeca em outro -- quem exibe o stream descarta o que
+	ja mostrou, pois o proximo modelo reenvia a resposta do inicio.
 	"""
 	from .model_registry import STRUCTURED_OUTPUT_MODEL_CHAIN, get_structured_output_model
 	last_exc: LLMClientError | None = None
@@ -170,6 +179,7 @@ def call_with_structured_output(
 				response_format=response_format,
 				reasoning_effort=reasoning_effort,
 				step_type=step_type,
+				on_chunk=on_chunk,
 			)
 		except LLMClientError as exc:
 			last_exc = exc
@@ -177,6 +187,8 @@ def call_with_structured_output(
 				"[STRUCTURED_OUTPUT] %s indisponivel (%s). Tentando proximo da cadeia.",
 				model_id, exc,
 			)
+			if on_failover:
+				on_failover()
 			continue
 
 	# A cadeia auditada continua preferencial, mas não pode tornar os demais
@@ -195,12 +207,15 @@ def call_with_structured_output(
 				response_format=response_format,
 				reasoning_effort=reasoning_effort,
 				step_type=step_type,
+				on_chunk=on_chunk,
 			)
 	except LLMClientError as exc:
 		last_exc = exc
 		_logger.warning(
 			"[STRUCTURED_OUTPUT] fallback do provedor ativo falhou: %s", exc,
 		)
+		if on_failover:
+			on_failover()
 	raise LLMFactoryError(
 		f"Toda a cadeia de saída estruturada está indisponível. Último erro: {last_exc}"
 	) from last_exc

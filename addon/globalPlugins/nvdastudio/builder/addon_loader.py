@@ -3,9 +3,10 @@ import os
 import zipfile
 from dataclasses import dataclass, field
 
+from ..utils.injection_guard import sanitize_untrusted_block
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.4.0"
+MODULE_VERSION = "1.5.0"
 _logger = get_logger("addon_loader")
 
 _MAX_CODE_CHARS  = 8000    # limite por arquivo para nao saturar o contexto
@@ -31,32 +32,37 @@ class AddonContext:
 		Formata o contexto do addon como bloco de texto injetavel no prompt.
 		Chamado pelo modo conversacional para enriquecer a query com o codigo atual.
 		Respeita _MAX_TOTAL_CHARS para nao estourar o contexto do modelo.
+
+		O addon carregado pode ter sido escrito por outra pessoa (.nvda-addon de
+		terceiros, nao necessariamente o pedido desta sessao) -- manifest, codigo
+		e documentacao entram como DADO externo (sanitize_untrusted_block), nunca
+		como instrucao, mesmo que um comentario ou docstring tente parecer uma.
 		"""
 		parts = [
 			f"=== ADDON EXISTENTE: {self.addon_name} v{self.version} ===",
 			f"Descricao: {self.summary}",
 			f"Origem: {self.source_path}",
 			"",
-			"--- manifest.ini ---",
-			self.manifest_raw[:1500],
+			sanitize_untrusted_block(
+				self.manifest_raw[:1500], f"manifest.ini de {self.addon_name}",
+			),
 			"",
 		]
 		budget = _MAX_TOTAL_CHARS - sum(len(p) for p in parts)
 		for path, code in self.python_files.items():
-			block = f"--- {path} ---\n{code}\n"
 			if budget <= 0:
 				parts.append(f"--- {path} --- [omitido: budget esgotado]")
 				continue
-			if len(block) > budget:
-				block = f"--- {path} ---\n{code[:budget]}\n[... omitido por limite de contexto ...]\n"
-				parts.append(block)
+			if len(code) > budget:
+				code = code[:budget] + "\n[... omitido por limite de contexto ...]"
 				budget = 0
 			else:
-				parts.append(block)
-				budget -= len(block)
+				budget -= len(code)
+			parts.append(sanitize_untrusted_block(f"--- {path} ---\n{code}", path))
 		if self.doc_content:
-			parts.append("--- Documentacao (resumo) ---")
-			parts.append(self.doc_content[:_MAX_DOC_CHARS])
+			parts.append(sanitize_untrusted_block(
+				self.doc_content[:_MAX_DOC_CHARS], f"documentacao de {self.addon_name}",
+			))
 			parts.append("")
 		if self.dependencies:
 			parts.append(f"Dependencias bundladas: {', '.join(self.dependencies)}")

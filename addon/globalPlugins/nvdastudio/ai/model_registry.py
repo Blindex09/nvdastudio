@@ -420,8 +420,8 @@ _MODEL_REGISTRY: dict[str, ModelInfo] = {
         # 2026-08-17, ollama.com/library/deepseek-v4-pro): pagina oficial
         # mostra "Usage: extra high" (o nivel mais pesado documentado, 1.65T
         # parametros totais) -- mapeado pro balde "high" (o mais severo dos
-        # 3 existentes; _COST_TIER_SCORE nao tem um 4o balde) -- estava
-        # classificado como "medium", bem abaixo da realidade.
+        # 3 existentes) -- estava classificado como "medium", bem abaixo da
+        # realidade.
         capabilities=["thinking", "tool_use"], cost_tier="high",
         context_window=128_000,
     ),
@@ -446,8 +446,8 @@ _MODEL_REGISTRY: dict[str, ModelInfo] = {
         # 2026-08-17, ollama.com/library/qwen3.5): pagina oficial mostra
         # "Usage: medium" apesar dos 397B parametros -- MoE eficiente,
         # nao e o mais pesado do catalogo (deepseek-v4-pro/kimi/glm/minimax-m3
-        # sao "high"). Continua vencendo em complexity="high" via qualidade
-        # documentada (_DOCUMENTED_STRENGTHS em model_router.py), so o custo
+        # sao "high"). O ranking por tarefa (ai/route_advisor.py) continua
+        # livre pra preferir este modelo em complexity="high"; so o custo
         # real e menor do que a classificacao antiga sugeria.
         capabilities=["thinking", "tool_use", "coding_agentic"], cost_tier="medium",
         context_window=256_000,

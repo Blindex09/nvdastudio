@@ -10,10 +10,10 @@ Não existem pipeline staged, plano obrigatório por fases, subagentes fixos, ro
 
 ## Fluxo ativo
 
-1. `studio_dialog.py` recebe a conversa e usa saída estruturada da IA para decidir entre responder, esclarecer ou executar.
+1. `studio_dialog.py` recebe a conversa e usa saída estruturada da IA para decidir entre responder, esclarecer ou executar; a fala chega ao vivo, token a token, enquanto o JSON é construído.
 2. `clarifier.py` faz perguntas quando faltam decisões que alterariam materialmente o addon. A mesma resposta semântica registra se o usuário pediu empacotamento.
 3. `orchestrator.py` inicia uma execução única, resolve uma rota manual ou o ranking do Studio, publica progresso e chama o driver adequado.
-4. `agentic_driver.py` executa o loop comum. Factory usa Droid stream-JSON-RPC; os demais provedores usam function calling pelo mesmo contrato de ferramentas.
+4. `agentic_driver.py` executa o loop comum e transmite o texto do agente token a token. Factory usa Droid stream-JSON-RPC; os demais provedores usam function calling pelo mesmo contrato de ferramentas.
 5. `agent_tools.py` oferece leitura, escrita, listagem, testes, validação e pergunta ao usuário dentro de um workspace confinado.
 6. `agent_checkpoint.py` persiste estado mínimo recuperável e `agent_evaluation.py` registra trajetória e resultado.
 7. `studio_dialog.py` aplica a decisão semântica de empacotar e valida o `.nvda-addon` antes de oferecê-lo.
@@ -22,9 +22,10 @@ Não existem pipeline staged, plano obrigatório por fases, subagentes fixos, ro
 
 - `llm_factory.py` cria o cliente do provedor selecionado.
 - `model_registry.py` é a fonte única de modelos, capacidades e tiers.
-- `model_router.py::select_model` seleciona um modelo dentro de um provedor manual.
+- `route_advisor.py` pede à IA (uma chamada estruturada barata, em cache por situação, sem recursão) a ordenação dos candidatos; sem resposta, aplica ordem de contingência por confiabilidade observada.
+- `model_router.py::select_model` seleciona um modelo dentro de um provedor manual; a IA escolhe entre os elegíveis.
 - `model_router.py::select_routes` só faz roteamento cross-provider quando a configuração é `Studio + Alto`.
-- Studio considera provedores configurados, saúde observada, capacidades, contexto estimado, complexidade, preferência, custo, velocidade e confiabilidade. A decisão completa é persistida no resultado e registrada no log.
+- O harness filtra por fatos objetivos (provedor configurado e saudável, capacidade exigida, contexto que cabe, limite de rotas, um provedor em privacidade); a IA decide a ordem considerando complexidade, preferência, custo, contexto e confiabilidade observada. `RoutingHints` (complexidade, preferência, capacidades) é dado tipado vindo do Clarifier ou do chat, nunca lido do texto do usuário. A decisão completa é persistida no resultado e registrada no log.
 - Falha no Studio preserva o workspace e tenta até três rotas compatíveis. Em preferência de privacidade, usa somente uma para não replicar o contexto.
 - Factory recebe `auto`; o Droid escolhe o modelo concreto segundo a tarefa.
 - Ollama, OpenAI, Gemini, Anthropic, xAI e OpenCode Go usam o mesmo loop agêntico e as mesmas ferramentas canônicas.
@@ -57,7 +58,8 @@ Não existem pipeline staged, plano obrigatório por fases, subagentes fixos, ro
 - `studio_client.py`: roteamento e failover do provedor virtual Studio em chamadas comuns.
 - `model_pricing.py`: metadados de custo consumidos pelo roteador.
 - `model_registry.py`: catálogo único de modelos e capacidades.
-- `model_router.py`: seleção dentro de um provedor e ranking cross-provider exclusivo do Studio.
+- `model_router.py`: elegibilidade objetiva, saúde dos provedores e montagem das rotas; a ordenação vem de `route_advisor.py`.
+- `route_advisor.py`: ordenação de candidatos por IA com contingência determinística.
 - `ollama_client.py`: cliente Ollama Cloud.
 - `opencode_go_client.py`: cliente de recuperação para saída estruturada.
 - `pricing.py`: normalização de preço usada pelo roteamento.
@@ -94,7 +96,7 @@ Não existem pipeline staged, plano obrigatório por fases, subagentes fixos, ro
 ### memory
 
 - `conversation_manager.py`: callbacks e eventos da conversa em execução.
-- `narration.py`: tradução de eventos técnicos para atualização natural.
+- `narration.py`: entrega token a token o texto do agente durante a execução (código cercado é suprimido).
 - `relevance.py`: seleção semântica de contexto conversacional.
 - `session_memory.py`: estado efêmero da sessão atual.
 
@@ -106,6 +108,7 @@ Não existem pipeline staged, plano obrigatório por fases, subagentes fixos, ro
 
 ### utils
 
+- `json_stream.py`: extrai o campo de fala de um JSON em construção para exibir texto token a token.
 - `engineering_principles.py`: princípios de engenharia injetados no agente.
 - `hidden_process.py`: subprocessos sem janela no Windows.
 - `injection_guard.py`: proteção de conteúdo não confiável.

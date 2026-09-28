@@ -39,6 +39,7 @@ from .agent_checkpoint import (
 	AgentCheckpointStore, checkpoint_store, export_client_history,
 	restore_client_history,
 )
+from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
@@ -404,6 +405,7 @@ def run_provider_agentic_build(
 	request: str, *, provider: str, model_id: str, workdir: str | None = None,
 	use_nvda_context: bool = True, correction_rounds: int = 0,
 	progress_callback: Callable[[str], None] | None = None,
+	token_callback: Callable[[str], None] | None = None,
 	cancel_event: "threading.Event | None" = None,
 	steer_provider: Callable[[], str] | None = None,
 	permission_callback: Callable[[str, dict], bool] | None = None,
@@ -444,6 +446,7 @@ def run_provider_agentic_build(
 		)
 		message = state.message or request
 		tool_results: list[dict[str, str]] | None = state.tool_results
+		narrator = LiveNarrator(token_callback or (lambda _token: None))
 		max_turns = 32 + max(0, correction_rounds) * 8
 		state.event("run_resumed" if was_resumed else "run_started", turn=turns)
 		store.save(state)
@@ -464,8 +467,7 @@ def run_provider_agentic_build(
 					new_instruction = (steer_provider() or "").strip()
 					if new_instruction:
 						raise _ProviderSteer(new_instruction)
-				if progress_callback:
-					progress_callback(chunk)
+				narrator.feed(chunk)
 
 			try:
 				state.message = message
@@ -491,6 +493,7 @@ def run_provider_agentic_build(
 				state.event("cancelled", turn=turns)
 				store.save(state)
 				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, checkpoint_path=store.path(state.run_id), trace=state.trace)
+			narrator.end_message()
 			turns += 1
 			tokens += int(response.tokens_used or 0)
 			state.turn = turns

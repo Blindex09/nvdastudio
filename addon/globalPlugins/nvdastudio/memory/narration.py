@@ -9,6 +9,7 @@ Sem dependencia de nenhum sub-agente -- so `conversation`.
 """
 import re
 import sys
+from typing import Callable
 
 from .conversation_manager import conversation
 
@@ -76,54 +77,19 @@ def narrate(action_desc: str) -> None:
 	conversation.emit_status(_limpar_narracao(action_desc))
 
 
-_REASONING_CHUNK_MIN_CHARS = 60
-_SENTENCE_END_CHARS = (".", "!", "?", "\n")
+class LiveNarrator:
+	"""Entrega token a token o texto que o próprio agente escreve durante o
+	trabalho (padrão "tool preamble"), sem esperar frase ou parágrafo.
 
+	Detecta blocos ``` (mesmo partidos entre deltas via _raw_tail) e SUPRIME o
+	texto dentro deles: só o que está FORA de um fence vira fala, senão o código
+	do artefato vazava como narração. Cada delta é repassado assim que chega."""
 
-class _SentenceChunkBuffer:
-	"""Acumula texto e libera em pedacos por frase (fecha em ./!/?/quebra de
-	linha, so depois de _REASONING_CHUNK_MIN_CHARS acumulados). Subclasses
-	definem _on_chunk()."""
-
-	def __init__(self):
-		self._buffer = ""
-
-	def feed(self, delta: str) -> None:
-		if not delta:
-			return
-		self._buffer += delta
-		while len(self._buffer) >= _REASONING_CHUNK_MIN_CHARS:
-			cut = -1
-			for i, ch in enumerate(self._buffer):
-				if ch in _SENTENCE_END_CHARS and i >= _REASONING_CHUNK_MIN_CHARS - 20:
-					cut = i + 1
-					break
-			if cut == -1:
-				break
-			chunk, self._buffer = self._buffer[:cut].strip(), self._buffer[cut:]
-			if chunk:
-				self._on_chunk(chunk)
-
-	def flush(self) -> None:
-		chunk, self._buffer = self._buffer.strip(), ""
-		if chunk:
-			self._on_chunk(chunk)
-
-	def _on_chunk(self, chunk: str) -> None:
-		raise NotImplementedError
-
-
-class LiveNarrator(_SentenceChunkBuffer):
-	"""Acumula deltas de CONTEUDO real (nao reasoning) que o proprio agente
-	escreve durante o trabalho (padrao "tool preamble"), emitindo por frase via
-	conversation.emit_status(). feed() detecta blocos ``` (mesmo partidos entre
-	deltas via _raw_tail) e SUPRIME o texto dentro deles -- so o que esta FORA de
-	um fence vira narracao (senao o codigo do artefato vazava como fala)."""
-
-	def __init__(self):
-		super().__init__()
+	def __init__(self, sink: Callable[[str], None]):
+		self._sink = sink
 		self._raw_tail = ""
 		self._in_fence = False
+		self._spoke = False
 
 	def feed(self, delta: str) -> None:
 		if not delta:
@@ -141,14 +107,21 @@ class LiveNarrator(_SentenceChunkBuffer):
 				elif remainder.endswith("`"):
 					self._raw_tail = remainder[-1:]
 					remainder = remainder[:-1]
-				if not self._in_fence and remainder:
-					super().feed(remainder)
+				self._say(remainder)
 				break
-			chunk = text[pos:idx]
-			if not self._in_fence and chunk:
-				super().feed(chunk)
+			self._say(text[pos:idx])
 			self._in_fence = not self._in_fence
 			pos = idx + 3
 
-	def _on_chunk(self, chunk: str) -> None:
-		conversation.emit_status(chunk)
+	def end_message(self) -> None:
+		"""Fim de uma mensagem do modelo: separa a próxima e reinicia o fence."""
+		if self._spoke:
+			self._sink("\n")
+		self._spoke = False
+		self._raw_tail = ""
+		self._in_fence = False
+
+	def _say(self, text: str) -> None:
+		if text and not self._in_fence:
+			self._spoke = True
+			self._sink(text)

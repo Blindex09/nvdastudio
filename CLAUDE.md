@@ -31,8 +31,11 @@ Eles não são referência passiva — são checklist operacional.
    decomposição, Agent Evals, trajetória, custo, loop detection,
    checkpoints, graceful degradation). Aplicável sempre que a mudança tocar
    o pipeline de agentes (Planner/Critic/Orchestrator/sub-agentes): a
-   decisão de CONTEÚDO é da IA, a decisão de ROTEAMENTO é determinística
-   (nunca inverter isso); ao decompor uma tarefa grande em partes, garantir
+   decisão de CONTEÚDO e a escolha de QUAL modelo/provedor serve a tarefa são
+   da IA (`ai/route_advisor.py`); o harness só impõe fatos objetivos
+   (elegibilidade, saúde, limites, contingência quando a IA não responde) —
+   nunca tabelas de "força" de modelo nem marcadores lidos do texto do
+   usuário; ao decompor uma tarefa grande em partes, garantir
    que quem AVALIA o resultado também sabe que existem partes (não só quem
    gera).
 

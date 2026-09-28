@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from nvdastudio.ai.model_router import extract_task_complexity
+from nvdastudio.ai.model_router import RoutingHints
 from nvdastudio.builder.agent_checkpoint import AgentCheckpointStore
 from nvdastudio.builder.agent_evaluation import evaluate_agent_run
 from nvdastudio.builder.agent_tools import (
@@ -26,16 +26,18 @@ def test_complexidade_semantica_alimenta_o_roteador_ativo():
 		patch("nvdastudio.gui.settings_panel.get_llm_model", return_value="alto"),
 		patch("nvdastudio.ai.model_router.select_model", return_value="modelo-escolhido") as router,
 	):
-		route = _get_agentic_routes("pedido\n[TASK-COMPLEXITY: high]")[0]
+		route = _get_agentic_routes("pedido", RoutingHints.declared("high"))[0]
 		provider, model = route.provider, route.model_id
 	assert (provider, model) == ("factory", "modelo-escolhido")
 	assert router.call_args.kwargs["complexity"] == "high"
 	assert router.call_args.kwargs["required_capabilities"] == frozenset({"tool_use"})
 
 
-def test_complexidade_nao_e_adivinhada_por_palavra_chave():
-	assert extract_task_complexity("faça um addon extremamente complexo") == "medium"
-	assert extract_task_complexity("[TASK-COMPLEXITY: low]") == "low"
+def test_complexidade_so_vem_da_declaracao_tipada_da_ia():
+	assert RoutingHints.declared("high").complexity == "high"
+	assert RoutingHints.declared("extremamente complexo").complexity == "medium"
+	assert RoutingHints.declared(None, "inexistente", ["vision", "inventada"]).capabilities == {"vision"}
+	assert RoutingHints().preference == "balanced"
 
 
 def test_catalogo_canonico_e_gateway_confinam_todos_os_adaptadores(tmp_path):

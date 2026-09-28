@@ -39,12 +39,14 @@ from ..ai.clarifier import (
 	build_enriched_query,
 )
 from ..ai.llm_factory import create_llm_client, call_with_structured_output
+from ..ai.model_router import RoutingHints
 from ..builder.addon_loader import (
 	AddonContext, load_addon_from_blocks, load_addon_from_folder, load_addon_from_nvda_addon,
 )
 from ..builder.trajectory_compressor import compressor as trajectory_compressor
 from ..memory.session_memory import memory, resolver_dir_do_banco
 from ..builder.nvda_context import PROMPT_VERSION, NVDA_ADDON_CHAT_SYSTEM_LITE as NVDA_ADDON_CHAT_SYSTEM
+from ..utils.json_stream import JsonFieldStreamer
 from ..utils.logger import get_logger, log_decision
 from ..utils.user_visible_text import sanitize_user_visible_text, summarize_generation_error
 MODULE_VERSION = "6.1.0"
@@ -755,18 +757,12 @@ class NVDAStudioDialog(wx.Dialog):
 					query, clarification.questions, answers,
 					user_level=clarification.user_level,
 					addon_architecture=clarification.addon_architecture,
-					task_complexity=clarification.task_complexity,
-						routing_preference=clarification.routing_preference,
-						required_model_capabilities=clarification.required_model_capabilities,
 				)
 			else:
 				enriched = build_enriched_query(
 					query, [], [],
 					user_level=clarification.user_level,
 					addon_architecture=clarification.addon_architecture,
-					task_complexity=clarification.task_complexity,
-					routing_preference=clarification.routing_preference,
-					required_model_capabilities=clarification.required_model_capabilities,
 				)
 
 			# Q13.3: injeta locale do NVDA para que doc_generator gere no idioma certo
@@ -777,6 +773,7 @@ class NVDAStudioDialog(wx.Dialog):
 			self._orchestrator.run_async(
 				enriched,
 				package_requested=clarification.package_requested,
+				hints=clarification.routing_hints(query),
 			)
 		except Exception as exc:
 			wx.CallAfter(self._show_error, str(exc))
@@ -893,10 +890,22 @@ class NVDAStudioDialog(wx.Dialog):
 			# vivo, ver model_registry.py::get_structured_output_model()). A
 			# compressao de historico acima nao exige schema -- continua no
 			# client leve do provider ativo, sem mudanca.
+			# A fala do assistente chega token a token: o leitor extrai o campo
+			# "message" do JSON em construcao e a interface o mostra ao vivo.
+			streamer = JsonFieldStreamer(
+				"message", lambda text: wx.CallAfter(self._stream_append, text),
+			)
+
+			def _restart_stream():
+				streamer.reset()
+				wx.CallAfter(self._stream_discard)
+
 			resp = call_with_structured_output(
 				full_prompt,
 				_CHAT_RESPONSE_SCHEMA,
 				system_override=NVDA_ADDON_CHAT_SYSTEM,
+				on_chunk=streamer.feed,
+				on_failover=_restart_stream,
 			)
 			payload = json.loads(resp.content or "")
 			action = payload["action"]
@@ -919,22 +928,16 @@ class NVDAStudioDialog(wx.Dialog):
 				raise ValueError("A IA retornou uma mensagem vazia.")
 
 			self._chat_history.append({"role": "assistant", "text": message})
-			wx.CallAfter(self._chat_finish, f"Assistente:\n{message}")
+			wx.CallAfter(self._chat_finish, f"Assistente:\n{message}", streamer.emitted)
 
 			if action == "run_pipeline":
 				self._package_after_current_build = package_requested
 				if not task_specification:
 					raise ValueError("A IA solicitou execução sem especificação técnica.")
-				task_specification += (
-					f"\n[TASK-COMPLEXITY: {task_complexity}]"
-					f"\n[ROUTING-PREFERENCE: {routing_preference}]"
+				self._routing_hints = RoutingHints.declared(
+					task_complexity, routing_preference,
+					required_model_capabilities, task_specification,
 				)
-				if required_model_capabilities:
-					task_specification += (
-						"\n[MODEL-CAPABILITIES: "
-						+ ",".join(sorted(set(required_model_capabilities)))
-						+ "]"
-					)
 				if self._loaded_addon_context:
 					wx.CallAfter(self._trigger_iterative_pipeline, task_specification)
 				else:
@@ -958,8 +961,51 @@ class NVDAStudioDialog(wx.Dialog):
 		"""Aplica o contrato unico de texto simples da interface."""
 		return sanitize_user_visible_text(text)
 
-	def _chat_finish(self, reply: str):
+	def _stream_append(self, text: str):
+		"""Escreve o texto do assistente conforme chega. Thread UI."""
+		if not hasattr(self, "_log") or not text:
+			return
+		if not getattr(self, "_stream_open", False):
+			self._log.AppendText("Assistente:\n")
+			self._stream_start = self._log.GetLastPosition()
+			self._stream_buf = ""
+			self._stream_open = True
+		pos = self._log.GetInsertionPoint()
+		self._log.AppendText(text)
+		self._log.SetInsertionPoint(pos)
+		self._stream_buf += text
+
+	def _on_stream_token(self, token: str):
+		"""Um token novo do agente; "\n" isolado marca o fim da mensagem. Thread UI."""
+		if token == "\n":
+			self._stream_close()
+		else:
+			self._stream_append(token)
+
+	def _stream_close(self):
+		"""Termina o trecho ao vivo com quebra de linha. Thread UI."""
+		if getattr(self, "_stream_open", False):
+			self._stream_open = False
+			self._log.AppendText("\n")
+
+	def _stream_discard(self):
+		"""Apaga o trecho ao vivo (o modelo falhou e outro recomeca). Thread UI."""
+		if getattr(self, "_stream_open", False):
+			self._stream_open = False
+			header = len("Assistente:\n")
+			self._log.Remove(max(self._stream_start - header, 0), self._log.GetLastPosition())
+
+	def _stream_matches(self, reply: str) -> bool:
+		"""O que ja apareceu ao vivo e a mesma fala final (apos a limpeza)?"""
+		shown = self._clean_text(getattr(self, "_stream_buf", ""))
+		final = self._clean_text(reply).removeprefix("Assistente:").strip()
+		return getattr(self, "_stream_open", False) and shown.strip() == final
+
+	def _chat_finish(self, reply: str, already_shown: bool = False):
 		"""Exibe resposta no historico e anuncia pelo NVDA. Thread UI.
+
+		already_shown: a resposta ja foi escrita ao vivo (token a token); so
+		fecha o trecho em andamento em vez de repeti-lo.
 
 		Achado de auditoria 2026-08-04 (analise de log real + pesquisa
 		dedicada de UX acessivel): esta funcao tinha SUA PROPRIA logica de
@@ -971,7 +1017,11 @@ class NVDAStudioDialog(wx.Dialog):
 		chamada (nao so a resposta final), entao essa logica duplicada e o
 		roubo de foco foram removidos daqui.
 		"""
-		self._chat_append(reply)
+		if already_shown and self._stream_matches(reply):
+			self._stream_close()
+		else:
+			self._stream_discard()
+			self._chat_append(reply)
 		self._enable_run_btn()
 		self._input.Enable()
 		if "?" in reply:
@@ -993,6 +1043,7 @@ class NVDAStudioDialog(wx.Dialog):
 		line = self._clean_text(line)
 		if not hasattr(self, "_log"):
 			return
+		self._stream_close()
 		val = self._log.GetValue()
 		lines = [existing.strip() for existing in val.split("\n") if existing.strip()]
 		if lines and lines[-1] == line.strip():
@@ -1091,6 +1142,7 @@ class NVDAStudioDialog(wx.Dialog):
 			enriched_query,
 			workdir=workdir,
 			package_requested=self._package_after_current_build,
+			hints=getattr(self, "_routing_hints", None),
 		)
 
 
@@ -1103,15 +1155,22 @@ class NVDAStudioDialog(wx.Dialog):
 		self._orchestrator.run_async(
 			change_description,
 			package_requested=self._package_after_current_build,
+			hints=getattr(self, "_routing_hints", None),
 		)
 
 	def _on_progress(self, event: str, detail: str):
 		"""Entrega apenas eventos conversacionais tipados do agente."""
+		if event == "TOKEN":
+			wx.CallAfter(self._on_stream_token, detail)
+			return
 		if event == "EXECUTANDO" and detail.lstrip().startswith("{"):
 			progress = getattr(self, "_agent_progress", None)
 			if progress is None:
 				progress = self._agent_progress = AgentProgress()
-			for message in progress.consume(detail):
+			messages = progress.consume(detail)
+			for token in progress.drain_stream():
+				wx.CallAfter(self._on_stream_token, token)
+			for message in messages:
 				wx.CallAfter(self._chat_append, message)
 			return
 		if _is_internal_agent_detail(detail):

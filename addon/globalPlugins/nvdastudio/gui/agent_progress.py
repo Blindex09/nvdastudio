@@ -2,6 +2,7 @@
 import json
 import re
 
+from ..memory.narration import LiveNarrator
 from ..utils.user_visible_text import sanitize_user_visible_text
 
 MODULE_VERSION = "1.1.0"
@@ -56,6 +57,15 @@ class AgentProgress:
 		self.started: set[str] = set()
 		self.error_notices: set[tuple[str, str]] = set()
 		self.completed_turns: set[str] = set()
+		# Texto ao vivo: cada delta sai assim que chega; o bloco completo depois
+		# não é repetido no histórico.
+		self.stream: list[str] = []
+		self.streamed: set[tuple[str, int]] = set()
+		self._narrator = LiveNarrator(lambda token: self.stream.append(token))
+
+	def drain_stream(self) -> list[str]:
+		out, self.stream = self.stream, []
+		return out
 
 	def consume(self, detail: str) -> list[str]:
 		try:
@@ -74,7 +84,10 @@ class AgentProgress:
 		key = (str(n.get("messageId", "")), n.get("blockIndex", 0))
 		if kind == "assistant_text_delta":
 			if key not in self.delivered:
-				self.buffers[key] = self.buffers.get(key, "") + str(n.get("textDelta") or "")
+				delta = str(n.get("textDelta") or "")
+				self.buffers[key] = self.buffers.get(key, "") + delta
+				self.streamed.add(key)
+				self._narrator.feed(delta)
 			return []
 		if kind == "assistant_text_complete":
 			return self._deliver(key, self.buffers.pop(key, ""))
@@ -136,11 +149,19 @@ class AgentProgress:
 		if key in self.delivered or not text:
 			return []
 		self.delivered.add(key)
+		was_streamed = key in self.streamed
+		if was_streamed:
+			self._narrator.end_message()
 		text = conversation_text(text)
+		note = ""
 		if text and _COMPLETION_CLAIM_RE.search(text):
-			text += (
-				"\n\nObservação do NVDAStudio: esta é a avaliação da rodada do agente executor. "
+			note = (
+				"Observação do NVDAStudio: esta é a avaliação da rodada do agente executor. "
 				"A entrega só será considerada concluída depois dos gates independentes"
 				" e, quando solicitado, do empacotamento."
 			)
+		if was_streamed:
+			return [note] if note else []
+		if note:
+			text += "\n\n" + note
 		return [text] if text else []
