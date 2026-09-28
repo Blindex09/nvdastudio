@@ -12,7 +12,7 @@ from gui.guiHelper import BoxSizerHelper
 from ..utils.logger import get_logger
 from ..ai.model_registry import ALTO_MODEL, get_provider_step_models, registry
 
-MODULE_VERSION = "7.0.0"
+MODULE_VERSION = "7.1.0"
 _logger = get_logger("settings_panel")
 
 CONFIG_SECTION = "nvdastudio"
@@ -485,6 +485,14 @@ class NVDAStudioSettingsPanel(SettingsPanel):
                 _validate_provider_key(provider, key, model_id)
                 wx.CallAfter(self._on_key_validated, True, None)
             except Exception as exc:
+                # Achado real (2026-09-28): esta falha nunca ia pro log -- só o
+                # rótulo/fala transitórios da UI, perdidos se o usuário não
+                # capturasse a tempo. Logs devem continuar úteis pra diagnóstico
+                # mesmo quando a UI já mudou de tela.
+                _logger.warning(
+                    "[VALIDATE] validacao de chave falhou provider=%s model=%s: %s",
+                    provider, model_id, exc,
+                )
                 wx.CallAfter(self._on_key_validated, False, str(exc))
 
         threading.Thread(target=_do_validate, daemon=True).start()

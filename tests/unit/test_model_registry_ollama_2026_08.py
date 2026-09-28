@@ -1,7 +1,5 @@
 from nvdastudio.ai.model_registry import (
-	ModelRegistry,
 	ModelStatus,
-	_FALLBACK_CHAINS,
 	_MODEL_REGISTRY,
 )
 
@@ -32,50 +30,27 @@ class TestNovosModelosOllamaRegistrados:
 		assert "kimi-k3" not in _MODEL_REGISTRY
 
 
-class TestFallbackChainOllamaInclueNovosModelos:
-	def test_fallback_chain_ollama_inclui_glm_5_2_e_minimax_m3_e_gpt_oss(self):
-		chain = _FALLBACK_CHAINS["ollama"]
-		assert "glm-5.2" in chain
-		assert "minimax-m3" in chain
-		assert "gpt-oss:20b" in chain
+class TestModelosRetiradosPeloOllama:
+	"""Achado ao vivo 2026-09-28 (curl contra ollama.com/api/chat): tres
+	modelos catalogados foram retirados pelo Ollama em 2026-09-25 e devolvem
+	410 Gone. Ficam no registry como historico (RETIRED), mas fora do pool
+	que get_active_models()/route_advisor.py consideram."""
 
-	def test_kimi_k2_7_code_continua_primeiro_na_cadeia(self):
-		"""Tier heavy default nao foi trocado nesta rodada -- so adicionado
-		ao catalogo de fallback, decisao de trocar o default fica pro
-		usuario (ver changelog 1.10.0)."""
-		assert _FALLBACK_CHAINS["ollama"][0] == "kimi-k2.7-code"
+	def test_deepseek_v4_flash_esta_retirado(self):
+		assert _MODEL_REGISTRY["deepseek-v4-flash"].status == ModelStatus.RETIRED
 
+	def test_qwen3_5_397b_esta_retirado(self):
+		assert _MODEL_REGISTRY["qwen3.5:397b"].status == ModelStatus.RETIRED
 
-class TestGetFallbackChainFoldDeProviderNovo:
-	"""get_fallback_chain() dobra o provider do modelo pro grupo 'ollama'
-	antes de consultar _FALLBACK_CHAINS -- sem isso, provider='zhipu'/
-	'minimax'/'openai_oss' nao bateria com nenhuma chave de
-	_FALLBACK_CHAINS (que so tem 'ollama'/'anthropic'/'openai'/'google'/
-	'xai'), retornando lista vazia silenciosamente."""
+	def test_glm_5_1_esta_retirado(self):
+		assert _MODEL_REGISTRY["glm-5.1"].status == ModelStatus.RETIRED
 
-	def test_glm_5_2_tem_fallback_chain_nao_vazia(self):
-		registry = ModelRegistry()
-		chain = registry.get_fallback_chain("glm-5.2")
-		assert len(chain) > 1, "glm-5.2 deveria ter fallback chain do grupo ollama, nao vazia"
-		assert chain[0] == "glm-5.2"
+	def test_tier_light_e_frontier_do_ollama_nao_apontam_pra_modelo_retirado(self):
+		from nvdastudio.ai.model_registry import _PROVIDER_TIER_MODELS
+		tiers = _PROVIDER_TIER_MODELS["ollama"]
+		assert _MODEL_REGISTRY[tiers["light"]].status == ModelStatus.ACTIVE
+		assert _MODEL_REGISTRY[tiers["frontier"]].status == ModelStatus.ACTIVE
 
-	def test_minimax_m3_tem_fallback_chain_nao_vazia(self):
-		registry = ModelRegistry()
-		chain = registry.get_fallback_chain("minimax-m3")
-		assert len(chain) > 1, "minimax-m3 deveria ter fallback chain do grupo ollama, nao vazia"
-
-	def test_gpt_oss_20b_tem_fallback_chain_nao_vazia(self):
-		registry = ModelRegistry()
-		chain = registry.get_fallback_chain("gpt-oss:20b")
-		assert len(chain) > 1, "gpt-oss:20b deveria ter fallback chain do grupo ollama, nao vazia"
-
-	def test_glm_5_2_fallback_chain_contem_kimi_k2_7_code(self):
-		"""A cadeia de fallback de qualquer modelo do grupo ollama deve
-		incluir os outros modelos do mesmo grupo (escalacao cruzada real)."""
-		registry = ModelRegistry()
-		chain = registry.get_fallback_chain("glm-5.2")
-		assert "kimi-k2.7-code" in chain
-
-	def test_versao_1_10_0(self):
+	def test_versao_1_24_0(self):
 		from nvdastudio.ai.model_registry import MODULE_VERSION
-		assert MODULE_VERSION == "1.23.0"
+		assert MODULE_VERSION == "1.24.0"

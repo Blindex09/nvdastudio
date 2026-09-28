@@ -4,7 +4,7 @@ import os
 
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.23.0"
+MODULE_VERSION = "1.24.0"
 _logger = get_logger("model_registry")
 
 ALTO_MODEL = "alto"
@@ -359,7 +359,12 @@ _MODEL_REGISTRY: dict[str, ModelInfo] = {
     "deepseek-v4-flash": ModelInfo(
         model_id="deepseek-v4-flash",
         provider="deepseek",
-        status=ModelStatus.ACTIVE,
+        # RETIRED confirmado ao vivo 2026-09-28 (curl contra ollama.com/api/chat):
+        # "deepseek-v4-flash:0731 was retired at 2026-09-25 00:00:00 -0700 PDT".
+        # Era o tier "light" do Ollama -- toda chamada real (inclusive o botao
+        # "Validar" da chave em settings_panel.py) vinha falhando com 410 Gone
+        # desde essa data. Substituido por gpt-oss:20b em _PROVIDER_TIER_MODELS.
+        status=ModelStatus.RETIRED,
         description="Modelo rapido para criticas, revisoes e fallback",
         capabilities=["json_object"],
         # cost_tier corrigido de "low" pra "medium" (pesquisa dedicada
@@ -426,7 +431,11 @@ _MODEL_REGISTRY: dict[str, ModelInfo] = {
         context_window=128_000,
     ),
     "glm-5.1": ModelInfo(
-        model_id="glm-5.1", provider="zhipu", status=ModelStatus.ACTIVE,
+        model_id="glm-5.1", provider="zhipu",
+        # RETIRED confirmado ao vivo 2026-09-28 (curl contra ollama.com/api/chat):
+        # "glm-5.1 was retired at 2026-09-25 00:00:00 -0700 PDT". GLM 5.2 (ja
+        # registrado abaixo) continua ativo e substitui.
+        status=ModelStatus.RETIRED,
         description="Zhipu/Z.ai, geracao anterior ao GLM 5.2 (ja registrado) -- presente na conta real.",
         capabilities=["thinking", "tool_use", "coding_agentic"], cost_tier="high",
         context_window=1_000_000,
@@ -440,7 +449,13 @@ _MODEL_REGISTRY: dict[str, ModelInfo] = {
         context_window=128_000,
     ),
     "qwen3.5:397b": ModelInfo(
-        model_id="qwen3.5:397b", provider="alibaba", status=ModelStatus.ACTIVE,
+        model_id="qwen3.5:397b", provider="alibaba",
+        # RETIRED confirmado ao vivo 2026-09-28 (curl contra ollama.com/api/chat):
+        # "qwen3.5:397b was retired at 2026-09-25 00:00:00 -0700 PDT". Era o tier
+        # "frontier" do Ollama -- toda chamada complexity="high" vinha falhando
+        # com 410 Gone desde essa data. Substituido por mistral-large-3:675b em
+        # _PROVIDER_TIER_MODELS (maior modelo confirmado ainda ativo na conta).
+        status=ModelStatus.RETIRED,
         description="Alibaba, o maior modelo confirmado na conta real (397B parametros) -- specs de benchmark nao auditadas em profundidade ainda, mas escala sugere candidato natural a tier 'frontier' pra tarefas de alta complexidade.",
         # cost_tier corrigido de "high" pra "medium" (pesquisa dedicada
         # 2026-08-17, ollama.com/library/qwen3.5): pagina oficial mostra
@@ -564,19 +579,6 @@ _MODEL_REGISTRY: dict[str, ModelInfo] = {
 }
 
 # ---------------------------------------------------------------------------
-# Fallback chains por provider
-# ---------------------------------------------------------------------------
-
-_FALLBACK_CHAINS: dict[str, list[str]] = {
-    "ollama": ["kimi-k2.7-code", "glm-5.2", "minimax-m3", "kimi-k2.6", "gpt-oss:20b", "deepseek-v4-flash"],
-    "anthropic": ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-5"],
-    "openai": ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"],
-    "google": ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-pro"],
-	"xai": ["grok-build-0.1", "grok-4.5", "grok-4.3"],
-	"opencode_go": ["gpt-5.6-luna"],
-}
-
-# ---------------------------------------------------------------------------
 # Modelos por tier/provedor
 # ---------------------------------------------------------------------------
 
@@ -600,13 +602,21 @@ _FALLBACK_CHAINS: dict[str, list[str]] = {
 _PROVIDER_TIER_MODELS: dict[str, dict[str, str]] = {
     "ollama": {
         "heavy": "kimi-k2.7-code",
-        "light": "deepseek-v4-flash",
+        # 1.24.0: deepseek-v4-flash RETIRADO pelo Ollama em 2026-09-25 (confirmado
+        # ao vivo 2026-09-28 -- todo turno "light" vinha voltando 410 Gone desde
+        # essa data, inclusive o botao "Validar" da chave em settings_panel.py,
+        # que nao loga a excecao e por isso o erro nunca aparecia no log). Trocado
+        # por gpt-oss:20b -- ja descrito no proprio registry como "candidato a
+        # tier light do Ollama", confirmado ativo e respondendo.
+        "light": "gpt-oss:20b",
         # 1.15.0: tier novo pra roteamento por complexidade (apply_model_budget()
         # em planner.py 2.22.0) -- so pedidos "high" complexity usam este tier
-        # pra code_generation. qwen3.5:397b escolhido por escala (397B params,
-        # maior modelo confirmado na conta real) -- specs de benchmark reais
-        # ainda nao auditadas em profundidade, revisar quando houver evidencia.
-        "frontier": "qwen3.5:397b",
+        # pra code_generation.
+        # 1.24.0: qwen3.5:397b TAMBEM retirado em 2026-09-25 (mesmo achado ao
+        # vivo). Trocado por mistral-large-3:675b -- maior modelo confirmado
+        # ainda ativo na conta (675B params); specs de benchmark reais ainda
+        # nao auditadas em profundidade, revisar quando houver evidencia.
+        "frontier": "mistral-large-3:675b",
     },
     "factory": {
         # O Droid expoe `auto` como Auto Model. Quando o usuario escolhe
@@ -951,21 +961,6 @@ class ModelRegistry:
             return True, msg  # deprecated ainda funciona, mas avisa
 
         return True, ""
-
-    def get_fallback_chain(self, model_id: str) -> list[str]:
-        """Retorna a cadeia de fallback para um modelo."""
-        info = self.get_model_info(model_id)
-        if info is None:
-            return [model_id]
-
-        provider = info.provider
-        if provider in _OLLAMA_SERVED_MAKERS:
-            provider = "ollama"
-
-        chain = _FALLBACK_CHAINS.get(provider, [])
-        # Remove o proprio modelo da cadeia
-        chain = [m for m in chain if m != model_id]
-        return [model_id] + chain
 
     def get_active_models(self, provider: str | None = None) -> list[ModelInfo]:
         """Retorna todos os modelos ativos, opcionalmente filtrados por provider."""

@@ -7,7 +7,7 @@ from .llm_client import LLMClientError, LLMResponse
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 from .model_registry import registry as model_registry
 
-MODULE_VERSION = "2.28.0"
+MODULE_VERSION = "2.29.0"
 _logger = get_logger("ollama_client")
 
 _OLLAMA_CLOUD_URL = "https://ollama.com/api/chat"
@@ -725,9 +725,15 @@ class OllamaClient:
 					attempt, _MAX_RETRIES + 1, delay, exc,
 				),
 			)
-		except OllamaClientError:
+		except OllamaClientError as exc:
+			# Achado real (2026-09-28): a excecao final nunca era logada aqui --
+			# so o retry INTERMEDIARIO acima. Um chamador que so mostra str(exc)
+			# na UI (settings_panel.py) deixava o log sem nenhum rastro do
+			# motivo real (ex.: modelo retirado pelo Ollama, 410 Gone).
+			_logger.error("[ERRO] OllamaClient: chamada final falhou model=%s: %s", self._model_id, exc)
 			raise
 		except Exception as exc:
+			_logger.error("[ERRO] OllamaClient: chamada final falhou model=%s: %s", self._model_id, exc)
 			raise OllamaClientError(f"[ERRO] Ollama Cloud API falhou: {exc}") from exc
 
 		message = data.get("message", {})
@@ -869,9 +875,11 @@ class OllamaClient:
 					attempt, _MAX_RETRIES + 1, delay, exc,
 				),
 			)
-		except OllamaClientError:
+		except OllamaClientError as exc:
+			_logger.error("[ERRO] OllamaClient: stream final falhou model=%s: %s", self._model_id, exc)
 			raise
 		except Exception as exc:
+			_logger.error("[ERRO] OllamaClient: stream final falhou model=%s: %s", self._model_id, exc)
 			raise OllamaClientError(f"[ERRO] Ollama Cloud stream falhou: {exc}") from exc
 
 		content = _clean_response("".join(text_parts))

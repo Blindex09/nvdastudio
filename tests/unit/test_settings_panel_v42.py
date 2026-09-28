@@ -16,7 +16,7 @@ def _read_settings() -> str:
 class TestSettingsPanelVersao:
     def test_versao_e_4_2_0(self):
         from nvdastudio.gui.settings_panel import MODULE_VERSION
-        assert MODULE_VERSION == "7.0.0"
+        assert MODULE_VERSION == "7.1.0"
 
 
 class TestStudioProvider:
