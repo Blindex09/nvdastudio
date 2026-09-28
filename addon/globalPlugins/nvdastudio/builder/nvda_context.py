@@ -1,6 +1,7 @@
 import os
 import re
 
+from ..ai.clarifier import ARCHITECTURE_AMBIGUITY_GUIDANCE
 from ..utils.project_policy import (
 	ABSOLUTE_MIN_NVDA,
 	PROJECT_LAST_TESTED_NVDA,
@@ -8,7 +9,7 @@ from ..utils.project_policy import (
 	PROJECT_SUPPORTED_RANGE,
 )
 
-PROMPT_VERSION = "3.35.0"
+PROMPT_VERSION = "3.36.0"
 
 # ------------------------------------------------------------------
 # Regras de deteccao NVDA-001..040, NVDA-042..050
@@ -1809,6 +1810,12 @@ def _build_nvda_addon_chat_system(docs_dir: str = _NVDA_DOCS_DIR) -> str:
 		"descreva com precisão o resultado solicitado e as restrições relevantes para a construção.\n"
 		"6. Não gere código diretamente em message. Se o pedido estiver ambíguo, use clarify e faça uma "
 		"pergunta conversacional específica em message.\n\n"
+		+ ARCHITECTURE_AMBIGUITY_GUIDANCE
+		+ 'Quando a arquitetura for ambigua (aqui nao ha campo addon_architecture -- decida por dentro '
+		'do raciocinio e aja em cima): use action=clarify e faca a pergunta em message. So passe pra '
+		'run_pipeline depois que a resposta do usuario (na conversa) resolver qual arquitetura e a '
+		'certa -- descreva a arquitetura resolvida em task_specification (ex.: "crie um SynthDriver '
+		'que...", nunca deixe implicito).\n\n'
 		"Revise acentos e cedilhas antes de responder."
 	)
 

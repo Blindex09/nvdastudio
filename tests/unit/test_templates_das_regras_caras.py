@@ -24,7 +24,7 @@ from nvdastudio.builder.nvda_context import NVDA_SYSTEM_PROMPT, PROMPT_VERSION
 
 
 def test_versao_do_prompt():
-	assert PROMPT_VERSION == "3.35.0"
+	assert PROMPT_VERSION == "3.36.0"
 
 
 class TestSecureMode:

@@ -6,7 +6,7 @@ from .llm_factory import call_with_structured_output
 from .model_router import RoutingHints
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 
-MODULE_VERSION = "2.1.0"
+MODULE_VERSION = "2.2.0"
 _logger = get_logger("clarifier")
 
 SAFE_CLARIFICATION_QUESTION = (
@@ -42,6 +42,55 @@ def _safe_clarification_fallback(reason: str) -> "ClarificationResult":
 # fallback de "sem clarificacao" quando o JSON vinha malformado, silenciosamente.
 # Valores validos para addon_architecture
 _VALID_ARCHITECTURES = frozenset({"external", "driver", "deep_integration", "ambiguous"})
+
+# Raciocínio sobre ambiguidade arquitetural (external vs driver vs
+# deep_integration) -- compartilhado entre este Clarifier (acionado só no
+# retry após erro) e o classificador do chat (studio_dialog.py), que é o
+# caminho que um pedido normal percorre de fato. Auditoria 2026-09-28: o
+# chat tinha uma instrução de ambiguidade muito mais fina que esta, sem o
+# mesmo raciocínio sobre driver-vs-external -- extraído pra cá pra os dois
+# usarem o mesmo texto, em vez de duas versões que podem divergir com o tempo.
+ARCHITECTURE_AMBIGUITY_GUIDANCE = (
+	'DIAGNOSTICO DE ARQUITETURA (external | driver | deep_integration | ambiguo) -- '
+	'raciocine semanticamente, sem keywords:\n'
+	'\n'
+	'external: o addon ADICIONA funcionalidade nova sobre o NVDA sem substituir nada.\n'
+	'  O NVDA continua funcionando igual para todo o resto.\n'
+	'  Exemplos: addon que anuncia hora, que le conteudo da tela, que melhora um app especifico.\n'
+	'  Implementacao: GlobalPlugin ou AppModule.\n'
+	'\n'
+	'driver: o addon SUBSTITUI um componente interno do NVDA.\n'
+	'  O usuario escolhe esse driver e o NVDA para de usar o componente original.\n'
+	'  Toda a funcionalidade passa por esse driver -- menus, botoes, notificacoes, tudo.\n'
+	'  Exemplos: sintetizador de voz alternativo, driver de display braille.\n'
+	'  Implementacao: SynthDriver ou BrailleDisplayDriver.\n'
+	'\n'
+	'deep_integration: o addon MODIFICA como o NVDA processa algo internamente.\n'
+	'  Nao substitui um componente, mas intercepta o pipeline para alterar o comportamento.\n'
+	'  Exemplos: filtrar todas as falas do NVDA, interceptar todas as teclas globalmente.\n'
+	'  Implementacao: extension points (register/unregister no pipeline do NVDA).\n'
+	'\n'
+	'ambiguo: o pedido pode ser external OU driver, e a diferenca muda tudo.\n'
+	'  Acontece quando a descricao menciona uma tecnologia de audio/voz/braille sem deixar claro\n'
+	'  se o usuario quer substituir o componente todo ou apenas acionar sob demanda.\n'
+	'  QUANDO ambiguo: pergunte SEMPRE (nunca assuma), formulando UMA pergunta funcional,\n'
+	'  simples, calibrada pela linguagem que o usuario ja usou na conversa:\n'
+	'    - Se a linguagem dele foi simples, do dia a dia: pergunte sem termos tecnicos.\n'
+	'      Ex: "Voce quer que o NVDA inteiro fale com essa voz (inclusive menus e botoes),\n'
+	'           ou so um botao para ouvir algo especifico com essa voz quando voce quiser?"\n'
+	'    - Se ele ja usou termos do NVDA: pode perguntar nesses termos.\n'
+	'      Ex: "Esse addon deve substituir o sintetizador atual do NVDA por completo,\n'
+	'           ou deve ser acionado por atalho quando necessario?"\n'
+	'    - Se ele ja demonstrou fluencia tecnica (globalPlugin, appModule, SynthDriver): pode ser tecnico.\n'
+	'      Ex: "O pedido implica SynthDriver (substitui todo o pipeline de fala)\n'
+	'           ou GlobalPlugin com chamada sob demanda via atalho?"\n'
+	'\n'
+	'REGRA CRITICA: A pergunta arquitetural elimina ramos inteiros de trabalho.\n'
+	'  A diferenca entre driver e external nao e de implementacao -- e de experiencia:\n'
+	'  driver afeta TODO o NVDA; external e acionado quando o usuario decide.\n'
+	'  Pergunte sempre que houver ambiguidade arquitetural real.\n'
+)
+
 
 _CLARIFIER_SYSTEM = (
 	'Voce e o Clarifier do NVDAStudio. Analisa pedidos do usuario sobre addons NVDA.\n'
@@ -80,43 +129,11 @@ _CLARIFIER_SYSTEM = (
 	'- chat: usuario esta fazendo uma pergunta, pedindo explicacao, ou conversando.\n'
 	'- forbidden: pedido viola regras de seguranca.\n'
 	'\n'
-	'DIAGNOSTICO DE ARQUITETURA (addon_architecture) -- raciocine semanticamente, sem keywords:\n'
-	'\n'
-	'external: o addon ADICIONA funcionalidade nova sobre o NVDA sem substituir nada.\n'
-	'  O NVDA continua funcionando igual para todo o resto.\n'
-	'  Exemplos: addon que anuncia hora, que le conteudo da tela, que melhora um app especifico.\n'
-	'  Implementacao: GlobalPlugin ou AppModule.\n'
-	'\n'
-	'driver: o addon SUBSTITUI um componente interno do NVDA.\n'
-	'  O usuario escolhe esse driver e o NVDA para de usar o componente original.\n'
-	'  Toda a funcionalidade passa por esse driver -- menus, botoes, notificacoes, tudo.\n'
-	'  Exemplos: sintetizador de voz alternativo, driver de display braille.\n'
-	'  Implementacao: SynthDriver ou BrailleDisplayDriver.\n'
-	'\n'
-	'deep_integration: o addon MODIFICA como o NVDA processa algo internamente.\n'
-	'  Nao substitui um componente, mas intercepta o pipeline para alterar o comportamento.\n'
-	'  Exemplos: filtrar todas as falas do NVDA, interceptar todas as teclas globalmente.\n'
-	'  Implementacao: extension points (register/unregister no pipeline do NVDA).\n'
-	'\n'
-	'ambiguous: o pedido pode ser external OU driver, e a diferenca muda tudo.\n'
-	'  Use quando a descricao menciona uma tecnologia de audio/voz/braille sem deixar claro\n'
-	'  se o usuario quer substituir o componente todo ou apenas acionar sob demanda.\n'
-	'  QUANDO ambiguous: OBRIGATORIAMENTE defina needs_clarification=true e formule\n'
-	'  UMA pergunta funcional, simples, no nivel do usuario:\n'
-	'    - Para iniciante: use linguagem do dia a dia, sem termos tecnicos.\n'
-	'      Ex: "Voce quer que o NVDA inteiro fale com essa voz (inclusive menus e botoes),\n'
-	'           ou so um botao para ouvir algo especifico com essa voz quando voce quiser?"\n'
-	'    - Para intermediario: pode usar termos do NVDA.\n'
-	'      Ex: "Esse addon deve substituir o sintetizador atual do NVDA por completo,\n'
-	'           ou deve ser acionado por atalho quando necessario?"\n'
-	'    - Para avancado: pode ser tecnico.\n'
-	'      Ex: "O pedido implica SynthDriver (substitui todo o pipeline de fala)\n'
-	'           ou GlobalPlugin com chamada sob demanda via atalho?"\n'
-	'\n'
-	'REGRA CRITICA: A pergunta arquitetural elimina ramos inteiros de trabalho.\n'
-	'  A diferenca entre driver e external nao e de implementacao -- e de experiencia:\n'
-	'  driver afeta TODO o NVDA; external e acionado quando o usuario decide.\n'
-	'  Pergunte sempre que houver ambiguidade arquitetural real.\n'
+	+ ARCHITECTURE_AMBIGUITY_GUIDANCE
+	+ 'No campo addon_architecture, escreva "ambiguous" (nao "ambiguo") pro caso ambiguo. '
+	'Quando for ambiguous, defina TAMBEM needs_clarification=true e coloque a pergunta em '
+	'questions, calibrada pelo user_level detectado (nao pela linguagem da conversa, que aqui '
+	'e so a query atual).\n'
 	'\n'
 	'PEDIDOS PROIBIDOS - intent=forbidden, forbidden=true, refusal_reason preenchido:\n'
 	'- Coletaria dados do usuario sem seu conhecimento ou ativacao explicita.\n'
