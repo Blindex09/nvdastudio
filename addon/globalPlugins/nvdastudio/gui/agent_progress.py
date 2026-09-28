@@ -2,16 +2,11 @@
 import json
 import re
 
+from ..ai.completion_claim import claims_completion
 from ..memory.narration import LiveNarrator
 from ..utils.user_visible_text import sanitize_user_visible_text
 
-MODULE_VERSION = "1.1.0"
-
-_COMPLETION_CLAIM_RE = re.compile(
-	r"\b(?:an[aá]lise\s+conclu[ií]da|trabalho\s+conclu[ií]do|addon\s+(?:est[aá]\s+)?(?:completo|pronto)|"
-	r"corre[cç][oõ]es?\s+conclu[ií]das?|verifica[cç][oõ]es?\s+finais|todos\s+os\s+\d+\s+testes\s+passaram)\b",
-	re.IGNORECASE,
-)
+MODULE_VERSION = "1.2.0"
 
 
 def _execute_result_message(content: str) -> str:
@@ -154,7 +149,7 @@ class AgentProgress:
 			self._narrator.end_message()
 		text = conversation_text(text)
 		note = ""
-		if text and _COMPLETION_CLAIM_RE.search(text):
+		if text and claims_completion(text):
 			note = (
 				"Observação do NVDAStudio: esta é a avaliação da rodada do agente executor. "
 				"A entrega só será considerada concluída depois dos gates independentes"

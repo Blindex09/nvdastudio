@@ -398,3 +398,52 @@ def test_driver_do_build_transmite_cada_delta_como_token(tmp_path, monkeypatch):
 	assert "segredo" not in "".join(tokens)
 	assert "".join(tokens).startswith("Vou ler  agora.")
 	assert "Vou " not in linhas  # token nao vira linha de status
+
+
+# ----------------------------------------------------------------- alegação de conclusão
+
+def test_alegacao_de_conclusao_e_decidida_pela_ia_nao_por_frase_fixa(monkeypatch):
+	from nvdastudio.ai import completion_claim
+
+	def ia(prompt, schema, system_override=None, step_type=""):
+		# A IA julga o SENTIDO: "finalizei" e "analise concluída" sao a
+		# mesma alegacao com palavras diferentes; nada disso e regex aqui.
+		return SimpleNamespace(content=json.dumps({
+			"claims_completion": "finalizei" in prompt or "conclu" in prompt,
+		}))
+
+	monkeypatch.setattr("nvdastudio.ai.llm_factory.call_with_structured_output", ia)
+	assert completion_claim.claims_completion("Já finalizei tudo, pode revisar.") is True
+	assert completion_claim.claims_completion("Vou analisar o manifesto agora.") is False
+
+
+def test_alegacao_de_conclusao_falha_fechada_sem_ia(monkeypatch):
+	from nvdastudio.ai import completion_claim
+
+	def falha(*a, **kw):
+		raise RuntimeError("sem rede")
+
+	monkeypatch.setattr("nvdastudio.ai.llm_factory.call_with_structured_output", falha)
+	assert completion_claim.claims_completion("Trabalho concluído, tudo pronto.") is False
+
+
+def test_texto_trivial_nao_gasta_chamada(monkeypatch):
+	from nvdastudio.ai import completion_claim
+
+	monkeypatch.setattr(
+		"nvdastudio.ai.llm_factory.call_with_structured_output",
+		lambda *a, **kw: pytest.fail("texto curto nao deveria consultar a IA"),
+	)
+	assert completion_claim.claims_completion("Ok.") is False
+
+
+def test_nota_de_rodape_usa_o_classificador_da_ia_nao_frase_fixa(monkeypatch):
+	from nvdastudio.gui import agent_progress as ap
+
+	monkeypatch.setattr(ap, "claims_completion", lambda text: "sinal-de-teste" in text)
+	progresso = ap.AgentProgress()
+	saida = progresso._deliver(("m", 0), "Trabalho sinal-de-teste finalizado.")
+	assert any("gates independentes" in linha for linha in saida)
+	progresso2 = ap.AgentProgress()
+	saida2 = progresso2._deliver(("m", 1), "Vou ler o manifesto agora.")
+	assert not any("gates independentes" in linha for linha in saida2)

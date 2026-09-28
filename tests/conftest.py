@@ -314,3 +314,16 @@ def _consultor_de_rota_sem_rede(monkeypatch):
 
     monkeypatch.setattr(route_advisor, "_ask_model", _indisponivel)
     route_advisor._state.cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def _classificador_de_conclusao_sem_rede(monkeypatch):
+    """O classificador de "alegação de conclusão" (gui/agent_progress.py) nunca
+    faz chamada real nos testes: por padrão nada é classificado como alegação
+    de conclusão (mesmo comportamento de fail-closed da ausência de IA). Um
+    teste que precisa exercitar a nota sobrescreve
+    ``nvdastudio.gui.agent_progress.claims_completion`` explicitamente.
+    """
+    from nvdastudio.gui import agent_progress
+
+    monkeypatch.setattr(agent_progress, "claims_completion", lambda _text: False)

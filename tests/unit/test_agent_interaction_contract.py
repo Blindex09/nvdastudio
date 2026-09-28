@@ -87,7 +87,11 @@ def test_falhas_de_edicao_iguais_nao_inundam_a_conversa():
 	assert second == []
 
 
-def test_conclusao_do_executor_e_rotulada_como_provisoria():
+def test_conclusao_do_executor_e_rotulada_como_provisoria(monkeypatch):
+	"""A decisao "isto e uma alegacao de conclusao" e da IA (ai/completion_claim.py),
+	nunca de uma frase fixa -- o teste declara a decisao, nao a forja por regex."""
+	import nvdastudio.gui.agent_progress as ap
+	monkeypatch.setattr(ap, "claims_completion", lambda _text: True)
 	p = AgentProgress()
 	out = p.consume(event("create_message", message={
 		"id": "final", "role": "assistant",

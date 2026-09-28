@@ -52,6 +52,9 @@ Não existem pipeline staged, plano obrigatório por fases, subagentes fixos, ro
 ### ai
 
 - `clarifier.py`: esclarecimento e intenção de empacotamento por IA.
+- `completion_claim.py`: classifica por IA se o texto do agente executor alega
+  ter concluído o trabalho (nunca por regex/palavra-chave), para decidir a
+  nota que separa essa autoavaliação da entrega validada pelo NVDAStudio.
 - `factory_client.py`: integração Droid stream-JSON-RPC.
 - `llm_client.py`: protocolos e tipos comuns dos clientes.
 - `llm_factory.py`: construção provider-agnostic dos clientes.
