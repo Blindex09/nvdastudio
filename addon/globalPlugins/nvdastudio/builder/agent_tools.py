@@ -16,7 +16,7 @@ from typing import Callable
 from ..tools.tool_gateway import ToolGateway, ToolSchema
 from ..utils.injection_guard import sanitize_untrusted_block
 
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
 
 
 @dataclass
@@ -68,6 +68,15 @@ def canonical_permission_name(tool_name: str) -> str:
 		"execute_code": "run_addon_tests",
 		"code_executor": "run_addon_tests",
 		"network_request": "web_search",
+		# Achado real do E2E ao vivo via Ollama Cloud (gpt-oss:20b, 2026-09-28):
+		# o modelo chamou "write_workspace" (sem o sufixo "_file") de forma
+		# CONSISTENTE por 3 turnos seguidos até o detector de loop interromper --
+		# nenhum arquivo foi escrito, ~350k tokens gastos so tentando. Nome
+		# plausível o bastante (mesmo padrão "<verbo>_workspace") pra também
+		# acontecer com read/delete; aliased os três pelo mesmo motivo.
+		"write_workspace": "write_workspace_file",
+		"read_workspace": "read_workspace_file",
+		"delete_workspace": "delete_workspace_file",
 	}
 	return aliases.get(tool_name, tool_name)
 

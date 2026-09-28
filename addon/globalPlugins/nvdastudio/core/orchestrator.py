@@ -186,6 +186,7 @@ class Orchestrator:
 		provider = model = ""
 		route_trace: list[dict] = []
 		total_tokens = 0
+		total_cost_usd = 0.0
 		active_workdir = self._agentic_workdir
 		attempt_request = user_query
 		for index, route in enumerate(routes):
@@ -215,10 +216,18 @@ class Orchestrator:
 			)
 			try:
 				if provider == "factory":
+					# Factory delega esforço ao roteamento nativo do próprio Droid
+					# (model_id="auto"); calibrar reasoning_effort aqui duplicaria
+					# uma decisão que já não é nossa.
 					build = run_agentic_build(attempt_request, **common)
 				else:
 					build = run_provider_agentic_build(
 						attempt_request, provider=provider,
+						# route.complexity já é a decisão da IA (RoutingHints,
+						# ver clarifier.py/studio_dialog.py) traduzida direto pro
+						# dial que cada provedor entende -- nunca uma segunda
+						# heurística por cima da primeira.
+						reasoning_effort=route.complexity,
 						token_callback=lambda token: self._emit("TOKEN", token),
 						**common,
 					)
@@ -234,6 +243,7 @@ class Orchestrator:
 				return
 
 			total_tokens += int(getattr(build, "tokens", 0))
+			total_cost_usd += float(getattr(build, "cost_usd", 0.0) or 0.0)
 			route_event["success"] = bool(build.success and build.execution_ok)
 			route_event["error"] = str(getattr(build, "error", ""))[:500]
 			record_provider_outcome(
@@ -263,6 +273,7 @@ class Orchestrator:
 			self._finish(self._failure_result(user_query, "Nenhuma rota do Studio pôde ser executada."))
 			return
 		build.tokens = total_tokens
+		build.cost_usd = total_cost_usd
 
 		try:
 			from ..memory.session_memory import memory
@@ -331,6 +342,7 @@ class Orchestrator:
 			completed_message="Arquivos do addon validados." if approved else "",
 			total_retries=max(int(getattr(build, "rounds", 1)) - 1, 0),
 			total_tokens=int(getattr(build, "tokens", 0)),
+			total_cost_usd=float(getattr(build, "cost_usd", 0.0) or 0.0),
 			routing_decisions=route_trace,
 			selected_provider=provider,
 			selected_model=model,

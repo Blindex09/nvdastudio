@@ -59,7 +59,7 @@ Não existem pipeline staged, plano obrigatório por fases, subagentes fixos, ro
 - `llm_client.py`: protocolos e tipos comuns dos clientes.
 - `llm_factory.py`: construção provider-agnostic dos clientes.
 - `studio_client.py`: roteamento e failover do provedor virtual Studio em chamadas comuns.
-- `model_pricing.py`: metadados de custo consumidos pelo roteador.
+- `model_pricing.py`: metadados de custo consumidos pelo roteador; `estimate_cost_usd` estima o gasto real de uma chamada (nunca fabrica número pra provedor sem tarifa por token catalogada).
 - `model_registry.py`: catálogo único de modelos e capacidades.
 - `model_router.py`: elegibilidade objetiva, saúde dos provedores e montagem das rotas; a ordenação vem de `route_advisor.py`.
 - `route_advisor.py`: ordenação de candidatos por IA com contingência determinística.
@@ -73,11 +73,11 @@ Não existem pipeline staged, plano obrigatório por fases, subagentes fixos, ro
 
 - `addon_builder.py`: materialização, saneamento, validação estrutural e pacote `.nvda-addon`.
 - `addon_loader.py`: leitura segura de addon existente.
-- `agent_checkpoint.py`: retomada mínima do loop ativo.
+- `agent_checkpoint.py`: retomada mínima do loop ativo; `trim_tool_history` encolhe resultados de ferramenta antigos antes do próximo turno, preservando a estrutura que cada provedor exige.
 - `agent_evaluation.py`: métricas e trajetória do agente.
 - `agent_tools.py`: schemas e execução das ferramentas canônicas.
 - `agentic_backends.py`: adaptação dos formatos de tool call dos provedores.
-- `agentic_driver.py`: único loop de criação e correção.
+- `agentic_driver.py`: único loop de criação e correção. Esforço de raciocínio (`reasoning_effort`) é a complexidade já declarada pela IA (`RoutingHints`), nunca uma segunda heurística; um teto agregado de tokens por build (`NVDASTUDIO_MAX_TOKENS_PER_BUILD`) é responsabilidade do harness e interrompe preservando os arquivos, como uma interrupção do usuário.
 - `code_sandbox.py`: lint, tipos, importação e execução isolada.
 - `isolation.py`: backend de isolamento e política de disponibilidade.
 - `iteration_workspace.py`: workspace confinado e operações de arquivo.

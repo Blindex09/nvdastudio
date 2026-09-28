@@ -52,6 +52,7 @@ class AgentCheckpoint:
 	turn: int = 0
 	corrections: int = 0
 	tokens: int = 0
+	cost_usd: float = 0.0
 	message: str = ""
 	tool_results: list[dict[str, str]] | None = None
 	client_history: list[dict[str, Any]] = field(default_factory=list)
@@ -142,3 +143,64 @@ def export_client_history(client: object) -> list[dict[str, Any]]:
 def restore_client_history(client: object, history: list[dict[str, Any]]) -> None:
 	if isinstance(getattr(client, "_history", None), list) and isinstance(history, list):
 		client._history = history  # type: ignore[attr-defined]
+
+
+# Economia de contexto num build longo: o conteudo de uma ferramenta (leitura
+# de arquivo, saida de teste) fica preso no historico do cliente pra sempre e,
+# sem estado no servidor (Gemini e o unico que tem via previous_interaction_id
+# -- nunca guarda tool_result em _history, entao nunca aparece aqui), volta a
+# ser reenviado por completo a cada turno seguinte. Encolher o TEXTO de
+# resultados antigos -- nunca a entrada em si -- preserva a estrutura (role,
+# ids) que cada provedor exige pra casar tool_call com tool_result; nenhuma
+# entrada e removida, so o campo de conteudo de unidades fora da janela
+# recente.
+_TRIM_MARKER = "[conteúdo de ferramenta de um turno anterior omitido para economizar contexto -- use a ferramenta de novo se precisar dele]"
+
+
+def _trim_text(text: str, max_chars: int) -> str:
+	if not isinstance(text, str) or len(text) <= max_chars:
+		return text
+	return _TRIM_MARKER
+
+
+def _is_tool_unit(entry: dict[str, Any]) -> bool:
+	role = entry.get("role")
+	if role in ("tool", "tool_result"):
+		return True
+	if role == "user" and isinstance(entry.get("content"), list):
+		return any(isinstance(b, dict) and b.get("type") == "tool_result" for b in entry["content"])
+	return False
+
+
+def _shrink_unit(entry: dict[str, Any], max_chars: int) -> dict[str, Any]:
+	role = entry.get("role")
+	if role in ("tool", "tool_result"):
+		shrunk = dict(entry)
+		shrunk["content"] = _trim_text(entry.get("content", ""), max_chars)
+		return shrunk
+	if role == "user" and isinstance(entry.get("content"), list):
+		new_content = [
+			{**block, "content": _trim_text(block.get("content", ""), max_chars)}
+			if isinstance(block, dict) and block.get("type") == "tool_result"
+			else block
+			for block in entry["content"]
+		]
+		return {**entry, "content": new_content}
+	return entry
+
+
+def trim_tool_history(
+	history: list[dict[str, Any]], *, keep_recent: int = 6, max_chars: int = 800,
+) -> list[dict[str, Any]]:
+	"""Encolhe o texto de resultados de ferramenta antigos, preservando a
+	estrutura e a posição de cada entrada. Nunca remove nem reordena nada --
+	os provedores exigem casar cada tool_call com o tool_result seguinte na
+	MESMA posição relativa; encolher só o campo de texto nunca quebra isso.
+	Idempotente: reaplicar sobre um histórico já encolhido não faz nada.
+	"""
+	positions = [i for i, entry in enumerate(history) if _is_tool_unit(entry)]
+	protected = set(positions[-keep_recent:]) if keep_recent > 0 else set()
+	return [
+		_shrink_unit(entry, max_chars) if i in positions and i not in protected else entry
+		for i, entry in enumerate(history)
+	]

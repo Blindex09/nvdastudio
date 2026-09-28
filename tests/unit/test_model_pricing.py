@@ -5,7 +5,7 @@ from nvdastudio.ai.model_pricing import (
 
 class TestModulo:
 	def test_versao(self):
-		assert MODULE_VERSION == "1.1.0"
+		assert MODULE_VERSION == "1.2.0"
 
 
 class TestGetModelPrice:

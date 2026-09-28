@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-MODULE_VERSION = "1.1.0"
+MODULE_VERSION = "1.2.0"
 
 
 # dataclass, nao pydantic: pydantic_core e binario compilado por versao de
@@ -63,3 +63,33 @@ def get_model_price(provider: str, model_id: str) -> ModelPrice | None:
 	"""None quando nao ha preco por token catalogado -- quem chama deve cair
 	pro fallback de cost_tier (registry), nunca tratar como $0 silencioso."""
 	return MODEL_PRICING.get(provider, {}).get(model_id)
+
+
+# Chaves de uso alternativas entre provedores -- extraidas aqui pra
+# estimate_cost_usd() nao precisar conhecer o formato de cada API.
+_INPUT_USAGE_KEYS = ("input_tokens", "prompt_tokens")
+_OUTPUT_USAGE_KEYS = ("output_tokens", "completion_tokens")
+
+
+def estimate_cost_usd(
+	provider: str, model_id: str, usage_breakdown: dict | None, total_tokens: int,
+) -> float | None:
+	"""Estimativa em dolar de UMA chamada, a partir do uso real reportado.
+
+	None quando o modelo nao tem preco catalogado (assinatura/cota, ex.:
+	Ollama Cloud) -- nunca mostra um numero fabricado pro usuario. Com preco
+	catalogado mas sem separacao input/output no retorno do provedor (alguns
+	streams so trazem o total), divide o total meio a meio -- rotulado como
+	estimativa em todo lugar que exibe o valor, nunca como fato exato.
+	"""
+	price = get_model_price(provider, model_id)
+	if price is None:
+		return None
+	usage = usage_breakdown or {}
+	input_tokens = next((usage[k] for k in _INPUT_USAGE_KEYS if usage.get(k)), None)
+	output_tokens = next((usage[k] for k in _OUTPUT_USAGE_KEYS if usage.get(k)), None)
+	if input_tokens is None or output_tokens is None:
+		input_tokens = output_tokens = total_tokens / 2
+	return (
+		input_tokens * price.input_per_million + output_tokens * price.output_per_million
+	) / 1_000_000

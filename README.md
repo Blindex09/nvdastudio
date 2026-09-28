@@ -16,6 +16,8 @@ Há um único fluxo de criação e correção:
 
 O provedor `Studio`, com o modelo `Alto`, entrega à IA os candidatos que satisfazem fatos objetivos (provedor saudável, capacidade exigida, contexto que cabe) junto com preço, janela de contexto e confiabilidade observada; a IA ordena qual cobre melhor a tarefa (tarefa simples vai para modelo econômico, tarefa difícil para o mais capaz). A decisão é uma chamada barata e em cache por situação; se a IA não responder, vale uma ordem de contingência por confiabilidade observada. Se uma rota falhar, preserva os arquivos e tenta outra rota compatível. A preferência de privacidade limita a execução a um único provedor para não replicar contexto entre serviços.
 
+Economia é tratada como fato do harness, não como ajuste manual: o esforço de raciocínio de cada chamada segue a complexidade que a própria IA já declarou; o histórico de ferramentas de turnos antigos é encolhido antes do próximo turno; e cada build tem um teto agregado de tokens que interrompe preservando os arquivos, do mesmo jeito que uma interrupção do usuário. Tokens e custo estimado em dólar (quando o modelo tem tarifa catalogada) aparecem ao final de cada build.
+
 Factory usa também o roteamento automático nativo do Droid. Ollama, OpenAI, Gemini, Anthropic, xAI e OpenCode Go usam o mesmo contrato agêntico e as mesmas ferramentas do projeto.
 
 ## Princípio híbrido

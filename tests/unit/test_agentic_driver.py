@@ -17,7 +17,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, run_provider_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.15.0"
+assert MODULE_VERSION == "0.16.0"
 
 
 class TestMotorAgenticoDosProvedores:

@@ -11,15 +11,17 @@ from nvdastudio.core.orchestrator import (
 assert MODULE_VERSION == "7.0.0"
 
 
-def _route(provider="factory", model="auto", reason="rota de teste"):
+def _route(provider="factory", model="auto", reason="rota de teste", complexity="medium"):
 	return SimpleNamespace(
 		provider=provider,
 		model_id=model,
 		reason=reason,
+		complexity=complexity,
 		to_dict=lambda: {
 			"provider": provider,
 			"model_id": model,
 			"reason": reason,
+			"complexity": complexity,
 		},
 	)
 

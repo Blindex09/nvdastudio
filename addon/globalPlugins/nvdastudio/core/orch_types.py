@@ -26,6 +26,9 @@ class OrchestrationResult:
 	total_retries: int = 0
 	error: str | None = None
 	total_tokens: int = 0
+	# Estimativa em dolar (model_pricing.estimate_cost_usd); 0.0 quando nenhuma
+	# chamada da build teve preco catalogado -- nunca um numero fabricado.
+	total_cost_usd: float = 0.0
 	completed_message: str = ""
 	artifact_dir: str = ""  # Fontes reais validados, inclusive recursos binários.
 	# Contrato estruturado da entrega agentica. Evita serializar arquivos em

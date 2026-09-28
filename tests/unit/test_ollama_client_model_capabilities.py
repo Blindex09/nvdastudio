@@ -37,3 +37,59 @@ class TestModelCapabilitiesGlmQwen:
 		]
 		for model_id in esperados:
 			assert model_id in _MODEL_CAPABILITIES, f"{model_id} sem entrada propria"
+
+
+class TestReasoningEffortSoQuandoModeloTemThinking:
+	"""Achado de auditoria (antes do E2E real via Ollama Cloud, 2026-09-28):
+	o payload["think"] era montado sempre que reasoning_effort chegava, sem
+	checar thinking_native -- um modelo sem thinking nenhum (deepseek-v4-flash,
+	"foco em velocidade") receberia think=True de qualquer jeito assim que
+	qualquer chamador passasse reasoning_effort (o que passou a acontecer de
+	verdade nesta mesma auditoria, ver agentic_driver.py)."""
+
+	class _FakeResponse:
+		def __init__(self, payload):
+			self._payload = payload
+
+		def raise_for_status(self):
+			pass
+
+		def json(self):
+			return {"message": {"content": "ok", "tool_calls": []}}
+
+	class _FakeClient:
+		captured: list = []
+
+		def __init__(self, *a, **kw):
+			pass
+
+		def __enter__(self):
+			return self
+
+		def __exit__(self, *a):
+			return False
+
+		def post(self, url, headers=None, json=None):
+			TestReasoningEffortSoQuandoModeloTemThinking._FakeClient.captured.append(json)
+			return TestReasoningEffortSoQuandoModeloTemThinking._FakeResponse(json)
+
+	def _chat_and_capture(self, monkeypatch, model_id, reasoning_effort):
+		monkeypatch.setattr("nvdastudio.ai.ollama_client._HTTPX_AVAILABLE", True)
+		self._FakeClient.captured = []
+		fake_module = type("m", (), {"Client": self._FakeClient})
+		monkeypatch.setattr("nvdastudio.ai.ollama_client._httpx", fake_module)
+		client = OllamaClient(api_key="k", model_id=model_id)
+		client.chat("oi", reasoning_effort=reasoning_effort)
+		return self._FakeClient.captured[0]
+
+	def test_modelo_sem_thinking_nunca_recebe_think(self, monkeypatch):
+		payload = self._chat_and_capture(monkeypatch, "deepseek-v4-flash", "medium")
+		assert "think" not in payload
+
+	def test_modelo_com_thinking_e_effort_recebe_o_nivel(self, monkeypatch):
+		payload = self._chat_and_capture(monkeypatch, "gpt-oss:20b", "low")
+		assert payload["think"] == "low"
+
+	def test_modelo_com_thinking_sem_effort_recebe_booleano(self, monkeypatch):
+		payload = self._chat_and_capture(monkeypatch, "kimi-k2.6", "medium")
+		assert payload["think"] is True

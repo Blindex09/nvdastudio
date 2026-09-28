@@ -1237,13 +1237,20 @@ class NVDAStudioDialog(wx.Dialog):
 
 		if result.success:
 			total_tokens = getattr(result, "total_tokens", 0)
-			token_info = f" | ~{total_tokens:,} tokens" if total_tokens else ""
+			total_cost_usd = getattr(result, "total_cost_usd", 0.0) or 0.0
+			# Custo em dolar so aparece quando ha preco catalogado pro(s) modelo(s)
+			# usado(s) (model_pricing.estimate_cost_usd nunca fabrica um numero
+			# pra provedor sem tarifa por token, ex. Ollama Cloud por assinatura).
+			cost_info = f" (~US$ {total_cost_usd:.2f})" if total_cost_usd else ""
+			token_info = f" | ~{total_tokens:,} tokens{cost_info}" if total_tokens else ""
 			self._set_status(
 				f"Concluido. Plano {result.plan_id} | {result.total_retries} retries{token_info}"
 			)
 			# Anuncia token count via ui.message para acessibilidade (S4)
 			if total_tokens:
-				ui.message(f"NVDAStudio: geracao concluida. {total_tokens:,} tokens usados nesta sessao.")
+				ui.message(
+					f"NVDAStudio: geracao concluida. {total_tokens:,} tokens usados nesta sessao{cost_info}."
+				)
 			# Prefere o contrato estruturado do agente; a extracao de texto fica
 			# apenas como degradacao para resultados aprovados sem lista de arquivos.
 			artifact_files = list(getattr(result, "artifact_files", []) or [])

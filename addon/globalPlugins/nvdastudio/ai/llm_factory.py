@@ -4,7 +4,7 @@ from .llm_client import LLMClientError, LLMClientProtocol, LLMResponse
 from .model_registry import ALTO_MODEL, is_alto_model, resolve_alto_model
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "6.1.0"
+MODULE_VERSION = "6.2.0"
 _logger = get_logger("llm_factory")
 
 DEFAULT_MODEL = ALTO_MODEL
@@ -140,7 +140,7 @@ def call_with_structured_output(
 	user_message: str,
 	response_format: dict,
 	system_override: str | None = None,
-	reasoning_effort: str | None = None,
+	reasoning_effort: str | None = "low",
 	step_type: str = "",
 	on_chunk: Callable[[str], None] | None = None,
 	on_failover: Callable[[], None] | None = None,
@@ -156,7 +156,11 @@ def call_with_structured_output(
 	responsabilidade de quem chama) avanca pro proximo imediatamente, sem
 	retry no mesmo modelo. So levanta excecao se a cadeia INTEIRA falhar.
 
-	Usado pelas decisoes semanticas estruturadas da interface e do Clarifier.
+	Usado pelas decisoes semanticas estruturadas da interface e do Clarifier --
+	sempre classificações JSON pequenas (schema já restringe a saída), por
+	isso o padrão de esforço é "low": calibrar esforço à tarefa (Anthropic,
+	OpenAI) é desperdício óbvio aqui, e nenhum chamador precisou até hoje de
+	mais. Quem realmente precisar de mais esforço passa o parâmetro.
 
 	on_chunk: recebe cada fragmento do JSON em construcao (cliente que nao faz
 	streaming simplesmente nunca chama). on_failover: chamado quando um modelo

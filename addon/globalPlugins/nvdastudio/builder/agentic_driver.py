@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from ..ai.factory_client import FactoryClientError
+from ..ai.model_pricing import estimate_cost_usd
 from .agentic_backends import AgenticBackend, get_backend
 from .agent_tools import (
 	AgentToolContext, build_agent_tool_gateway, execute_agent_tool,
@@ -37,13 +38,13 @@ from .agent_tools import (
 )
 from .agent_checkpoint import (
 	AgentCheckpointStore, checkpoint_store, export_client_history,
-	restore_client_history,
+	restore_client_history, trim_tool_history,
 )
 from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.15.0"
+MODULE_VERSION = "0.16.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -55,6 +56,24 @@ CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 _DEFAULT_TIMEOUT = 900
 
 _AUTONOMIAS_VALIDAS = ("low", "medium", "high")
+
+# Teto agregado de tokens por build -- responsabilidade do harness (CLAUDE.md:
+# "todo laço, retry ou orçamento de execução tem um teto agregado imposto pelo
+# código"), não da IA. O detector de loop (turn_signatures idênticas) pega
+# repetição EXATA; isto é o backstop pra uma sessão que continua produzindo
+# turnos DIFERENTES sem convergir -- generosa o bastante pra nunca interromper
+# uma build legítima (builds reais observadas ficam bem abaixo disto), baixa
+# o bastante pra nunca deixar uma sessão descontrolada rodar pra sempre.
+# Ajustável sem redeploy via env var, mesmo padrao de outros overrides do
+# projeto (ex.: NVDASTUDIO_SANDBOX_IMAGE).
+_DEFAULT_TOKEN_BUDGET = 3_000_000
+
+
+def _token_budget() -> int:
+	override = os.getenv("NVDASTUDIO_MAX_TOKENS_PER_BUILD", "").strip()
+	if override.isdigit() and int(override) > 0:
+		return int(override)
+	return _DEFAULT_TOKEN_BUDGET
 
 # Spec compacto embutido (Slice 1 troca pelo nvda_context real). Alto sinal,
 # baixo custo: o essencial da estrutura de um addon NVDA + a instrucao de
@@ -124,6 +143,14 @@ class AgenticBuildResult:
 	rounds: int = 1
 	# Direcao ao vivo: True quando o usuario INTERROMPEU o build (nao e falha).
 	cancelled: bool = False
+	# True quando o teto agregado de tokens (_token_budget()) interrompeu a
+	# build -- distinto de cancelled (o usuario nao pediu) e de uma falha real
+	# (os arquivos existentes ficam preservados, como numa interrupcao).
+	budget_exceeded: bool = False
+	# Estimativa em dolar (model_pricing.estimate_cost_usd) somada das
+	# chamadas com preco catalogado; 0.0 quando nenhuma tinha preco (nunca um
+	# numero fabricado, ver estimate_cost_usd).
+	cost_usd: float = 0.0
 	checkpoint_path: str = ""
 	trace: list[dict] = field(default_factory=list)
 	evaluation: dict = field(default_factory=dict)
@@ -404,6 +431,7 @@ def _native_call_parts(call: dict) -> tuple[str, dict, str]:
 def run_provider_agentic_build(
 	request: str, *, provider: str, model_id: str, workdir: str | None = None,
 	use_nvda_context: bool = True, correction_rounds: int = 0,
+	reasoning_effort: str | None = None,
 	progress_callback: Callable[[str], None] | None = None,
 	token_callback: Callable[[str], None] | None = None,
 	cancel_event: "threading.Event | None" = None,
@@ -423,10 +451,12 @@ def run_provider_agentic_build(
 	os.makedirs(workdir, exist_ok=True)
 	state = state or store.new(request, provider, model_id, workdir)
 	tokens = state.tokens
+	cost_usd = state.cost_usd
 	turns = state.turn
 	starting_turn = turns
 	corrections = state.corrections
 	last_content = ""
+	budget = _token_budget()
 	try:
 		client = create_llm_client(model_id=model_id, provider=provider)
 		restore_client_history(client, state.client_history)
@@ -448,6 +478,15 @@ def run_provider_agentic_build(
 		tool_results: list[dict[str, str]] | None = state.tool_results
 		narrator = LiveNarrator(token_callback or (lambda _token: None))
 		max_turns = 32 + max(0, correction_rounds) * 8
+
+		def _snapshot_history() -> list[dict]:
+			"""Exporta o histórico do cliente já encolhido (trim_tool_history):
+			o que persiste no checkpoint é o mesmo que será reenviado no
+			próximo turno, nunca a versão cheia."""
+			trimmed = trim_tool_history(export_client_history(client))
+			restore_client_history(client, trimmed)
+			return trimmed
+
 		state.event("run_resumed" if was_resumed else "run_started", turn=turns)
 		store.save(state)
 		while turns - starting_turn < max_turns:
@@ -455,7 +494,22 @@ def run_provider_agentic_build(
 				state.status = "cancelled"
 				state.event("cancelled", turn=turns)
 				store.save(state)
-				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, checkpoint_path=store.path(state.run_id), trace=state.trace)
+				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, cost_usd=cost_usd, checkpoint_path=store.path(state.run_id), trace=state.trace)
+			if tokens >= budget:
+				state.status = "budget_exceeded"
+				state.event("budget_exceeded", turn=turns, tokens=tokens)
+				store.save(state)
+				if progress_callback:
+					progress_callback(
+						f"O orçamento de {budget:,} tokens desta build foi atingido. "
+						"Os arquivos foram preservados; retome para continuar."
+					)
+				return AgenticBuildResult(
+					False, workdir, budget_exceeded=True,
+					error=f"orçamento de {budget:,} tokens por build foi atingido",
+					tokens=tokens, cost_usd=cost_usd,
+					checkpoint_path=store.path(state.run_id), trace=state.trace,
+				)
 			if steer_provider is not None:
 				steer = (steer_provider() or "").strip()
 				if steer:
@@ -472,13 +526,13 @@ def run_provider_agentic_build(
 			try:
 				state.message = message
 				state.tool_results = tool_results
-				state.client_history = export_client_history(client)
+				state.client_history = _snapshot_history()
 				state.event("model_call_started", turn=turns + 1, model=model_id)
 				store.save(state)
 				response = client.chat(
 					message, system_override=system, tools=_AGENT_TOOL_SCHEMAS,
 					tool_results=tool_results, step_type="code_generation",
-					on_chunk=_on_native_chunk,
+					reasoning_effort=reasoning_effort, on_chunk=_on_native_chunk,
 				)
 			except _ProviderSteer as steer:
 				message = f"Nova instrucao do usuario, aplique-a agora:\n{steer}"
@@ -492,13 +546,20 @@ def run_provider_agentic_build(
 				state.status = "cancelled"
 				state.event("cancelled", turn=turns)
 				store.save(state)
-				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, checkpoint_path=store.path(state.run_id), trace=state.trace)
+				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, cost_usd=cost_usd, checkpoint_path=store.path(state.run_id), trace=state.trace)
 			narrator.end_message()
 			turns += 1
 			tokens += int(response.tokens_used or 0)
+			call_cost = estimate_cost_usd(
+				provider, model_id, getattr(response, "usage_breakdown", None),
+				int(response.tokens_used or 0),
+			)
+			if call_cost is not None:
+				cost_usd += call_cost
 			state.turn = turns
 			state.tokens = tokens
-			state.client_history = export_client_history(client)
+			state.cost_usd = cost_usd
+			state.client_history = _snapshot_history()
 			state.event("model_call_finished", turn=turns, tool_calls=len(response.tool_calls), tokens=int(response.tokens_used or 0))
 			last_content = response.content or last_content
 			if not response.tool_calls:
@@ -559,13 +620,13 @@ def run_provider_agentic_build(
 			message = "Continue o trabalho usando os resultados das ferramentas."
 			state.message = message
 			state.tool_results = tool_results
-			state.client_history = export_client_history(client)
+			state.client_history = _snapshot_history()
 			store.save(state)
 	except Exception as exc:
 		state.status = "failed"
 		state.event("failed", error=str(exc)[:2000])
 		store.save(state)
-		return AgenticBuildResult(False, workdir, tokens=tokens, error=f"{provider}: {exc}", checkpoint_path=store.path(state.run_id), trace=state.trace)
+		return AgenticBuildResult(False, workdir, tokens=tokens, cost_usd=cost_usd, error=f"{provider}: {exc}", checkpoint_path=store.path(state.run_id), trace=state.trace)
 
 	files = _coletar_arquivos(workdir)
 	has_manifest, has_entry, syntax_ok = _validar_basico(workdir, files)
@@ -578,15 +639,17 @@ def run_provider_agentic_build(
 		)
 	state.status = "completed" if success else "failed"
 	state.event("run_finished", success=success, gate_report=report[:4000])
-	state.client_history = export_client_history(client)
+	state.client_history = _snapshot_history()
 	store.save(state)
 	return AgenticBuildResult(
 		success, workdir, files=files, has_manifest=has_manifest,
 		has_entry_point=has_entry, py_syntax_ok=syntax_ok, returncode=0 if success else -1,
-		tokens=tokens, stdout_tail=last_content[-2000:], error="" if success else report,
+		tokens=tokens, cost_usd=cost_usd, stdout_tail=last_content[-2000:], error="" if success else report,
 		execution_ok=passed, gate_report=report, rounds=corrections + 1,
 		checkpoint_path=store.path(state.run_id), trace=state.trace,
 	)
+
+
 def _run_jsonrpc_session(
 	cmd: list[str], *, workdir: str, prompt: str, system_prompt: str, timeout: int,
 	progress_callback: Callable[[str], None] | None = None,

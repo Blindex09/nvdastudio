@@ -671,9 +671,18 @@ class OllamaClient:
 		# GPT-OSS (thinking_effort=True, confirmado via doc oficial 2026-08-04)
 		# e o oposto: booleano e IGNORADO pelo modelo, so aceita a string do
 		# nivel -- reasoning_effort ja chega aqui como "low"/"medium"/"high"
-		# (mesmo vocabulario usado em toda a orquestracao, ver planner.py
-		# _EFFORT_BY_COMPLEXITY), entao repassa direto sem transformar.
-		if reasoning_effort:
+		# (mesmo vocabulario usado em toda a orquestracao: a complexidade que
+		# a IA ja declarou, ver ai/model_router.py::RoutingHints), entao
+		# repassa direto sem transformar.
+		#
+		# 2.26.0 (auditoria de economia, achado antes de ir pro E2E real):
+		# so envia "think" quando o modelo REALMENTE tem thinking (
+		# thinking_native) -- antes desta correcao, um modelo sem thinking
+		# nenhum (ex.: deepseek-v4-flash, "foco em velocidade") recebia
+		# think=True de qualquer jeito (o ternario so decidia True/nivel,
+		# nunca "nao enviar"), arriscando um parametro que o modelo nao
+		# suporta em toda chamada que agora calibra esforco.
+		if reasoning_effort and self._caps.get("thinking_native"):
 			payload["think"] = reasoning_effort if self._caps.get("thinking_effort") else True
 
 		if on_chunk:
