@@ -8,7 +8,7 @@ from nvdastudio.core.orchestrator import (
 	MODULE_VERSION, Orchestrator, _agentic_files_to_blocks,
 )
 
-assert MODULE_VERSION == "7.3.0"
+assert MODULE_VERSION == "7.4.0"
 
 
 def _route(provider="factory", model="auto", reason="rota de teste", complexity="medium"):
@@ -79,6 +79,29 @@ class TestRunPipelineAgentico:
 		res = recebidos[0]
 		assert res.success is True and "```python" in res.step_results[0].output
 		assert res.artifact_files == ["manifest.ini", "globalPlugins/X/__init__.py"]
+
+	def test_entrega_degradada_quando_deliverable_mas_nao_success(self, tmp_path):
+		"""Achado ao vivo (2026-09-29): um build com deliverable=True (carrega
+		de verdade no NVDA) mas success=False (sobrou ajuste de qualidade)
+		precisa chegar ao OrchestrationResult com deliverable=True e uma
+		completed_message que avisa da ressalva -- SEM esse campo, a GUI
+		bloqueava um addon usavel atras do dialogo de erro (ver
+		studio_dialog.py::_display_result)."""
+		_prep(tmp_path)
+		recebidos = []
+		o = Orchestrator()
+		o._on_complete = lambda r: recebidos.append(r)
+		o._suppress_complete_callback = False
+		build = _fake_build(
+			tmp_path, success=False, execution_ok=False, deliverable=True,
+			gate_report="- NVDA-019: falta comentario de traducao.",
+		)
+		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", return_value=build):
+			o._run_agent("crie um addon")
+		res = recebidos[0]
+		assert res.success is False
+		assert res.deliverable is True
+		assert "ressalvas" in res.completed_message
 
 	def test_factory_alto_passa_auto_model_ao_driver(self, tmp_path):
 		"""A seleção automática precisa chegar ao caminho agêntico real."""

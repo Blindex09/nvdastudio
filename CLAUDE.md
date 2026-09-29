@@ -94,8 +94,30 @@ Um agente é **modelo + harness**, dois papéis que nunca se invertem:
   workspace/escopo autorizado; comandos são validados antes de rodar, nunca depois.
 - **Cancelamento e interrupção**: parar uma execução em andamento é sempre possível e sempre
   determinístico — nunca depende do modelo "decidir" parar.
-- **Timeouts e limites operacionais**: todo laço, retry ou orçamento de execução tem um teto
-  agregado imposto pelo código, não apenas a soma de laços independentes sem controle central.
+- **Timeouts e limites operacionais, sempre com tempo adaptativo**: todo laço, retry ou
+  orçamento de execução tem um teto agregado imposto pelo código, não apenas a soma de laços
+  independentes sem controle central — e esse teto **escala com a complexidade real da
+  tarefa**, nunca é um número fixo igual pra qualquer tarefa. Dois erros documentados e já
+  corrigidos neste projeto (ver nota final) mostram as duas formas como isso quebra: (1) um
+  orçamento fixo que não cresce com o esforço que a própria complexidade declarada já
+  autorizou; (2) **dois tetos independentes competindo pelo mesmo recurso** — um teto real
+  (turnos/tokens, já adaptativo) e um teto artificial por cima dele (ex.: "número de rodadas de
+  correção") que sempre para PRIMEIRO, mesmo com o teto real ainda com margem. Regra prática:
+  se existe um orçamento real e adaptativo pro recurso, nenhum outro contador paralelo pode
+  interromper o laço antes dele — um único teto central, nunca dois competindo.
+- **Guarded loops + autosubmit (nunca bloquear tudo atrás de "100% ou nada")**: ao esgotar o
+  orçamento real (turnos, tokens, custo, tempo) ou detectar que o laço não converge mais
+  (loop-detector determinístico), o harness entrega o **melhor artefato que já existe**
+  (autosubmit) em vez de descartar todo o trabalho atrás de uma tela de erro que só oferece
+  "tentar de novo do zero". Esse é o padrão real usado por agentes de código de produção
+  (SWE-agent: "guarded loops + autosubmit" — todo motivo de parada roda um diff final e
+  entrega o patch parcial existente, transformando o que seria uma falha em um "sucesso
+  degradado"). Na prática: distinguir sempre **bloqueante** (o artefato não funciona/não
+  carrega — nunca entregar disfarçado de pronto) de **qualidade/política pendente** (o
+  artefato funciona, só não está 100% limpo — entregar com a lista clara do que falta, não
+  bloquear). A distinção entre as duas categorias é sempre um fato objetivo e verificável
+  sobre o próprio relatório do harness (ex.: "erro real de execução" vs. "estilo/comentário
+  ausente"), nunca um palpite sobre a gravidade.
 - **Validação de schema/contrato**: entrada e saída estruturada são validadas contra um
   contrato explícito antes de seguir adiante.
 - **Sintaxe e integridade de arquivo**: uma edição/gravação só é aceita se preservar a
@@ -138,5 +160,26 @@ harness garante que existe intervenção humana exatamente onde o risco é maior
 irreversíveis, escopo ampliado, ambiguidade material) e fica fora do caminho no resto —
 supervisão constante em toda ação de baixo risco é tão errado quanto autonomia total em
 ação de alto risco.
+
+### Nota concreta deste projeto (apague ao portar esta regra pra outro software)
+
+- **Tempo adaptativo**: `core/orchestrator.py::_AGENTIC_CORRECTION_ROUNDS_BY_COMPLEXITY`
+  dimensiona `correction_rounds` pela complexidade que a IA já declarou (nunca um número
+  fixo igual pra toda tarefa); `builder/agentic_driver.py::_token_budget()` deriva o
+  orçamento de tokens do mesmo `max_turns`. Achado ao vivo (2026-09-29, E2E real via Ollama
+  Cloud): `run_provider_agentic_build` tinha um SEGUNDO teto independente
+  (`corrections >= correction_rounds: break`) que parava a build bem antes do orçamento
+  real de turnos/tokens se esgotar — dois tetos competindo, o mais curto sempre vencendo.
+  Corrigido: só o teto real (turnos/tokens) decide quando parar; `correction_rounds`
+  continua dimensionando esse teto, mas não interrompe mais o laço por conta própria.
+- **Guarded loops + autosubmit**: `agentic_driver.py::AgenticBuildResult.deliverable` e
+  `core/orch_types.py::OrchestrationResult.deliverable` distinguem "gate 100% limpo"
+  (`success`) de "carrega de verdade no NVDA, só falta ajuste de qualidade" (`deliverable`).
+  `_is_blocking_gate_failure()` classifica o relatório do próprio gate por marcadores fixos
+  que o harness mesmo gera (manifest/entrada/sintaxe ausente, erro real de execução, teste
+  vermelho = bloqueante; NVDA-019/024/042, RUFF, MYPY, acessibilidade = qualidade). A GUI
+  (`gui/studio_dialog.py::_display_result`) entrega o addon com a lista de ressalvas quando
+  `deliverable=True`, mesmo com `success=False` — só bloqueia atrás do diálogo de erro
+  quando nada do que existe é seguro para instalar.
 
 ---

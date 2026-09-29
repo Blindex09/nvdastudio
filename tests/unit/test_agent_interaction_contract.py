@@ -186,6 +186,49 @@ def test_result_contract_packages_even_if_transient_gui_flag_was_lost(dialog_cla
 	assert d._waiting_for_packaging_approval is False
 
 
+def test_deliverable_sem_success_entrega_em_vez_de_bloquear(dialog_class):
+	"""Achado ao vivo (2026-09-29, pesquisa web sobre agentes de codigo de
+	producao pedida pelo usuario -- SWE-agent "guarded loops + autosubmit"):
+	um addon deliverable=True (carrega de verdade no NVDA) mas success=False
+	(sobrou ajuste de qualidade, ex.: comentario de traducao) precisa ser
+	ENTREGUE com ressalvas -- nao bloqueado atras do dialogo de erro que so
+	oferece "Tentar Novamente"/"Fechar". Antes desta correcao, isso caia
+	sempre no ramo else (dialogo de erro), mesmo com um addon perfeitamente
+	instalavel."""
+	d = object.__new__(dialog_class)
+	for name in (
+		"_enable_run_btn", "_run_pending_redirect", "_set_status",
+		"_chat_append", "_update_input_label",
+	):
+		setattr(d, name, MagicMock())
+	d._input = MagicMock()
+	d._lbl_addon_loaded = MagicMock()
+	d._current_addon_name = "X"
+	d._package_after_current_build = False
+	d._last_addon_folder = ""
+	d._record_result_session = MagicMock()
+	d._collect_all_blocks = lambda _: [
+		{"language": "ini", "filename": "manifest.ini", "code": "name = X\n"},
+		{"language": "python", "filename": "globalPlugins/X/__init__.py", "code": "x = 1\n"},
+	]
+	result = OrchestrationResult(
+		plan_id="agentic", query="continue corrigindo", step_results=[],
+		final_output="", success=False, deliverable=True,
+		completed_message=(
+			"Addon entregue com ressalvas -- carrega normalmente, mas ainda "
+			"tem ajustes de qualidade pendentes (veja a lista abaixo)."
+		),
+	)
+
+	d._display_result(result)
+
+	out = "\n".join(str(c.args[0]) for c in d._chat_append.call_args_list)
+	assert "ressalvas" in out
+	assert d._loaded_addon_context is not None
+	d._record_result_session.assert_called_once()
+	assert d._record_result_session.call_args.kwargs["success"] is False
+
+
 def test_creation_passes_packaging_contract_to_orchestrator(dialog_class):
 	d = object.__new__(dialog_class)
 	d._package_after_current_build = True

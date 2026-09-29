@@ -44,7 +44,7 @@ from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.19.0"
+MODULE_VERSION = "0.20.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -173,6 +173,18 @@ class AgenticBuildResult:
 	checkpoint_path: str = ""
 	trace: list[dict] = field(default_factory=list)
 	evaluation: dict = field(default_factory=dict)
+	# Achado ao vivo (2026-09-29): "success" honesto (gate 100% limpo) e
+	# "seguro pra entregar" (carrega no NVDA sem crashar) NAO SAO A MESMA
+	# PERGUNTA -- misturar as duas fazia a GUI bloquear atras de um dialogo
+	# de erro um addon que ja funcionaria de verdade, so faltando ajustes
+	# cosmeticos (comentario de tradução, sugestão de acessibilidade). Padrão
+	# real confirmado em agentes de código de produção (SWE-agent: "guarded
+	# loops + autosubmit" -- todo motivo de parada entrega o patch parcial
+	# existente em vez de descartar tudo; ver dev.to/truongpx396/swe-agent).
+	# deliverable=True so quando o addon REALMENTE carregaria (manifest,
+	# ponto de entrada, sintaxe e importação/instanciação reais OK) mesmo
+	# que reste ajuste de qualidade/política pendente.
+	deliverable: bool = False
 
 
 def _build_nvda_context(request: str) -> str:
@@ -658,20 +670,27 @@ def run_provider_agentic_build(
 	has_manifest, has_entry, syntax_ok = _validar_basico(workdir, files)
 	passed, report = _run_gates(workdir, files) if files else (False, "nenhum arquivo produzido")
 	success = bool(files) and has_manifest and has_entry and syntax_ok and passed
+	deliverable = success or (
+		bool(files) and has_manifest and has_entry and syntax_ok
+		and not _is_blocking_gate_failure(report)
+	)
 	if progress_callback and not passed:
 		progress_callback(
 			"As validações independentes ainda encontraram problemas; "
 			"a entrega não será marcada como concluída."
+			if not deliverable else
+			"As validações independentes encontraram ajustes de qualidade "
+			"pendentes, mas o addon carrega normalmente -- entregando com ressalvas."
 		)
 	state.status = "completed" if success else "failed"
-	state.event("run_finished", success=success, gate_report=report[:4000])
+	state.event("run_finished", success=success, deliverable=deliverable, gate_report=report[:4000])
 	state.client_history = _snapshot_history()
 	store.save(state)
 	return AgenticBuildResult(
 		success, workdir, files=files, has_manifest=has_manifest,
 		has_entry_point=has_entry, py_syntax_ok=syntax_ok, returncode=0 if success else -1,
 		tokens=tokens, cost_usd=cost_usd, stdout_tail=last_content[-2000:], error="" if success else report,
-		execution_ok=passed, gate_report=report, rounds=corrections + 1,
+		execution_ok=passed, gate_report=report, rounds=corrections + 1, deliverable=deliverable,
 		checkpoint_path=store.path(state.run_id), trace=state.trace,
 	)
 
@@ -1110,6 +1129,28 @@ def _run_accessibility_gate(files_dict: dict[str, str]) -> list[str]:
 	return violacoes[:15]  # cap: o essencial, sem inundar o prompt de correcao
 
 
+# Prefixos FIXOS que o proprio _run_gates gera (nunca texto arbitrario do
+# usuario ou do modelo) -- distinguem o que IMPEDE o addon de carregar no
+# NVDA (bloqueante: estrutura ausente, erro de execucao real, teste
+# automatizado vermelho) do que e qualidade/politica e nao impede uso real
+# (NVDA-019/024/042, RUFF, MYPY, sugestao de acessibilidade). Fato objetivo
+# e verificavel sobre o NOSSO PRÓPRIO formato de relatorio -- nunca um
+# julgamento de intenção (ver CLAUDE.md, carve-out pra fatos mecânicos).
+_BLOCKING_GATE_MARKERS = (
+	"Falta o manifest.ini",
+	"Falta o ponto de entrada",
+	"Ha erro de SINTAXE",
+	"Erro de EXECUCAO real ao importar/instanciar",
+	"TESTES automatizados falharam",
+)
+
+
+def _is_blocking_gate_failure(report: str) -> bool:
+	"""True quando o relatorio do gate contem um problema que IMPEDE o addon
+	de carregar/rodar no NVDA -- nunca um ajuste so de qualidade/politica."""
+	return any(marker in report for marker in _BLOCKING_GATE_MARKERS)
+
+
 def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
 	"""Gate DETERMINISTICO pos-loop -> (passou, relatorio_de_falha).
 
@@ -1334,6 +1375,7 @@ def run_agentic_build(
 			if progress_callback:
 				progress_callback("As validações independentes foram aprovadas.")
 			result.success = result.success and passou
+			result.deliverable = result.success
 			checkpoint.status = "completed" if result.success else "failed"
 			checkpoint.event("run_finished", success=result.success, gate_report=relatorio[:4000])
 			store.save(checkpoint)
@@ -1400,15 +1442,25 @@ def run_agentic_build(
 	result.gate_report = relatorio
 	result.tokens = tokens_acumulados
 	result.success = result.success and passou
+	result.deliverable = result.success or (
+		bool(result.files) and result.has_manifest and result.has_entry_point
+		and result.py_syntax_ok and not _is_blocking_gate_failure(relatorio)
+	)
 	if progress_callback:
 		progress_callback(
 			"As validações independentes foram aprovadas."
 			if passou else
 			"As validações independentes ainda encontraram problemas; "
 			"a entrega não será marcada como concluída."
+			if not result.deliverable else
+			"As validações independentes encontraram ajustes de qualidade "
+			"pendentes, mas o addon carrega normalmente -- entregando com ressalvas."
 		)
 	checkpoint.status = "completed" if result.success else "failed"
-	checkpoint.event("run_finished", success=result.success, gate_report=relatorio[:4000])
+	checkpoint.event(
+		"run_finished", success=result.success,
+		deliverable=result.deliverable, gate_report=relatorio[:4000],
+	)
 	store.save(checkpoint)
 	result.checkpoint_path = store.path(checkpoint.run_id)
 	result.trace = checkpoint.trace

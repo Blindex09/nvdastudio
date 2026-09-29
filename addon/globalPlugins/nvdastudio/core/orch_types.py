@@ -42,3 +42,8 @@ class OrchestrationResult:
 	routing_decisions: list[dict] = field(default_factory=list)
 	selected_provider: str = ""
 	selected_model: str = ""
+	# True quando o addon carregaria de verdade no NVDA (manifest, ponto de
+	# entrada, sintaxe e importação/instanciação reais OK) mesmo com
+	# "success" False -- so falta ajuste de qualidade/politica, nunca algo
+	# que trava o carregamento. Ver agentic_driver.py::AgenticBuildResult.deliverable.
+	deliverable: bool = False

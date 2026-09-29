@@ -49,7 +49,7 @@ from ..builder.nvda_context import PROMPT_VERSION, NVDA_ADDON_CHAT_SYSTEM_LITE a
 from ..utils.json_stream import JsonFieldStreamer, extract_json_object
 from ..utils.logger import get_logger, log_decision
 from ..utils.user_visible_text import sanitize_user_visible_text, summarize_generation_error
-MODULE_VERSION = "6.3.0"
+MODULE_VERSION = "6.4.0"
 
 # Janela curta (nao unicidade global): uma frase legitima pode reaparecer
 # muito depois numa sessao longa -- so o eco PROXIMO, das retentativas de um
@@ -1234,7 +1234,15 @@ class NVDAStudioDialog(wx.Dialog):
 		self._enable_run_btn()
 		self._run_pending_redirect()
 
-		if result.success:
+		# Achado ao vivo (2026-09-29, pesquisa sobre agentes de codigo em
+		# producao -- SWE-agent "guarded loops + autosubmit"): um addon que
+		# REALMENTE carrega no NVDA (deliverable=True, ver orchestrator.py)
+		# mas ainda tem ajuste de qualidade pendente NAO deve travar atras do
+		# dialogo de erro abaixo -- e entregue com ressalvas, igual a um
+		# "sucesso degradado". So o bloqueio real (sem deliverable) cai no
+		# fluxo de erro/retentativa.
+		deliverable = bool(result.success or getattr(result, "deliverable", False))
+		if deliverable:
 			total_tokens = getattr(result, "total_tokens", 0)
 			total_cost_usd = getattr(result, "total_cost_usd", 0.0) or 0.0
 			# Custo em dolar so aparece quando ha preco catalogado pro(s) modelo(s)
@@ -1277,6 +1285,7 @@ class NVDAStudioDialog(wx.Dialog):
 			# é irrecuperável; um addon sem manifest recebe o fallback mínimo.
 			if not python_ok:
 				result.success = False
+				result.deliverable = False
 				result.error = (
 					"A criação não produziu um addon completo: falta código Python válido."
 				)
@@ -1331,8 +1340,13 @@ class NVDAStudioDialog(wx.Dialog):
 				self._record_result_session(
 					result,
 					addon_name,
-					success=True,
-					summary=f"{steps_ok}/{len(result.step_results)} steps aprovados; fontes validados",
+					success=result.success,
+					summary=(
+						f"{steps_ok}/{len(result.step_results)} steps aprovados; fontes validados"
+						if result.success else
+						f"{steps_ok}/{len(result.step_results)} steps aprovados; "
+						"entregue com ressalvas (ver gate_report)"
+					),
 				)
 			pergunta_final = "Quer ajustar mais alguma coisa ou posso empacotar o addon?"
 			if package_requested:
@@ -1383,6 +1397,9 @@ class NVDAStudioDialog(wx.Dialog):
 
 			ui.message(
 				"Desenvolvimento concluído. Quer ajustar mais alguma coisa ou posso empacotar o addon?"
+				if result.success else
+				"Desenvolvimento entregue com ressalvas. Quer ajustar mais alguma coisa ou "
+				"posso empacotar o addon assim mesmo?"
 			)
 		else:
 			raw_err = result.error or "Nao foi possivel completar o plano."

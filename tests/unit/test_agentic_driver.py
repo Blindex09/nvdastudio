@@ -17,7 +17,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, run_provider_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.19.0"
+assert MODULE_VERSION == "0.20.0"
 
 
 class TestMotorAgenticoDosProvedores:
@@ -128,6 +128,53 @@ class TestMotorAgenticoDosProvedores:
 			f"parou em {result.rounds} rodadas -- correction_rounds=1 nao deveria "
 			"mais ser o teto (so max_turns/budget deveriam parar o loop)"
 		)
+
+	def test_deliverable_quando_so_falta_ajuste_de_qualidade(self, tmp_path, monkeypatch):
+		"""Pesquisa web pedida pelo usuario (2026-09-29): agentes de codigo de
+		producao (SWE-agent: "guarded loops + autosubmit") entregam o que
+		existe em vez de bloquear tudo atras de "nao passou 100%". Um addon
+		que carrega de verdade (manifest, entrada, sintaxe, execucao reais OK)
+		mas so tem um comentario '# Translators:' faltando (NVDA-019, nunca
+		trava o carregamento) precisa ser deliverable=True mesmo com
+		success=False."""
+		monkeypatch.setattr(
+			"nvdastudio.ai.llm_factory.create_llm_client", lambda **_kwargs: self._Client(),
+		)
+		monkeypatch.setattr(
+			ad, "_run_gates",
+			lambda _workdir, files: (
+				False,
+				"- NVDA-019: __init__.py: linha 3: chamada a _() sem '# Translators: ...' "
+				"na linha anterior.",
+			),
+		)
+		result = run_provider_agentic_build(
+			"crie", provider="openai", model_id="gpt-test", workdir=str(tmp_path),
+			use_nvda_context=False, permission_callback=lambda *_args: True,
+		)
+		assert result.success is False
+		assert result.deliverable is True
+
+	def test_nao_deliverable_quando_ha_erro_real_de_execucao(self, tmp_path, monkeypatch):
+		"""O oposto do teste acima: um erro de execucao real (o addon crasha
+		ao importar/instanciar no NVDA) NUNCA e "so ajuste de qualidade" --
+		entregar isso como pronto seria pior que nao entregar nada."""
+		monkeypatch.setattr(
+			"nvdastudio.ai.llm_factory.create_llm_client", lambda **_kwargs: self._Client(),
+		)
+		monkeypatch.setattr(
+			ad, "_run_gates",
+			lambda _workdir, files: (
+				False,
+				"- Erro de EXECUCAO real ao importar/instanciar o addon: NameError: foo",
+			),
+		)
+		result = run_provider_agentic_build(
+			"crie", provider="openai", model_id="gpt-test", workdir=str(tmp_path),
+			use_nvda_context=False, permission_callback=lambda *_args: True,
+		)
+		assert result.success is False
+		assert result.deliverable is False
 
 
 def _fake_proc(returncode=0, stdout="ok", stderr=""):

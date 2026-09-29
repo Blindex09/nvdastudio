@@ -11,7 +11,7 @@ from ..tool_system.approval import ApprovalWorkflow
 from ..utils.logger import get_logger
 from .orch_types import OrchestrationResult, StepResult
 
-MODULE_VERSION = "7.3.0"
+MODULE_VERSION = "7.4.0"
 _logger = get_logger("orchestrator")
 
 STEP_CODE_GENERATION = "code_generation"
@@ -275,7 +275,7 @@ class Orchestrator:
 				"[ROUTING_OUTCOME] %s",
 				json.dumps(route_event, ensure_ascii=False),
 			)
-			if getattr(build, "cancelled", False) or (build.success and build.execution_ok):
+			if getattr(build, "cancelled", False) or getattr(build, "deliverable", False):
 				break
 			if index + 1 < len(routes):
 				active_workdir = build.workdir
@@ -355,12 +355,19 @@ class Orchestrator:
 
 		blocks = _agentic_files_to_blocks(build.workdir, build.files)
 		approved = bool(build.success and build.execution_ok)
+		# deliverable: o addon REALMENTE carregaria no NVDA (manifest, ponto de
+		# entrada, sintaxe e importação/instanciação reais OK) mesmo sem gate
+		# 100% limpo -- so falta ajuste de qualidade/politica. Padrão real
+		# confirmado em agentes de código de produção (SWE-agent: "guarded
+		# loops + autosubmit", entrega o que existe em vez de bloquear tudo
+		# atrás de um dialogo de erro). Ver agentic_driver.py::AgenticBuildResult.
+		deliverable = bool(getattr(build, "deliverable", approved))
 		step = StepResult(
 			step_id="agentic",
 			step_type=STEP_CODE_GENERATION,
 			output=blocks,
 			approved=approved,
-			score=100 if approved else 0,
+			score=100 if approved else (60 if deliverable else 0),
 			issues=[build.gate_report] if build.gate_report else [],
 			model_used=f"{provider}::{model}",
 		)
@@ -373,12 +380,18 @@ class Orchestrator:
 			artifact_files=list(build.files),
 			package_requested=self._package_requested,
 			success=approved,
+			deliverable=deliverable,
 			error=None if approved else (
 				getattr(build, "gate_report", "")
 				or getattr(build, "error", "")
 				or "gate final reprovado"
 			),
-			completed_message="Arquivos do addon validados." if approved else "",
+			completed_message=(
+				"Arquivos do addon validados." if approved else
+				"Addon entregue com ressalvas -- carrega normalmente, mas ainda "
+				"tem ajustes de qualidade pendentes (veja a lista abaixo)."
+				if deliverable else ""
+			),
 			total_retries=max(int(getattr(build, "rounds", 1)) - 1, 0),
 			total_tokens=int(getattr(build, "tokens", 0)),
 			total_cost_usd=float(getattr(build, "cost_usd", 0.0) or 0.0),
