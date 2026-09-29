@@ -8,7 +8,7 @@ from nvdastudio.core.orchestrator import (
 	MODULE_VERSION, Orchestrator, _agentic_files_to_blocks,
 )
 
-assert MODULE_VERSION == "7.1.0"
+assert MODULE_VERSION == "7.2.0"
 
 
 def _route(provider="factory", model="auto", reason="rota de teste", complexity="medium"):
@@ -245,3 +245,38 @@ class TestPipelineUnico:
 			res = o._run_until_complete("crie um addon")
 		m.assert_called_once_with("crie um addon")
 		assert res.success is True
+
+
+class TestRodadasDeCorrecaoEscalamComComplexidade:
+	"""Achado ao vivo (E2E real via Ollama Cloud, 2026-09-28): correction_rounds
+	era um número fixo (2) igual pra qualquer complexidade -- uma build de
+	alta complexidade bateu esse teto ainda corrigindo problema real, mesmo
+	padrão já visto e corrigido no orçamento de tokens."""
+
+	def test_baixa_complexidade_usa_menos_rodadas(self, tmp_path, monkeypatch):
+		_prep(tmp_path)
+		o = Orchestrator()
+		o._on_complete = lambda _result: None
+		o._suppress_complete_callback = False
+		monkeypatch.setattr(
+			"nvdastudio.core.orchestrator._get_agentic_routes",
+			lambda _r="", _h=None: [_route(complexity="low")],
+		)
+		native = MagicMock(return_value=_fake_build(tmp_path))
+		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", native):
+			o._run_agent("crie um addon simples")
+		assert native.call_args.kwargs["correction_rounds"] == 1
+
+	def test_alta_complexidade_usa_mais_rodadas(self, tmp_path, monkeypatch):
+		_prep(tmp_path)
+		o = Orchestrator()
+		o._on_complete = lambda _result: None
+		o._suppress_complete_callback = False
+		monkeypatch.setattr(
+			"nvdastudio.core.orchestrator._get_agentic_routes",
+			lambda _r="", _h=None: [_route(complexity="high")],
+		)
+		native = MagicMock(return_value=_fake_build(tmp_path))
+		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", native):
+			o._run_agent("crie um addon complexo, com varias integracoes")
+		assert native.call_args.kwargs["correction_rounds"] == 4

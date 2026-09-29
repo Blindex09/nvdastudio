@@ -11,11 +11,22 @@ from ..tool_system.approval import ApprovalWorkflow
 from ..utils.logger import get_logger
 from .orch_types import OrchestrationResult, StepResult
 
-MODULE_VERSION = "7.1.0"
+MODULE_VERSION = "7.2.0"
 _logger = get_logger("orchestrator")
 
-_AGENTIC_CORRECTION_ROUNDS = 2
 STEP_CODE_GENERATION = "code_generation"
+
+# Rodadas de correção escalam com a complexidade que a IA já declarou
+# (RoutingHints, mesma fonte que já calibra reasoning_effort) -- nunca um
+# número fixo igual pra qualquer tarefa. Achado ao vivo (E2E real via Ollama
+# Cloud, 2026-09-28): uma build de alta complexidade bateu o teto fixo de 2
+# rodadas ainda corrigindo problema real (não repetindo o mesmo erro), com o
+# mesmo padrão já visto e corrigido no orçamento de tokens -- uma tarefa mais
+# complexa gera mais violações objetivas pros gates pegarem de uma vez
+# (mais arquivos, mais strings traduzíveis, mais integrações), então
+# precisa legitimamente de mais chances de convergir.
+_AGENTIC_CORRECTION_ROUNDS_BY_COMPLEXITY = {"low": 1, "medium": 2, "high": 4}
+_AGENTIC_CORRECTION_ROUNDS_DEFAULT = 2
 
 ProgressCallback = Callable[[str, str], None]
 
@@ -203,9 +214,12 @@ class Orchestrator:
 					if automatic else f"Usando {provider}, modelo {model}."
 				),
 			)
+			correction_rounds = _AGENTIC_CORRECTION_ROUNDS_BY_COMPLEXITY.get(
+				route.complexity, _AGENTIC_CORRECTION_ROUNDS_DEFAULT,
+			)
 			common = dict(
 				model_id=model,
-				correction_rounds=_AGENTIC_CORRECTION_ROUNDS,
+				correction_rounds=correction_rounds,
 				use_nvda_context=True,
 				progress_callback=lambda line: self._emit("EXECUTANDO", line),
 				cancel_event=self._agentic_cancel,
