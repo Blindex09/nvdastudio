@@ -417,11 +417,14 @@ O modelo em si é só um componente — a QUALIDADE do sistema vem majoritariame
 do harness ao redor dele: como o contexto é montado, como as ferramentas são
 expostas e sandboxed, como o estado persiste entre passos, como o loop decide
 quando parar/retentar/escalar, como a avaliação mede o resultado, e como a
-observabilidade expõe tudo isso pra debug. **O NVDAStudio inteiro (Planner +
-Critic + Orchestrator + sub-agentes + memory + sandbox) É um harness** —
-nomear esse conceito explicitamente ajuda a enxergar cada peça do projeto
-como parte de uma disciplina reconhecida, não uma escolha de arquitetura
-isolada.
+observabilidade expõe tudo isso pra debug. **O NVDAStudio inteiro
+(Orchestrator + o loop agêntico único de `agentic_driver.py` + memory +
+sandbox) É um harness** — nomear esse conceito explicitamente ajuda a
+enxergar cada peça do projeto como parte de uma disciplina reconhecida, não
+uma escolha de arquitetura isolada. (Nota histórica: um pipeline staged com
+Planner/Critic/sub-agentes separados existiu e foi removido deliberadamente
+— ver CLAUDE.md — em favor de um único loop agêntico com gates
+determinísticos pós-execução; os exemplos abaixo refletem o estado atual.)
 
 Termos que vivem dentro do harness:
 - **Agent Loop / Execution Loop**: o ciclo central que decide a próxima ação
@@ -487,15 +490,19 @@ cada volta do ciclo é uma oportunidade real de melhoria cumulativa,
 verificável, alimentada por comportamento REAL em produção, não só por
 suposição de onde algo pode dar errado.
 
-Duas técnicas de avaliação que valem nomear:
+Duas técnicas de avaliação que valem nomear (conceitos gerais — o NVDAStudio
+de hoje NÃO usa nenhuma das duas; um Critic em 2 estágios que as
+implementava existiu e foi removido, ver nota histórica acima):
 - **LLM-as-a-Judge**: usar um modelo (geralmente mais forte, ou em segundo
-  estágio) pra JULGAR a saída de outro modelo — é literalmente o padrão que
-  o Critic do NVDAStudio já implementa (2 estágios, spec + qualidade).
+  estágio) pra JULGAR a saída de outro modelo.
 - **Rubric-based Evaluation**: julgar contra critérios EXPLÍCITOS e
-  objetivos (não "parece bom?"), a mesma disciplina por trás da rubrica do
-  Critic (ARCH-001..009, NVDA-XXX) — rubrica clara é o que torna
-  LLM-as-a-Judge auditável e consistente, em vez de um "achismo" do modelo
-  avaliador.
+  objetivos (não "parece bom?") — rubrica clara é o que torna LLM-as-a-Judge
+  auditável e consistente, em vez de um "achismo" do modelo avaliador.
+
+O avaliador real de hoje (`builder/agent_evaluation.py::evaluate_agent_run`)
+não é nenhuma das duas: é determinístico, sobre FATOS objetivos do trace da
+execução (outcome, trajectory, tool-use, checkpoint terminal) — não um
+segundo modelo julgando a saída do primeiro.
 
 `Golden Dataset` / `Eval Dataset` (seção 14), `Trace Replay` / `Deterministic
 Replay` (seção 13), `Quality Gates` / `Eval Gates` (seção 19) já cobertos.

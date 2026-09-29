@@ -113,6 +113,10 @@ def record_provider_outcome(provider: str, success: bool, error: str = "") -> No
 		health.last_error = (error or "falha sem detalhe")[:500]
 		if health.consecutive_failures >= _CIRCUIT_FAILURE_THRESHOLD:
 			health.retry_after = time.monotonic() + _CIRCUIT_COOLDOWN_SECONDS
+			_logger.warning(
+				"[DISJUNTOR] %s desligado por %.0fs apos %d falhas seguidas; ultimo erro: %s",
+				provider, _CIRCUIT_COOLDOWN_SECONDS, health.consecutive_failures, health.last_error,
+			)
 
 
 def _provider_is_healthy(provider: str) -> bool:

@@ -16,7 +16,7 @@ from typing import Callable
 from ..tools.tool_gateway import ToolGateway, ToolSchema
 from ..utils.injection_guard import sanitize_untrusted_block
 
-MODULE_VERSION = "1.2.0"
+MODULE_VERSION = "1.3.0"
 
 
 @dataclass
@@ -27,7 +27,6 @@ class AgentToolContext:
 	permission_callback: Callable[[str, dict], bool] | None = None
 	ask_user_callback: Callable[[list[str]], list[str]] | None = None
 	client: object | None = None
-	trace_callback: Callable[[str, dict], None] | None = None
 	cancel_event: threading.Event | None = None
 
 

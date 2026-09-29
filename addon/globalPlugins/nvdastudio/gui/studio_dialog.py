@@ -574,8 +574,9 @@ class NVDAStudioDialog(wx.Dialog):
 			self._clarification_event.set()
 			return
 
-		# O nome real vem semanticamente do Planner e e aplicado no callback do
-		# plano. Nao inventar nome a partir das primeiras palavras da solicitacao.
+		# O nome real vem do manifest.ini que o agente gera (ver
+		# name_from_manifest_blocks em _display_result). Nao inventar nome a
+		# partir das primeiras palavras da solicitacao.
 		self._current_addon_name = "addon_gerado"
 
 		# Oferecer recuperacao de chat anterior se for nova sessao
@@ -1080,8 +1081,8 @@ class NVDAStudioDialog(wx.Dialog):
 	def _trigger_iterative_pipeline(self, change_description: str):
 		"""
 		Dispara o pipeline de modificacao com contexto do addon injetado.
-		O addon existente e passado como contexto para o Planner gerar
-		apenas os steps necessarios para as mudancas pedidas.
+		O addon existente e passado como contexto pro agente editar so o
+		necessario, em vez de recomecar do zero.
 		Thread UI — move para thread daemon internamente.
 		"""
 		addon_ctx_text = ""
@@ -2104,33 +2105,6 @@ class NVDAStudioDialog(wx.Dialog):
 		so nao e mais atualizado dinamicamente.
 		"""
 		return
-
-	def _confirm_or_rename_output(self, output_dir: str, safe_name: str) -> str | None:
-		"""
-		Verifica duplicata de .nvda-addon em output_dir antes de empacotar (5.5 R:b).
-		Retorna:
-		  - caminho original: usuario confirma substituicao (Sim)
-		  - caminho com timestamp: usuario quer novo nome (Nao)
-		  - None: apenas em caso de erro inesperado
-		"""
-		target = os.path.join(output_dir, f"{safe_name}.nvda-addon")
-		if not os.path.exists(target):
-			return target
-		dlg = gui.message.MessageDialog(
-			parent=self,
-			message=f"O arquivo '{safe_name}.nvda-addon' ja existe em addons_gerados.\n\n"
-			"Clique em Sim para substituir ou Nao para salvar com nome diferente (sufixo de data/hora).",
-			title="NVDAStudio - Arquivo ja existe",
-			buttons=gui.message.DefaultButtonSet.YES_NO,
-		)
-		gui.mainFrame.prePopup()
-		resp = dlg.ShowModal()
-		dlg.Destroy()
-		gui.mainFrame.postPopup()
-		if resp == gui.message.ReturnCode.YES:
-			return target
-		ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-		return os.path.join(output_dir, f"{safe_name}_{ts}.nvda-addon")
 
 	def _show_error(self, msg: str):
 		"""Exibe erro inline no chat (sem popup modal). Deve ser chamado do thread UI.

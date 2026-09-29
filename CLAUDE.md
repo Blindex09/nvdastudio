@@ -30,7 +30,12 @@ Eles não são referência passiva — são checklist operacional.
    de sistemas com IA (Harness Engineering, roteamento determinístico,
    decomposição, Agent Evals, trajetória, custo, loop detection,
    checkpoints, graceful degradation). Aplicável sempre que a mudança tocar
-   o pipeline de agentes (Planner/Critic/Orchestrator/sub-agentes): a
+   o pipeline de agentes (`core/orchestrator.py` chamando direto
+   `builder/agentic_driver.py::run_provider_agentic_build`/`run_agentic_build`
+   -- o pipeline staged com Planner/Critic/sub-agentes separados foi
+   removido; `builder/agent_evaluation.py::evaluate_agent_run` é o único
+   avaliador hoje, determinístico sobre fatos do trace, não um LLM-as-judge
+   de 2 estágios): a
    decisão de CONTEÚDO e a escolha de QUAL modelo/provedor serve a tarefa são
    da IA (`ai/route_advisor.py`); o harness só impõe fatos objetivos
    (elegibilidade, saúde, limites, contingência quando a IA não responde) —
