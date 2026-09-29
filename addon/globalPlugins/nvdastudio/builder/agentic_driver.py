@@ -44,7 +44,7 @@ from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.18.0"
+MODULE_VERSION = "0.19.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -596,14 +596,21 @@ def run_provider_agentic_build(
 					if progress_callback:
 						progress_callback("As validações independentes foram aprovadas.")
 					break
-				if corrections >= correction_rounds:
-					break
+				# Achado ao vivo (2026-09-29): "corrections >= correction_rounds: break"
+				# aqui parava a build bem ANTES do orçamento real (max_turns/budget,
+				# já adaptativo à complexidade, ver _token_budget acima) se esgotar --
+				# dois tetos independentes competindo, o mais curto sempre vencendo
+				# (CLAUDE.md: "todo laço ... tem um teto agregado ... não apenas a
+				# soma de laços independentes sem controle central"). correction_rounds
+				# continua dimensionando max_turns; só o teto de turnos/tokens decide
+				# quando parar agora -- enquanto sobrar orçamento real, o agente
+				# continua corrigindo em vez de desistir com capacidade sobrando.
 				corrections += 1
 				state.corrections = corrections
 				if progress_callback:
 					progress_callback(
-						f"As validações independentes encontraram problemas. "
-						f"Iniciando a correção automática {corrections} de {correction_rounds}."
+						"As validações independentes encontraram problemas. "
+						f"Iniciando a correção automática {corrections}."
 					)
 				message = (
 					"A verificacao deterministica reprovou o addon. Corrija os arquivos "

@@ -17,7 +17,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, run_provider_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.18.0"
+assert MODULE_VERSION == "0.19.0"
 
 
 class TestMotorAgenticoDosProvedores:
@@ -96,8 +96,38 @@ class TestMotorAgenticoDosProvedores:
 		)
 		assert result.success is True
 		assert any("reprovou" in message for message in messages)
-		assert any("correção automática 1 de 1" in message for message in progress)
+		assert any("correção automática 1" in message for message in progress)
 		assert "As validações independentes foram aprovadas." in progress
+
+	def test_correcao_continua_alem_de_correction_rounds_enquanto_sobra_orcamento(self, tmp_path, monkeypatch):
+		"""Achado ao vivo (2026-09-29): "corrections >= correction_rounds: break"
+		parava a build bem ANTES do orcamento real de turnos/tokens (max_turns,
+		ja adaptativo a complexidade) se esgotar -- dois tetos independentes, o
+		mais curto sempre vencendo, exatamente o padrao que CLAUDE.md pede pra
+		evitar ("nao apenas a soma de lacos independentes sem controle
+		central"). Com correction_rounds=1 (max_turns=32+1*8=40) e um gate que
+		NUNCA passa, a build precisa continuar corrigindo bem alem de 1 rodada
+		-- so o teto real de turnos deve parar o loop."""
+		class _NuncaConclui(self._Client):
+			def chat(inner, message, **kwargs):  # noqa: N805 - mantem assinatura do fake
+				return types.SimpleNamespace(content="ainda corrigindo", tokens_used=1, tool_calls=[])
+
+		monkeypatch.setattr(
+			"nvdastudio.ai.llm_factory.create_llm_client", lambda **_kwargs: _NuncaConclui(),
+		)
+		monkeypatch.setattr(ad, "_run_gates", lambda _workdir, files: (False, "sempre falha"))
+		result = run_provider_agentic_build(
+			"crie", provider="openai", model_id="gpt-test", workdir=str(tmp_path),
+			use_nvda_context=False, correction_rounds=1,
+			permission_callback=lambda *_args: True,
+		)
+		assert result.success is False
+		# rounds = corrections + 1 (ver return de run_provider_agentic_build);
+		# o teto ANTIGO (correction_rounds=1) so permitiria rounds<=2.
+		assert result.rounds > 2, (
+			f"parou em {result.rounds} rodadas -- correction_rounds=1 nao deveria "
+			"mais ser o teto (so max_turns/budget deveriam parar o loop)"
+		)
 
 
 def _fake_proc(returncode=0, stdout="ok", stderr=""):
