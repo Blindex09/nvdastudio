@@ -44,7 +44,7 @@ from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.21.0"
+MODULE_VERSION = "0.22.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -1235,9 +1235,17 @@ def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
 				_logger.warning("[AGENTIC] gate de execução indisponível: %s", exc)
 			else:
 				if not res.success:
+					# Achado ao vivo (2026-09-29): [:400] cortava do INICIO de um
+					# traceback Python -- a linha que realmente diz qual e o erro
+					# (ExceptionType: mensagem) vem no FIM, depois de varios frames
+					# da maquinaria de import (_bootstrap._gcd_import, etc). Em
+					# multiplas rodadas reais via Ollama Cloud, o modelo recebia
+					# so "File ... File ... File \"" sem nunca ver a excecao de
+					# verdade -- nunca corrigia porque nunca sabia o que corrigir.
+					# [-1500:] preserva o FIM do traceback, onde a excecao real esta.
 					detalhe = (res.error or res.stderr or "").strip().replace("\n", " ")
 					problemas.append(
-						f"- Erro de EXECUCAO real ao importar/instanciar o addon: {detalhe[:400]}"
+						f"- Erro de EXECUCAO real ao importar/instanciar o addon: {detalhe[-1500:]}"
 					)
 
 			test_relpaths = [
@@ -1257,6 +1265,9 @@ def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
 					_logger.warning("[AGENTIC] executor de testes indisponível: %s", exc)
 				else:
 					if not test_result.success:
+						# Mesmo motivo do fix acima: a linha que diz qual assert/
+						# excecao falhou fica no FIM da saida do pytest, nao no
+						# inicio -- ver comentario em validate_addon_execution.
 						detalhe = (
 							test_result.error
 							or test_result.stderr
@@ -1264,7 +1275,7 @@ def _run_gates(workdir: str, files: list[str]) -> tuple[bool, str]:
 							or "suite terminou com falha sem detalhes"
 						).strip().replace("\n", " ")
 						problemas.append(
-							f"- TESTES automatizados falharam: {detalhe[:800]}"
+							f"- TESTES automatizados falharam: {detalhe[-800:]}"
 						)
 		# Gate de acessibilidade (so vale a pena com sintaxe valida).
 		a11y = _run_accessibility_gate(project_files_dict)

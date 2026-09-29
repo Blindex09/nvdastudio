@@ -17,7 +17,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, run_provider_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.21.0"
+assert MODULE_VERSION == "0.22.0"
 
 
 class TestMotorAgenticoDosProvedores:
@@ -554,6 +554,49 @@ class TestCicloDeCorrecaoSlice2:
 		passou, rel = ad._run_gates(str(tmp_path), files)
 		assert passou is False
 		assert "EXECUCAO real" in rel and "NameError" in rel
+
+	def test_run_gates_erro_de_execucao_preserva_a_excecao_no_fim_do_traceback(self, tmp_path, monkeypatch):
+		"""Achado ao vivo (2026-09-29, multiplas rodadas reais via Ollama
+		Cloud): num traceback Python real, a linha "ExceptionType: mensagem"
+		que diz qual e o erro vem no FIM, depois de varios frames da
+		maquinaria de import -- um corte pelos primeiros N caracteres
+		(era [:400]) sempre descartava exatamente a parte que importa.
+		O modelo nunca corrigia esse erro em NENHUMA rodada porque nunca via
+		qual era. Simula um traceback longo (>400 chars antes da excecao)."""
+		files = ["manifest.ini", "globalPlugins/X/__init__.py"]
+		(tmp_path / "manifest.ini").write_text("name = X\n", encoding="utf-8")
+		plug = tmp_path / "globalPlugins" / "X"
+		plug.mkdir(parents=True)
+		(plug / "__init__.py").write_text("import globalPluginHandler\n", encoding="utf-8")
+		frames_de_enchimento = "\n".join(
+			f'  File "/usr/local/lib/python3.11/importlib/_bootstrap.py", line {100 + i}, in _find_and_load_unlocked'
+			for i in range(20)
+		)
+		traceback_longo = (
+			"Traceback (most recent call last):\n" + frames_de_enchimento +
+			'\n  File "/workspace/globalPlugins/X/__init__.py", line 12, in <module>\n'
+			"NameError: name 'ui_msg' is not defined"
+		)
+		assert len(traceback_longo) > 400
+
+		class _FakeSandboxTracebackLongo:
+			def __init__(self, *a, **k):
+				pass
+
+			def lint_check(self, _files):
+				return types.SimpleNamespace(success=True)
+
+			def typecheck(self, _files):
+				return types.SimpleNamespace(success=True)
+
+			def validate_addon_execution(self, d):
+				return types.SimpleNamespace(success=False, error=traceback_longo, stderr="")
+
+		monkeypatch.setattr(
+			"nvdastudio.builder.code_sandbox.CodeSandbox", _FakeSandboxTracebackLongo,
+		)
+		_passou, rel = ad._run_gates(str(tmp_path), files)
+		assert "NameError: name 'ui_msg' is not defined" in rel
 
 	def test_run_gates_estrutura_faltando_reprova_sem_sandbox(self, tmp_path):
 		# So um .py solto, sem manifest nem entry -> reprova na estrutura, nem
