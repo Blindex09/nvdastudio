@@ -283,7 +283,7 @@ def test_orchestrator_trata_orcamento_excedido_sem_dizer_que_nao_ha_arquivos():
 		success=False, execution_ok=False, files=["manifest.ini"],
 		cancelled=False, budget_exceeded=True,
 		error="orçamento de 6.000.000 tokens por build foi atingido",
-		tokens=1, cost_usd=0.0, gate_report="", rounds=1,
+		tokens=1, cost_usd=0.0, gate_report="", rounds=1, workdir="/tmp/build-x",
 	)
 	with patch(
 		"nvdastudio.core.orchestrator._get_agentic_routes",
@@ -295,6 +295,10 @@ def test_orchestrator_trata_orcamento_excedido_sem_dizer_que_nao_ha_arquivos():
 	assert resultados[0].success is False
 	assert "não produziu arquivos" not in (resultados[0].error or "")
 	assert "orçamento" in (resultados[0].error or "").lower()
+	# a GUI so consegue oferecer continuar do workspace preservado (ver
+	# studio_dialog._display_result) se este resultado carregar os dois.
+	assert resultados[0].artifact_dir == "/tmp/build-x"
+	assert resultados[0].artifact_files == ["manifest.ini"]
 
 
 # ----------------------------------------------------------------- orçamento proporcional

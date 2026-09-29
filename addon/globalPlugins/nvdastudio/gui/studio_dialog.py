@@ -49,7 +49,7 @@ from ..builder.nvda_context import PROMPT_VERSION, NVDA_ADDON_CHAT_SYSTEM_LITE a
 from ..utils.json_stream import JsonFieldStreamer
 from ..utils.logger import get_logger, log_decision
 from ..utils.user_visible_text import sanitize_user_visible_text, summarize_generation_error
-MODULE_VERSION = "6.1.0"
+MODULE_VERSION = "6.2.0"
 
 # Janela curta (nao unicidade global): uma frase legitima pode reaparecer
 # muito depois numa sessao longa -- so o eco PROXIMO, das retentativas de um
@@ -1389,12 +1389,35 @@ class NVDAStudioDialog(wx.Dialog):
 			raw_err = result.error or "Nao foi possivel completar o plano."
 			err = summarize_generation_error(raw_err)
 			self._set_status(f"Erro: {err}")
-			# 7.3 R:a+c: inclui sugestao de reformulacao + fluxos 14.2 R:c: botao Tentar Novamente
-			err_msg = (
-				f"{err}\n\n"
-				"Dica: os detalhes tecnicos foram registrados no log. Tente novamente; "
-				"se o problema persistir, envie o log para analise."
+			# Achado ao vivo (2026-09-29): quando o build falha (gate reprovado,
+			# orcamento excedido ou cancelamento) mas deixou arquivos reais no
+			# workspace, o "Tentar Novamente" reiniciava do ZERO -- descartava
+			# progresso ja provado (ver doc/conceitos-ia-seguranca-confiabilidade.md,
+			# recovery/resilience: falha parcial deve poder ser retomada sem
+			# repetir trabalho ja provado). artifact_dir/artifact_files agora
+			# sobrevivem em OrchestrationResult mesmo na falha (orchestrator.py);
+			# aqui carregamos esse workspace como contexto iterativo, entao a
+			# retentativa CONTINUA o addon existente em vez de recomecar.
+			preserved = bool(
+				result.artifact_dir
+				and os.path.isdir(result.artifact_dir)
+				and result.artifact_files
 			)
+			if preserved:
+				self._loaded_addon_context = load_addon_from_folder(result.artifact_dir)
+				err_msg = (
+					f"{err}\n\n"
+					f"O workspace com {len(result.artifact_files)} arquivo(s) ja gerados "
+					"foi preservado. Tentar novamente continua a partir dele em vez de "
+					"recomecar do zero."
+				)
+			else:
+				err_msg = (
+					f"{err}\n\n"
+					"Dica: os detalhes tecnicos foram registrados no log. Tente novamente; "
+					"se o problema persistir, envie o log para analise."
+				)
+			# 7.3 R:a+c: inclui sugestao de reformulacao + fluxos 14.2 R:c: botao Tentar Novamente
 			dlg = gui.message.MessageDialog(
 				parent=self, message=err_msg, title="NVDAStudio - Erro na geracao",
 				dialogType=gui.message.DialogType.ERROR,
@@ -1410,13 +1433,17 @@ class NVDAStudioDialog(wx.Dialog):
 			ui.message(f"NVDAStudio: erro na geracao. {err[:80]}")
 			if resp == gui.message.ReturnCode.YES and self._last_query:
 				self._disable_run_btn_as_cancel()
-				self._set_status("Repetindo o pedido...")
-				thread = threading.Thread(
-					target=self._clarify_and_run,
-					args=(self._last_query,),
-					daemon=True,
-				)
-				thread.start()
+				if preserved:
+					self._set_status("Continuando a partir do workspace preservado...")
+					wx.CallAfter(self._trigger_iterative_pipeline, self._last_query)
+				else:
+					self._set_status("Repetindo o pedido...")
+					thread = threading.Thread(
+						target=self._clarify_and_run,
+						args=(self._last_query,),
+						daemon=True,
+					)
+					thread.start()
 
 
 	def _process_packaging_decision(self, query: str):

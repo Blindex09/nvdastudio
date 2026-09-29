@@ -223,6 +223,75 @@ def test_clarifier_architecture_reaches_orchestrator(dialog_class, monkeypatch):
 	assert "Arquitetura detectada: ambiguous" in enriched
 
 
+def test_falha_com_arquivos_preservados_continua_em_vez_de_recomecar(dialog_class, monkeypatch, tmp_path):
+	"""Achado ao vivo (2026-09-29): uma build reprovada pelo gate (ou cancelada/
+	orcamento excedido) que ja tinha deixado arquivos reais no workspace perdia
+	esse progresso -- "Tentar Novamente" recomecava _trigger_creation_pipeline
+	do ZERO via _clarify_and_run, mesmo com o addon quase pronto no disco (ver
+	doc/conceitos-ia-seguranca-confiabilidade.md, recovery/resilience: falha
+	parcial deve poder ser retomada sem repetir trabalho ja provado). Agora
+	result.artifact_dir/artifact_files (ja preservados no orchestrator, ver
+	test_orchestrator_agentic.py) sao carregados como contexto iterativo e a
+	retentativa chama _trigger_iterative_pipeline, continuando o addon
+	existente."""
+	(tmp_path / "manifest.ini").write_text("name = X\nversion = 1.0\n", encoding="utf-8")
+	pasta = tmp_path / "globalPlugins" / "X"
+	pasta.mkdir(parents=True)
+	(pasta / "__init__.py").write_text("import globalPluginHandler\n", encoding="utf-8")
+
+	d = object.__new__(dialog_class)
+	for name in (
+		"_enable_run_btn", "_run_pending_redirect", "_set_status",
+		"_disable_run_btn_as_cancel", "_trigger_iterative_pipeline",
+	):
+		setattr(d, name, MagicMock())
+	d._last_query = "crie o addon"
+
+	dlg = MagicMock()
+	dlg.ShowModal.return_value = gui.gui.message.ReturnCode.YES
+	monkeypatch.setattr(gui.gui.message, "MessageDialog", MagicMock(return_value=dlg))
+
+	result = OrchestrationResult(
+		plan_id="agentic", query="crie o addon", step_results=[], final_output="",
+		success=False, error="gate reprovado",
+		artifact_dir=str(tmp_path),
+		artifact_files=["manifest.ini", "globalPlugins/X/__init__.py"],
+	)
+
+	d._display_result(result)
+
+	assert d._loaded_addon_context is not None
+	assert d._loaded_addon_context.addon_name == "X"
+	d._trigger_iterative_pipeline.assert_called_once_with("crie o addon")
+
+
+def test_falha_sem_arquivos_continua_reiniciando_do_zero(dialog_class, monkeypatch):
+	"""Sem artifact_dir/files (falha antes de qualquer arquivo real existir), o
+	comportamento antigo -- recomecar via _clarify_and_run -- continua valendo:
+	nao ha nada para continuar."""
+	d = object.__new__(dialog_class)
+	for name in ("_enable_run_btn", "_run_pending_redirect", "_set_status", "_disable_run_btn_as_cancel"):
+		setattr(d, name, MagicMock())
+	d._last_query = "crie o addon"
+	d._trigger_iterative_pipeline = MagicMock()
+
+	dlg = MagicMock()
+	dlg.ShowModal.return_value = gui.gui.message.ReturnCode.YES
+	monkeypatch.setattr(gui.gui.message, "MessageDialog", MagicMock(return_value=dlg))
+	thread_mock = MagicMock()
+	monkeypatch.setitem(dialog_class._display_result.__globals__, "threading", SimpleNamespace(Thread=MagicMock(return_value=thread_mock)))
+
+	result = OrchestrationResult(
+		plan_id="agentic", query="crie o addon", step_results=[], final_output="",
+		success=False, error="nenhum arquivo gerado",
+	)
+
+	d._display_result(result)
+
+	d._trigger_iterative_pipeline.assert_not_called()
+	thread_mock.start.assert_called_once()
+
+
 def test_chat_router_failure_asks_beginner_friendly_question(dialog_class, monkeypatch):
 	"""Falha do roteador principal não deve pedir só para tentar novamente."""
 	d = object.__new__(dialog_class)

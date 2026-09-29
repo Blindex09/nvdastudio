@@ -8,7 +8,7 @@ from nvdastudio.core.orchestrator import (
 	MODULE_VERSION, Orchestrator, _agentic_files_to_blocks,
 )
 
-assert MODULE_VERSION == "7.2.0"
+assert MODULE_VERSION == "7.3.0"
 
 
 def _route(provider="factory", model="auto", reason="rota de teste", complexity="medium"):
@@ -199,6 +199,33 @@ class TestDirecaoAoVivoNoOrchestrator:
 			o._run_agent("x")
 		assert recebidos[0].success is False
 		assert "interrompida" in (recebidos[0].error or "").lower()
+
+	def test_cancelamento_preserva_artifact_dir_e_files(self, tmp_path):
+		"""Achado ao vivo (2026-09-29): a GUI so consegue oferecer continuar de
+		onde parou (ver studio_dialog._display_result) se o resultado de falha
+		carregar artifact_dir/artifact_files -- antes deste fix, _failure_result
+		os descartava mesmo quando o build.files ja vinha preenchido."""
+		recebidos = []
+		o = Orchestrator()
+		o._on_complete = lambda r: recebidos.append(r)
+		o._suppress_complete_callback = False
+		build = _fake_build(tmp_path, cancelled=True, success=False)
+		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", return_value=build):
+			o._run_agent("x")
+		assert recebidos[0].artifact_dir == str(tmp_path)
+		assert recebidos[0].artifact_files == ["manifest.ini", "globalPlugins/X/__init__.py"]
+
+	def test_orcamento_excedido_preserva_artifact_dir_e_files(self, tmp_path):
+		recebidos = []
+		o = Orchestrator()
+		o._on_complete = lambda r: recebidos.append(r)
+		o._suppress_complete_callback = False
+		build = _fake_build(tmp_path, budget_exceeded=True, success=False)
+		with patch("nvdastudio.builder.agentic_driver.run_agentic_build", return_value=build):
+			o._run_agent("x")
+		assert recebidos[0].success is False
+		assert recebidos[0].artifact_dir == str(tmp_path)
+		assert recebidos[0].artifact_files == ["manifest.ini", "globalPlugins/X/__init__.py"]
 
 	def test_passa_cancel_event_e_steer_provider_ao_driver(self, tmp_path):
 		_prep(tmp_path)

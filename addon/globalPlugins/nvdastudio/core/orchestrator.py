@@ -11,7 +11,7 @@ from ..tool_system.approval import ApprovalWorkflow
 from ..utils.logger import get_logger
 from .orch_types import OrchestrationResult, StepResult
 
-MODULE_VERSION = "7.2.0"
+MODULE_VERSION = "7.3.0"
 _logger = get_logger("orchestrator")
 
 STEP_CODE_GENERATION = "code_generation"
@@ -163,7 +163,13 @@ class Orchestrator:
 			self._on_progress(event, detail)
 
 	@staticmethod
-	def _failure_result(query: str, error: str) -> OrchestrationResult:
+	def _failure_result(
+		query: str,
+		error: str,
+		*,
+		artifact_dir: str = "",
+		artifact_files: list[str] | None = None,
+	) -> OrchestrationResult:
 		return OrchestrationResult(
 			plan_id="agentic",
 			query=query,
@@ -171,6 +177,8 @@ class Orchestrator:
 			final_output="",
 			success=False,
 			error=error,
+			artifact_dir=artifact_dir,
+			artifact_files=list(artifact_files or []),
 		)
 
 	def _finish(self, result: OrchestrationResult) -> None:
@@ -315,7 +323,10 @@ class Orchestrator:
 
 		if getattr(build, "cancelled", False):
 			self._emit("CANCELADO")
-			self._finish(self._failure_result(user_query, "Geracao interrompida pelo usuario."))
+			self._finish(self._failure_result(
+				user_query, "Geracao interrompida pelo usuario.",
+				artifact_dir=build.workdir, artifact_files=list(build.files),
+			))
 			return
 
 		if getattr(build, "budget_exceeded", False):
@@ -328,6 +339,7 @@ class Orchestrator:
 			self._finish(self._failure_result(
 				user_query,
 				getattr(build, "error", "") or "Orçamento de tokens da build foi atingido.",
+				artifact_dir=build.workdir, artifact_files=list(build.files),
 			))
 			return
 
