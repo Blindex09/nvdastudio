@@ -17,7 +17,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, run_provider_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.20.0"
+assert MODULE_VERSION == "0.21.0"
 
 
 class TestMotorAgenticoDosProvedores:
@@ -72,6 +72,76 @@ class TestMotorAgenticoDosProvedores:
 		assert "recusada" in denied
 		assert "fora do workspace" in escape
 		assert not outside.exists()
+
+	def test_edit_workspace_file_faz_substituicao_cirurgica(self, tmp_path):
+		"""Achado ao vivo (2026-09-29): so existia write_workspace_file (sempre
+		reescreve o arquivo inteiro) -- o modelo era obrigado a regenerar o
+		arquivo de memoria pra qualquer correcao pontual (ex.: um comentario
+		'# Translators:' faltando numa linha), e as vezes esquecia uma
+		correcao anterior no processo. edit_workspace_file corrige so a
+		ocorrencia exata, preservando o resto do arquivo intocado."""
+		alvo = tmp_path / "arquivo.py"
+		alvo.write_text("linha1\n_('a')\nlinha3\n", encoding="utf-8")
+		gateway = build_agent_tool_gateway(AgentToolContext(
+			workdir=str(tmp_path), list_files=lambda: [], validate=lambda: (True, ""),
+			permission_callback=lambda *_args: True,
+		))
+		out = execute_agent_tool(gateway, "edit_workspace_file", {
+			"path": "arquivo.py", "old_string": "_('a')",
+			"new_string": "# Translators: exemplo\n_('a')",
+		})
+		assert "erro" not in out.lower() or '"error"' not in out
+		assert alvo.read_text(encoding="utf-8") == (
+			"linha1\n# Translators: exemplo\n_('a')\nlinha3\n"
+		)
+
+	def test_edit_workspace_file_exige_old_string_unico(self, tmp_path):
+		alvo = tmp_path / "arquivo.py"
+		alvo.write_text("x = 1\nx = 1\n", encoding="utf-8")
+		gateway = build_agent_tool_gateway(AgentToolContext(
+			workdir=str(tmp_path), list_files=lambda: [], validate=lambda: (True, ""),
+			permission_callback=lambda *_args: True,
+		))
+		out = execute_agent_tool(gateway, "edit_workspace_file", {
+			"path": "arquivo.py", "old_string": "x = 1", "new_string": "x = 2",
+		})
+		assert "2 vezes" in out
+		assert alvo.read_text(encoding="utf-8") == "x = 1\nx = 1\n"
+
+	def test_edit_workspace_file_replace_all(self, tmp_path):
+		alvo = tmp_path / "arquivo.py"
+		alvo.write_text("x = 1\nx = 1\n", encoding="utf-8")
+		gateway = build_agent_tool_gateway(AgentToolContext(
+			workdir=str(tmp_path), list_files=lambda: [], validate=lambda: (True, ""),
+			permission_callback=lambda *_args: True,
+		))
+		execute_agent_tool(gateway, "edit_workspace_file", {
+			"path": "arquivo.py", "old_string": "x = 1", "new_string": "x = 2",
+			"replace_all": True,
+		})
+		assert alvo.read_text(encoding="utf-8") == "x = 2\nx = 2\n"
+
+	def test_edit_workspace_file_sem_correspondencia_da_erro_claro(self, tmp_path):
+		alvo = tmp_path / "arquivo.py"
+		alvo.write_text("conteudo real\n", encoding="utf-8")
+		gateway = build_agent_tool_gateway(AgentToolContext(
+			workdir=str(tmp_path), list_files=lambda: [], validate=lambda: (True, ""),
+			permission_callback=lambda *_args: True,
+		))
+		out = execute_agent_tool(gateway, "edit_workspace_file", {
+			"path": "arquivo.py", "old_string": "texto que nao existe", "new_string": "x",
+		})
+		assert "não encontrado" in out or "nao encontrado" in out
+
+	def test_edit_workspace_file_arquivo_inexistente_da_erro_claro(self, tmp_path):
+		gateway = build_agent_tool_gateway(AgentToolContext(
+			workdir=str(tmp_path), list_files=lambda: [], validate=lambda: (True, ""),
+			permission_callback=lambda *_args: True,
+		))
+		out = execute_agent_tool(gateway, "edit_workspace_file", {
+			"path": "nao_existe.py", "old_string": "a", "new_string": "b",
+		})
+		assert "não existe" in out or "nao existe" in out
 
 	def test_gate_reprovado_volta_ao_modelo_para_correcao(self, tmp_path, monkeypatch):
 		messages = []

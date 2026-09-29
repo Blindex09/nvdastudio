@@ -16,7 +16,7 @@ from typing import Callable
 from ..tools.tool_gateway import ToolGateway, ToolSchema
 from ..utils.injection_guard import sanitize_untrusted_block
 
-MODULE_VERSION = "1.1.0"
+MODULE_VERSION = "1.2.0"
 
 
 @dataclass
@@ -34,7 +34,8 @@ class AgentToolContext:
 _SPECS: tuple[tuple[str, str, dict, bool], ...] = (
 	("list_workspace", "Lista os arquivos atuais do addon.", {"type": "object", "properties": {}}, False),
 	("read_workspace_file", "Lê um arquivo textual do addon.", {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}, False),
-	("write_workspace_file", "Cria ou substitui atomicamente um arquivo textual do addon.", {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}, True),
+	("write_workspace_file", "Cria um arquivo novo, ou substitui um arquivo EXISTENTE por inteiro. Para corrigir um problema especifico apontado pela validação num arquivo que já existe, prefira edit_workspace_file -- reescrever o arquivo todo arrisca perder correções anteriores que não estavam relacionadas a este problema.", {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}, True),
+	("edit_workspace_file", "Edição cirúrgica: substitui uma ocorrência exata de old_string por new_string num arquivo já existente, sem tocar no resto do arquivo. Use esta ferramenta (não write_workspace_file) para corrigir um problema pontual apontado pela validação -- por exemplo, adicionar um comentário '# Translators:' antes de uma linha específica. old_string precisa aparecer exatamente uma vez no arquivo (inclua linhas de contexto ao redor se precisar); passe replace_all=true só quando quiser substituir TODAS as ocorrências.", {"type": "object", "properties": {"path": {"type": "string"}, "old_string": {"type": "string"}, "new_string": {"type": "string"}, "replace_all": {"type": "boolean", "default": False}}, "required": ["path", "old_string", "new_string"]}, True),
 	("delete_workspace_file", "Remove um arquivo do addon.", {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}, True),
 	("validate_addon", "Executa os gates locais de estrutura, sintaxe, importação e acessibilidade.", {"type": "object", "properties": {}}, False),
 	("run_addon_tests", "Executa os testes do addon no backend de isolamento configurado.", {"type": "object", "properties": {"path": {"type": "string", "default": "."}}}, True),
@@ -128,6 +129,45 @@ def _handler(context: AgentToolContext, name: str) -> Callable[..., str]:
 				if os.path.exists(temporary):
 					os.remove(temporary)
 			return json.dumps({"written": os.path.relpath(path, context.workdir).replace("\\", "/")})
+		if name == "edit_workspace_file":
+			path = _workspace_path(context.workdir, str(arguments.get("path") or ""))
+			old_string = arguments.get("old_string")
+			new_string = arguments.get("new_string")
+			replace_all = bool(arguments.get("replace_all", False))
+			if not isinstance(old_string, str) or not old_string:
+				raise ValueError("old_string precisa ser texto não vazio")
+			if not isinstance(new_string, str):
+				raise ValueError("new_string precisa ser texto")
+			if not os.path.isfile(path):
+				raise ValueError("arquivo não existe -- use write_workspace_file para criar")
+			with open(path, encoding="utf-8", errors="replace") as stream:
+				content = stream.read()
+			occurrences = content.count(old_string)
+			if occurrences == 0:
+				raise ValueError(
+					"old_string não encontrado no arquivo -- releia o arquivo "
+					"(read_workspace_file) antes de editar, o conteúdo pode ter mudado"
+				)
+			if occurrences > 1 and not replace_all:
+				raise ValueError(
+					f"old_string aparece {occurrences} vezes no arquivo -- inclua mais "
+					"linhas de contexto para torná-lo único, ou passe replace_all=true "
+					"se a intenção é substituir todas as ocorrências"
+				)
+			new_content = content.replace(old_string, new_string) if replace_all else content.replace(old_string, new_string, 1)
+			os.makedirs(os.path.dirname(path), exist_ok=True)
+			fd, temporary = tempfile.mkstemp(prefix=".nvdastudio_", dir=os.path.dirname(path))
+			try:
+				with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
+					stream.write(new_content)
+				os.replace(temporary, path)
+			finally:
+				if os.path.exists(temporary):
+					os.remove(temporary)
+			return json.dumps({
+				"edited": os.path.relpath(path, context.workdir).replace("\\", "/"),
+				"occurrences_replaced": occurrences if replace_all else 1,
+			})
 		if name == "delete_workspace_file":
 			path = _workspace_path(context.workdir, str(arguments.get("path") or ""))
 			if os.path.isfile(path):

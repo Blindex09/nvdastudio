@@ -44,7 +44,7 @@ from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.20.0"
+MODULE_VERSION = "0.21.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -131,6 +131,11 @@ Como trabalhar (voce e um AGENTE, use isso):
    Mantenha os arquivos-fonte na raiz do diretorio de trabalho, inclusive apos
    validar. O NVDAStudio empacota e entrega o resultado depois de seus gates;
    nao crie um ZIP em substituicao aos fontes nem declare o pacote entregue.
+   Para corrigir um problema PONTUAL apontado pela validacao num arquivo que
+   ja existe (ex.: um comentario '# Translators:' faltando numa linha), use
+   edit_workspace_file (substituicao exata old_string->new_string), nunca
+   write_workspace_file -- reescrever o arquivo inteiro de memoria arrisca
+   perder outras correcoes que ja estavam nele.
 5. Confirme que manifest.ini existe e tem os campos obrigatorios.
 6. Crie testes automatizados proporcionais ao risco da mudança. Para bugs,
    inclua um teste de regressão que falharia antes da correção. Execute primeiro
@@ -625,8 +630,10 @@ def run_provider_agentic_build(
 						f"Iniciando a correção automática {corrections}."
 					)
 				message = (
-					"A verificacao deterministica reprovou o addon. Corrija os arquivos "
-					"existentes, valide novamente e so entao conclua. Problemas:\n" + report_now
+					"A verificacao deterministica reprovou o addon. Use edit_workspace_file "
+					"para corrigir cada problema pontual (nao reescreva o arquivo inteiro com "
+					"write_workspace_file, isso arrisca perder correcoes anteriores). Valide "
+					"novamente e so entao conclua. Problemas:\n" + report_now
 				)
 				tool_results = None
 				continue

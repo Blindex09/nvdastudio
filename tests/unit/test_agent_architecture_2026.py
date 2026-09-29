@@ -47,8 +47,8 @@ def test_catalogo_canonico_e_gateway_confinam_todos_os_adaptadores(tmp_path):
 	names = {item["function"]["name"] for item in get_agent_tool_schemas()}
 	assert names == {
 		"list_workspace", "read_workspace_file", "write_workspace_file",
-		"delete_workspace_file", "validate_addon", "run_addon_tests",
-		"web_search", "ask_user",
+		"edit_workspace_file", "delete_workspace_file", "validate_addon",
+		"run_addon_tests", "web_search", "ask_user",
 	}
 	context = AgentToolContext(
 		workdir=str(tmp_path), list_files=lambda: [], validate=lambda: (True, "ok"),
