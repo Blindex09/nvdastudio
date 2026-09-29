@@ -17,7 +17,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, run_provider_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.23.0"
+assert MODULE_VERSION == "0.24.0"
 
 
 class TestMotorAgenticoDosProvedores:
@@ -258,6 +258,49 @@ class TestMotorAgenticoDosProvedores:
 			"do teto de turnos, pelo contador de falhas consecutivas"
 		)
 		assert client.tentativa <= ad._MAX_FALHAS_CONSECUTIVAS_DE_FERRAMENTA + 1
+
+	def test_erro_de_provedor_no_meio_da_build_preserva_arquivos_ja_escritos(self, tmp_path, monkeypatch):
+		"""Achado ao vivo (2026-09-29, teste real via Ollama Cloud continuando
+		a correcao do GeminiTranscriber): o modelo editou arquivos reais numa
+		rodada, e na rodada de correcao seguinte a API devolveu um erro
+		transitorio real ("400 Bad Request"). O catch-all generico
+		(`except Exception`) no fim do loop principal era o UNICO ponto de
+		retorno que nao populava files/artifact_dir -- o mesmo bug ja
+		corrigido nos caminhos cancelled/budget_exceeded, reaberto aqui. O
+		usuario perdia TODO o progresso ja escrito em disco por um erro de
+		rede transitorio no meio da correcao."""
+		class _QuebraNaSegundaChamada:
+			def __init__(self):
+				self.calls = 0
+
+			def chat(self, *_args, **_kwargs):
+				self.calls += 1
+				if self.calls == 1:
+					return types.SimpleNamespace(
+						content="Vou criar o arquivo.", tokens_used=7, tool_calls=[{
+							"id": "m", "function": {
+								"name": "write_workspace_file",
+								"arguments": {"path": "manifest.ini", "content": "name = X\n"},
+							},
+						}],
+					)
+				raise RuntimeError("Client error '400 Bad Request' (simulado)")
+
+		client = _QuebraNaSegundaChamada()
+		monkeypatch.setattr(
+			"nvdastudio.ai.llm_factory.create_llm_client", lambda **_kwargs: client,
+		)
+		result = run_provider_agentic_build(
+			"crie", provider="openai", model_id="gpt-test", workdir=str(tmp_path),
+			use_nvda_context=False, permission_callback=lambda *_args: True,
+		)
+		assert result.success is False
+		assert "400 Bad Request" in result.error
+		assert result.files == ["manifest.ini"], (
+			"o arquivo real ja escrito em disco precisa sobreviver ao erro "
+			"de provedor na rodada seguinte"
+		)
+		assert (tmp_path / "manifest.ini").is_file()
 
 	def test_deliverable_quando_so_falta_ajuste_de_qualidade(self, tmp_path, monkeypatch):
 		"""Pesquisa web pedida pelo usuario (2026-09-29): agentes de codigo de

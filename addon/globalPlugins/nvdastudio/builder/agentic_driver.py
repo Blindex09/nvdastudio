@@ -44,7 +44,7 @@ from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.23.0"
+MODULE_VERSION = "0.24.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -734,10 +734,21 @@ def run_provider_agentic_build(
 			state.client_history = _snapshot_history()
 			store.save(state)
 	except Exception as exc:
+		# Achado ao vivo (2026-09-29): esta era a UNICA saida do loop principal
+		# que nao populava files/artifact_dir -- um erro transitorio real do
+		# provedor (ex.: Ollama Cloud "400 Bad Request" no meio de uma
+		# correcao) fazia a build perder TODO o progresso ja provado em disco
+		# (o mesmo bug ja corrigido nos caminhos cancelled/budget_exceeded,
+		# aqui reaberto no catch-all generico). Ver
+		# doc/conceitos-ia-seguranca-confiabilidade.md, recovery/resilience.
 		state.status = "failed"
 		state.event("failed", error=str(exc)[:2000])
 		store.save(state)
-		return AgenticBuildResult(False, workdir, tokens=tokens, cost_usd=cost_usd, error=f"{provider}: {exc}", checkpoint_path=store.path(state.run_id), trace=state.trace)
+		return AgenticBuildResult(
+			False, workdir, files=_coletar_arquivos(workdir),
+			tokens=tokens, cost_usd=cost_usd, error=f"{provider}: {exc}",
+			checkpoint_path=store.path(state.run_id), trace=state.trace,
+		)
 
 	files = _coletar_arquivos(workdir)
 	has_manifest, has_entry, syntax_ok = _validar_basico(workdir, files)
