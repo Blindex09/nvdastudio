@@ -44,7 +44,7 @@ from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.22.0"
+MODULE_VERSION = "0.23.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -89,6 +89,35 @@ def _token_budget(max_turns: int) -> int:
 	if override.isdigit() and int(override) > 0:
 		return int(override)
 	return max(_TOKEN_BUDGET_MINIMO, max_turns * _TOKENS_POR_TURNO_ESTIMADO)
+
+
+# Teto agregado de TEMPO (wall-clock), separado do de tokens/turnos -- padrão
+# real de agentes de código de produção (SWE-agent: os 5 guardas nomeados são
+# cost limit, step limit, TIMEOUT, consecutive-failure count e context
+# overflow; turns/tokens já cobrem os dois primeiros, mas nenhum teto de
+# tempo agregado existia). Sem isso, o pior caso teórico (todo turno demora o
+# timeout HTTP inteiro, ~11min, sem nunca dar erro) ficava limitado só pelo
+# produto max_turns × timeout por chamada -- um número finito, mas absurdo
+# (>10h numa build "alta"). Escala com max_turns como o de tokens, na mesma
+# proporção -- nunca um número fixo igual pra qualquer complexidade.
+_SEGUNDOS_POR_TURNO_ESTIMADO = 120
+_WALL_CLOCK_MINIMO_SEGUNDOS = 900
+
+
+def _wall_clock_budget_seconds(max_turns: int) -> float:
+	"""Teto de tempo (segundos) proporcional a max_turns -- ver comentário acima."""
+	override = os.getenv("NVDASTUDIO_MAX_SECONDS_PER_BUILD", "").strip()
+	if override.isdigit() and int(override) > 0:
+		return float(override)
+	return max(_WALL_CLOCK_MINIMO_SEGUNDOS, max_turns * _SEGUNDOS_POR_TURNO_ESTIMADO)
+
+
+# Contador de falhas consecutivas de ferramenta -- o outro guarda do SWE-agent
+# que faltava. O detector de loop existente (turn_signatures idênticas) só
+# pega repetição EXATA; um modelo que erra a MESMA ferramenta repetidamente
+# com argumentos DIFERENTES a cada vez (nunca bate a assinatura) passava
+# batido, consumindo o orçamento inteiro sem nunca progredir de verdade.
+_MAX_FALHAS_CONSECUTIVAS_DE_FERRAMENTA = 4
 
 # Spec compacto embutido (Slice 1 troca pelo nvda_context real). Alto sinal,
 # baixo custo: o essencial da estrutura de um addon NVDA + a instrucao de
@@ -494,6 +523,8 @@ def run_provider_agentic_build(
 	last_content = ""
 	max_turns = 32 + max(0, correction_rounds) * 8
 	budget = _token_budget(max_turns)
+	deadline = time.monotonic() + _wall_clock_budget_seconds(max_turns)
+	falhas_consecutivas_de_ferramenta = 0
 	try:
 		client = create_llm_client(model_id=model_id, provider=provider)
 		restore_client_history(client, state.client_history)
@@ -543,6 +574,24 @@ def run_provider_agentic_build(
 				return AgenticBuildResult(
 					False, workdir, files=_coletar_arquivos(workdir), budget_exceeded=True,
 					error=f"orçamento de {budget:,} tokens por build foi atingido",
+					tokens=tokens, cost_usd=cost_usd,
+					checkpoint_path=store.path(state.run_id), trace=state.trace,
+				)
+			if time.monotonic() >= deadline:
+				# Mesmo tratamento de budget_exceeded (preserva arquivos, permite
+				# retomar) -- só o motivo muda: tempo agregado, nao tokens. Ver
+				# _wall_clock_budget_seconds() acima.
+				state.status = "budget_exceeded"
+				state.event("time_budget_exceeded", turn=turns, tokens=tokens)
+				store.save(state)
+				if progress_callback:
+					progress_callback(
+						"O tempo maximo desta build foi atingido. "
+						"Os arquivos foram preservados; retome para continuar."
+					)
+				return AgenticBuildResult(
+					False, workdir, files=_coletar_arquivos(workdir), budget_exceeded=True,
+					error="tempo maximo por build foi atingido",
 					tokens=tokens, cost_usd=cost_usd,
 					checkpoint_path=store.path(state.run_id), trace=state.trace,
 				)
@@ -639,6 +688,7 @@ def run_provider_agentic_build(
 				continue
 			tool_results = []
 			turn_signatures: list[str] = []
+			batch_teve_sucesso = False
 			for call in response.tool_calls:
 				name, arguments, call_id = _native_call_parts(call)
 				signature = json.dumps([name, arguments], ensure_ascii=False, sort_keys=True, default=str)
@@ -650,8 +700,24 @@ def run_provider_agentic_build(
 					tool_ok = not bool(json.loads(output).get("error"))
 				except (ValueError, AttributeError):
 					tool_ok = False
+				batch_teve_sucesso = batch_teve_sucesso or tool_ok
 				state.event("tool_result", tool=name, call_id=call_id, success=tool_ok)
 				tool_results.append({"tool_call_id": call_id, "content": output})
+			# Guarda de falhas consecutivas (SWE-agent: "consecutive-failure
+			# count", ver comentário de _MAX_FALHAS_CONSECUTIVAS_DE_FERRAMENTA):
+			# pega o caso que o detector de repetição EXATA abaixo não pega --
+			# a mesma ferramenta errando com argumentos DIFERENTES a cada vez.
+			if batch_teve_sucesso:
+				falhas_consecutivas_de_ferramenta = 0
+			else:
+				falhas_consecutivas_de_ferramenta += 1
+				if falhas_consecutivas_de_ferramenta >= _MAX_FALHAS_CONSECUTIVAS_DE_FERRAMENTA:
+					state.event("consecutive_tool_failures_detected", turn=turns)
+					last_content = (
+						"Interrompido: ferramentas falharam "
+						f"{falhas_consecutivas_de_ferramenta} vezes seguidas sem nenhum sucesso."
+					)
+					break
 			batch_signature = "\n".join(turn_signatures)
 			previous_batches = [
 				event.get("signature") for event in state.trace

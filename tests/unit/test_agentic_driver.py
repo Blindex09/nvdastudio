@@ -17,7 +17,7 @@ from nvdastudio.builder.agentic_driver import (
 	MODULE_VERSION, run_agentic_build, run_provider_agentic_build, AgenticBuildResult,
 )
 
-assert MODULE_VERSION == "0.22.0"
+assert MODULE_VERSION == "0.23.0"
 
 
 class TestMotorAgenticoDosProvedores:
@@ -198,6 +198,66 @@ class TestMotorAgenticoDosProvedores:
 			f"parou em {result.rounds} rodadas -- correction_rounds=1 nao deveria "
 			"mais ser o teto (so max_turns/budget deveriam parar o loop)"
 		)
+
+	def test_teto_de_tempo_agregado_preserva_arquivos_e_permite_retomar(self, tmp_path, monkeypatch):
+		"""Achado da auditoria de guarded-loops (2026-09-29, pesquisa web sobre
+		SWE-agent): os 5 guardas de parada de referencia sao cost limit, step
+		limit, TIMEOUT, consecutive-failure count e context overflow.
+		max_turns/budget cobrem os dois primeiros, mas nao havia teto de TEMPO
+		agregado -- so o timeout por chamada HTTP, cujo produto por max_turns
+		e um numero absurdo (>10h numa build "alta"). NVDASTUDIO_MAX_SECONDS_PER_BUILD
+		forca o teto a vencer imediatamente, simulando o caso real."""
+		monkeypatch.setattr(ad, "_wall_clock_budget_seconds", lambda _max_turns: 0.0)
+		client = self._Client()
+		monkeypatch.setattr(
+			"nvdastudio.ai.llm_factory.create_llm_client", lambda **_kwargs: client,
+		)
+		result = run_provider_agentic_build(
+			"crie", provider="openai", model_id="gpt-test", workdir=str(tmp_path),
+			use_nvda_context=False, permission_callback=lambda *_args: True,
+		)
+		assert result.budget_exceeded is True
+		assert client.calls == 0, "nao deveria ter chamado o modelo nem uma vez"
+
+	def test_falhas_consecutivas_de_ferramenta_interrompem_sem_esgotar_turnos(self, tmp_path, monkeypatch):
+		"""O outro guarda que faltava: um modelo que erra a MESMA ferramenta
+		repetidamente com argumentos DIFERENTES a cada vez nunca bate a
+		assinatura exata do detector de loop existente -- sem este contador,
+		consumiria o orcamento de turnos inteiro sem nunca progredir."""
+		class _SoErra(self._Client):
+			def __init__(self):
+				super().__init__()
+				self.tentativa = 0
+
+			def chat(inner, message, **kwargs):  # noqa: N805
+				inner.tentativa += 1
+				return types.SimpleNamespace(
+					content="tentando de novo", tokens_used=1, tool_calls=[{
+						"id": f"c{inner.tentativa}",
+						"function": {
+							"name": "write_workspace_file",
+							# path vazio -- ValueError em _workspace_path, argumento
+							# diferente a cada turno (nunca repete a assinatura exata).
+							"arguments": {"path": "", "content": f"tentativa {inner.tentativa}"},
+						},
+					}],
+				)
+
+		client = _SoErra()
+		monkeypatch.setattr(
+			"nvdastudio.ai.llm_factory.create_llm_client", lambda **_kwargs: client,
+		)
+		result = run_provider_agentic_build(
+			"crie", provider="openai", model_id="gpt-test", workdir=str(tmp_path),
+			use_nvda_context=False, correction_rounds=4,  # max_turns=64
+			permission_callback=lambda *_args: True,
+		)
+		assert result.success is False
+		assert client.tentativa < 64, (
+			f"rodou {client.tentativa} turnos -- deveria ter parado bem antes "
+			"do teto de turnos, pelo contador de falhas consecutivas"
+		)
+		assert client.tentativa <= ad._MAX_FALHAS_CONSECUTIVAS_DE_FERRAMENTA + 1
 
 	def test_deliverable_quando_so_falta_ajuste_de_qualidade(self, tmp_path, monkeypatch):
 		"""Pesquisa web pedida pelo usuario (2026-09-29): agentes de codigo de
