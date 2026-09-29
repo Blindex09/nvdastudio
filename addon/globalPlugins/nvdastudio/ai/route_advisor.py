@@ -21,9 +21,10 @@ import time
 from dataclasses import dataclass, field
 
 from ..utils.injection_guard import sanitize_untrusted_block
+from ..utils.json_stream import extract_json_object
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
 _logger = get_logger("route_advisor")
 
 _MAX_TASK_CHARS = 1500
@@ -192,7 +193,7 @@ def rank_candidates(
 	)
 	_local.active = True
 	try:
-		data = json.loads(_ask_model(prompt, schema))
+		data = extract_json_object(_ask_model(prompt, schema))
 		ranking = [k for k in data.get("ranking", []) if k in valid]
 		ordered: list[str] = []
 		for key in ranking:

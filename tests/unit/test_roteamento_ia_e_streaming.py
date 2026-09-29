@@ -146,6 +146,61 @@ def test_studio_uma_rota_por_provedor_e_privacidade_limita(monkeypatch):
 	assert len(privadas) == 1
 
 
+def test_decisao_da_ia_entre_modelos_do_mesmo_provedor_fixo_aparece_na_rota(monkeypatch):
+	"""Achado ao vivo (2026-09-29, teste real via Ollama Cloud): com o provedor
+	fixo ("Alto" fora do Studio, ex.: Ollama configurado manualmente), a rota
+	sempre mostrava o mesmo texto generico ("Provedor escolhido manualmente;
+	o roteamento ficou restrito a ele.") mesmo quando a IA de fato comparou
+	varios modelos DO MESMO provedor e justificou a escolha -- confirmado ao
+	vivo por duas rodadas identicas escolherem modelos diferentes
+	(kimi-k2.7-code numa vez, minimax-m2.7 na outra). Agora o motivo real da
+	IA aparece na rota, e o marcador "manualmente" (que orchestrator.py usa
+	pra decidir a narracao) continua presente."""
+	monkeypatch.setattr(
+		model_router, "_eligible_models",
+		lambda *a, **kw: ["kimi-k2.7-code", "minimax-m2.7"],
+	)
+
+	def ask(prompt, schema):
+		return json.dumps({
+			"ranking": ["ollama::minimax-m2.7", "ollama::kimi-k2.7-code"],
+			"reason": "minimax-m2.7 e mais barato e cobre bem essa tarefa simples",
+		})
+	monkeypatch.setattr(route_advisor, "_ask_model", ask)
+
+	routes = select_routes(
+		"ollama", "code_generation", "alto",
+		hints=RoutingHints.declared("low"),
+		required_capabilities=frozenset({"tool_use"}),
+	)
+
+	assert len(routes) == 1
+	assert routes[0].provider == "ollama"
+	assert routes[0].model_id == "minimax-m2.7"
+	assert "manualmente" in routes[0].reason
+	assert "minimax-m2.7 e mais barato" in routes[0].reason
+
+
+def test_rank_candidates_sobrevive_a_prosa_antes_do_json(monkeypatch):
+	"""Mesma classe de achado ao vivo do chat (ver test_json_stream.py):
+	route_advisor._ask_model tambem chamava json.loads cru -- um provedor sem
+	structured output estrito (Ollama Cloud) podia narrar antes do JSON e
+	derrubar o ranking real pro fallback silenciosamente."""
+	def ask(prompt, schema):
+		return (
+			"Vou comparar os candidatos.\n\n"
+			'{"ranking": ["openai::a"], "reason": "a e suficiente"}'
+		)
+	monkeypatch.setattr(route_advisor, "_ask_model", ask)
+	resultado = rank_candidates(
+		_cands(("openai", "a"), ("gemini", "b")), step_type="x", complexity="low",
+		preference="cost",
+	)
+	assert resultado.source == "ia"
+	assert resultado.order[0] == "openai::a"
+	assert resultado.reason == "a e suficiente"
+
+
 def test_decisao_da_ia_aparece_na_rota(monkeypatch):
 	def ask(prompt, schema):
 		chaves = schema["json_schema"]["schema"]["properties"]["ranking"]["items"]["enum"]

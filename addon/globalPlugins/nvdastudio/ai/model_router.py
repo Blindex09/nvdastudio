@@ -6,7 +6,7 @@ from .model_registry import ALTO_MODEL, is_alto_model, registry
 from .route_advisor import RouteCandidate, rank_candidates
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "3.0.0"
+MODULE_VERSION = "3.1.0"
 _logger = get_logger("model_router")
 
 STUDIO_PROVIDER = "studio"
@@ -242,21 +242,46 @@ def select_model(
 	candidato, ou sem resposta da IA, vale a ordem de contingência do harness.
 	Nunca retorna vazio nem levanta exceção.
 	"""
+	return select_model_with_reason(
+		provider, step_type, configured_model, complexity,
+		required_capabilities, task_summary,
+	)[0]
+
+
+def select_model_with_reason(
+	provider: str,
+	step_type: str,
+	configured_model: str,
+	complexity: str = "medium",
+	required_capabilities: frozenset[str] | None = None,
+	task_summary: str = "",
+) -> tuple[str, str]:
+	"""Como select_model(), mas também devolve o motivo da escolha.
+
+	Achado ao vivo (2026-09-29): select_routes() descartava esse motivo no
+	caminho de provedor fixo ("Alto" fora do Studio) -- o log da rota sempre
+	mostrava o mesmo texto genérico ("Provedor escolhido manualmente..."),
+	mesmo quando a IA de fato comparou vários modelos do MESMO provedor e
+	justificou a escolha (confirmado ao vivo: rodadas idênticas escolheram
+	kimi-k2.7-code numa vez e minimax-m2.7 na outra -- prova de que o
+	ranking real acontece, só não era mostrado).
+	"""
 	if not is_alto_model(configured_model):
-		return configured_model
+		return configured_model, "modelo especifico escolhido pelo usuario"
 	ids = _eligible_models(
 		provider, step_type, complexity, configured_model,
 		required_capabilities or frozenset(),
 	)
 	if len(ids) == 1:
-		return ids[0]
+		return ids[0], "unico modelo elegivel do provedor para esta tarefa"
 	result = rank_candidates(
 		[_candidate(provider, i, step_type) for i in ids],
 		step_type=step_type, complexity=complexity, preference="balanced",
 		task_summary=task_summary,
 		reliability={f"{provider}::{i}": _reliability_score(provider, i, step_type) for i in ids},
 	)
-	return result.order[0].split("::", 1)[1]
+	model_id = result.order[0].split("::", 1)[1]
+	return model_id, result.reason
 
 
 def select_routes(
@@ -281,13 +306,17 @@ def select_routes(
 	context_tokens = estimate_context_tokens(request)
 
 	if provider != STUDIO_PROVIDER or not is_alto_model(configured_model):
-		model_id = select_model(
+		model_id, model_reason = select_model_with_reason(
 			provider, step_type, configured_model, complexity=complexity,
 			required_capabilities=required, task_summary=hints.task_summary,
 		)
 		return [RouteDecision(
 			provider=provider, model_id=model_id, score=1.0,
-			reason="Provedor escolhido manualmente; o roteamento ficou restrito a ele.",
+			# "manualmente" e o marcador literal que orchestrator.py:_run_agent
+			# usa para decidir a narracao ("Studio selecionou..." vs "Usando...");
+			# preservar a palavra mantem esse contrato -- so o texto ao redor
+			# ganhou o motivo real da escolha do modelo dentro do provedor.
+			reason=f"Provedor {provider} escolhido manualmente; {model_reason}.",
 			complexity=complexity, preference=preference,
 			required_capabilities=tuple(sorted(required)),
 			estimated_context_tokens=context_tokens,

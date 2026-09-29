@@ -24,7 +24,10 @@ def test_complexidade_semantica_alimenta_o_roteador_ativo():
 	with (
 		patch("nvdastudio.gui.settings_panel.get_llm_provider", return_value="factory"),
 		patch("nvdastudio.gui.settings_panel.get_llm_model", return_value="alto"),
-		patch("nvdastudio.ai.model_router.select_model", return_value="modelo-escolhido") as router,
+		patch(
+			"nvdastudio.ai.model_router.select_model_with_reason",
+			return_value=("modelo-escolhido", "motivo de teste"),
+		) as router,
 	):
 		route = _get_agentic_routes("pedido", RoutingHints.declared("high"))[0]
 		provider, model = route.provider, route.model_id
