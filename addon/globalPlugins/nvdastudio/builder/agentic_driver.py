@@ -44,7 +44,7 @@ from ..memory.narration import LiveNarrator
 from ..utils.injection_guard import detect_injection
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "0.16.0"
+MODULE_VERSION = "0.18.0"
 _logger = get_logger("agentic_driver")
 
 # Sem isto o droid abre um console no Windows que rouba o foco do NVDA (0 fora
@@ -61,19 +61,34 @@ _AUTONOMIAS_VALIDAS = ("low", "medium", "high")
 # "todo laço, retry ou orçamento de execução tem um teto agregado imposto pelo
 # código"), não da IA. O detector de loop (turn_signatures idênticas) pega
 # repetição EXATA; isto é o backstop pra uma sessão que continua produzindo
-# turnos DIFERENTES sem convergir -- generosa o bastante pra nunca interromper
-# uma build legítima (builds reais observadas ficam bem abaixo disto), baixa
-# o bastante pra nunca deixar uma sessão descontrolada rodar pra sempre.
-# Ajustável sem redeploy via env var, mesmo padrao de outros overrides do
-# projeto (ex.: NVDASTUDIO_SANDBOX_IMAGE).
-_DEFAULT_TOKEN_BUDGET = 3_000_000
+# turnos DIFERENTES sem convergir -- generoso o bastante pra nunca interromper
+# uma build legítima, baixo o bastante pra nunca deixar uma sessão
+# descontrolada rodar pra sempre.
+#
+# Proporcional a max_turns, não um número fixo: dois achados ao vivo seguidos
+# (2026-09-28, E2E real via Ollama Cloud) mostraram por quê. Uma build de alta
+# complexidade com correction_rounds=1 (max_turns=40) bateu um teto fixo de 3M
+# ainda fazendo progresso legítimo; subir pra 6M e repetir com
+# correction_rounds=2 (max_turns=48, mais turnos permitidos) bateu de novo,
+# faltando só ajustes triviais (imports não usados, comentário de tradução).
+# Um número fixo não escala com quantos turnos a própria build tem permissão
+# de gastar -- correction_rounds maior gera mais turnos e cada turno nesse
+# provedor resenvia o contexto NVDA completo (sem cache/estado no servidor,
+# ver auditoria de economia anterior), então o custo real cresce com
+# max_turns, não é constante. ~150k tokens/turno foi o pico observado nos
+# dois builds; 200k/turno dá margem real sem inflar artificialmente.
+_TOKENS_POR_TURNO_ESTIMADO = 200_000
+_TOKEN_BUDGET_MINIMO = 1_000_000
 
 
-def _token_budget() -> int:
+def _token_budget(max_turns: int) -> int:
+	"""Teto absoluto (NVDASTUDIO_MAX_TOKENS_PER_BUILD) tem prioridade quando
+	setado; sem ele, escala com quantos turnos esta build tem permissão de
+	gastar, não um número fixo -- ver comentário de _TOKENS_POR_TURNO_ESTIMADO."""
 	override = os.getenv("NVDASTUDIO_MAX_TOKENS_PER_BUILD", "").strip()
 	if override.isdigit() and int(override) > 0:
 		return int(override)
-	return _DEFAULT_TOKEN_BUDGET
+	return max(_TOKEN_BUDGET_MINIMO, max_turns * _TOKENS_POR_TURNO_ESTIMADO)
 
 # Spec compacto embutido (Slice 1 troca pelo nvda_context real). Alto sinal,
 # baixo custo: o essencial da estrutura de um addon NVDA + a instrucao de
@@ -84,6 +99,10 @@ Estrutura obrigatoria de um addon NVDA, na RAIZ do diretorio de trabalho atual:
 - manifest.ini  (campos: name, summary, version, author, minimumNVDAVersion, lastTestedNVDAVersion)
 - globalPlugins/<NomeDoPlugin>/__init__.py  para um global plugin, OU
   appModules/<nome>.py  para um app module.
+NUNCA crie uma pasta "addon/" por cima -- "globalPlugins/" e "manifest.ini" vao
+DIRETO na raiz do workspace (ex.: globalPlugins/MeuAddon/__init__.py, nao
+addon/globalPlugins/MeuAddon/__init__.py). Confirme list_workspace antes de
+escrever se tiver qualquer duvida sobre onde a raiz esta.
 
 Regras de codigo:
 - Python 3, compativel com o ambiente do NVDA. Use apenas a stdlib e as APIs do
@@ -456,7 +475,8 @@ def run_provider_agentic_build(
 	starting_turn = turns
 	corrections = state.corrections
 	last_content = ""
-	budget = _token_budget()
+	max_turns = 32 + max(0, correction_rounds) * 8
+	budget = _token_budget(max_turns)
 	try:
 		client = create_llm_client(model_id=model_id, provider=provider)
 		restore_client_history(client, state.client_history)
@@ -477,7 +497,6 @@ def run_provider_agentic_build(
 		message = state.message or request
 		tool_results: list[dict[str, str]] | None = state.tool_results
 		narrator = LiveNarrator(token_callback or (lambda _token: None))
-		max_turns = 32 + max(0, correction_rounds) * 8
 
 		def _snapshot_history() -> list[dict]:
 			"""Exporta o histórico do cliente já encolhido (trim_tool_history):
@@ -494,7 +513,7 @@ def run_provider_agentic_build(
 				state.status = "cancelled"
 				state.event("cancelled", turn=turns)
 				store.save(state)
-				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, cost_usd=cost_usd, checkpoint_path=store.path(state.run_id), trace=state.trace)
+				return AgenticBuildResult(False, workdir, files=_coletar_arquivos(workdir), cancelled=True, error="build interrompida pelo usuario", tokens=tokens, cost_usd=cost_usd, checkpoint_path=store.path(state.run_id), trace=state.trace)
 			if tokens >= budget:
 				state.status = "budget_exceeded"
 				state.event("budget_exceeded", turn=turns, tokens=tokens)
@@ -505,7 +524,7 @@ def run_provider_agentic_build(
 						"Os arquivos foram preservados; retome para continuar."
 					)
 				return AgenticBuildResult(
-					False, workdir, budget_exceeded=True,
+					False, workdir, files=_coletar_arquivos(workdir), budget_exceeded=True,
 					error=f"orçamento de {budget:,} tokens por build foi atingido",
 					tokens=tokens, cost_usd=cost_usd,
 					checkpoint_path=store.path(state.run_id), trace=state.trace,
@@ -546,7 +565,7 @@ def run_provider_agentic_build(
 				state.status = "cancelled"
 				state.event("cancelled", turn=turns)
 				store.save(state)
-				return AgenticBuildResult(False, workdir, cancelled=True, error="build interrompida pelo usuario", tokens=tokens, cost_usd=cost_usd, checkpoint_path=store.path(state.run_id), trace=state.trace)
+				return AgenticBuildResult(False, workdir, files=_coletar_arquivos(workdir), cancelled=True, error="build interrompida pelo usuario", tokens=tokens, cost_usd=cost_usd, checkpoint_path=store.path(state.run_id), trace=state.trace)
 			narrator.end_message()
 			turns += 1
 			tokens += int(response.tokens_used or 0)
@@ -962,7 +981,8 @@ def _droid_once(
 			)
 	except _BuildCancelled:
 		return AgenticBuildResult(
-			success=False, workdir=workdir, duration_seconds=time.time() - t0,
+			success=False, workdir=workdir, files=_coletar_arquivos(workdir),
+			duration_seconds=time.time() - t0,
 			cancelled=True, error="build interrompida pelo usuario",
 		)
 	except subprocess.TimeoutExpired:

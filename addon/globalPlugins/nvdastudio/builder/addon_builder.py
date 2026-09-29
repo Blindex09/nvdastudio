@@ -2718,7 +2718,19 @@ def _indexar_definicoes_do_addon(pdir_path: str) -> tuple[dict, dict]:
 				metodos: dict = {}
 				for filho in no.body:
 					if isinstance(filho, (ast.FunctionDef, ast.AsyncFunctionDef)):
-						metodos[filho.name] = _Assinatura.de_funcao(filho, py_file, metodo=True)
+						# @staticmethod nao tem self/cls implicito -- tratar como
+						# "metodo" (que sempre descarta o 1o posicional) reprova
+						# uma chamada self.metodo(x) valida em Python so porque
+						# ela nao "sobra" um argumento pro parametro que na
+						# verdade e real, nao um self fantasma. Achado real
+						# (E2E ao vivo via Ollama Cloud, 2026-09-28): o agente
+						# corrigiu o proprio codigo, correto, pra calar um
+						# falso positivo daqui.
+						e_estatico = any(
+							isinstance(d, ast.Name) and d.id == "staticmethod"
+							for d in filho.decorator_list
+						)
+						metodos[filho.name] = _Assinatura.de_funcao(filho, py_file, metodo=not e_estatico)
 				classes[mod][no.name] = metodos
 			elif isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef)):
 				funcoes[mod][no.name] = _Assinatura.de_funcao(no, py_file, metodo=False)

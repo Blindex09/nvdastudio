@@ -136,6 +136,59 @@ class TestNaoInventaDefeito:
 	"""Cada caso aqui e um padrao presente em addon CORRETO. Se a regra
 	acusar qualquer um deles, ela custa mais do que resolve."""
 
+	def test_staticmethod_chamado_via_self_nao_acusa(self, tmp_path):
+		"""Achado real (E2E ao vivo via Ollama Cloud, 2026-09-28): @staticmethod
+		nao tem self/cls implicito -- self.metodo_estatico(x) e uma chamada
+		Python valida onde x e o PRIMEIRO parametro real, nao um segundo
+		argumento "sobrando" depois de um self fantasma. A regra descartava o
+		primeiro parametro de TODO metodo (inclusive estatico) como se fosse
+		sempre self, reprovando codigo correto e forcando o agente a
+		refatorar pra calar um falso positivo."""
+		pasta = _montar(tmp_path, {
+			"__init__.py": (
+				"class Servico:\n"
+				"\t@staticmethod\n"
+				"\tdef extrair(dado):\n"
+				"\t\treturn dado\n\n"
+				"\tdef usar(self):\n"
+				"\t\treturn self.extrair(\"x\")\n"
+			),
+		})
+
+		assert _check_cross_module_signatures(pasta) == []
+
+	def test_staticmethod_com_argumento_a_mais_ainda_acusa(self, tmp_path):
+		"""A correcao nao apaga a regra -- so para de descartar o 1o parametro
+		real. Um argumento de fato extra continua sendo pego."""
+		pasta = _montar(tmp_path, {
+			"__init__.py": (
+				"class Servico:\n"
+				"\t@staticmethod\n"
+				"\tdef extrair(dado):\n"
+				"\t\treturn dado\n\n"
+				"\tdef usar(self):\n"
+				"\t\treturn self.extrair(\"x\", \"y\")\n"
+			),
+		})
+
+		problemas = _check_cross_module_signatures(pasta)
+		assert any("extrair" in p for p in problemas), problemas
+
+	def test_classmethod_continua_descartando_cls(self, tmp_path):
+		"""@classmethod tem cls implicito igual self -- continua descartado."""
+		pasta = _montar(tmp_path, {
+			"__init__.py": (
+				"class Servico:\n"
+				"\t@classmethod\n"
+				"\tdef criar(cls, dado):\n"
+				"\t\treturn dado\n\n"
+				"\tdef usar(self):\n"
+				"\t\treturn self.criar(\"x\")\n"
+			),
+		})
+
+		assert _check_cross_module_signatures(pasta) == []
+
 	def test_assinatura_que_casa_nao_acusa(self, tmp_path):
 		pasta = _montar(tmp_path, {
 			"__init__.py": (

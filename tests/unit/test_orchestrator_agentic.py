@@ -8,7 +8,7 @@ from nvdastudio.core.orchestrator import (
 	MODULE_VERSION, Orchestrator, _agentic_files_to_blocks,
 )
 
-assert MODULE_VERSION == "7.0.0"
+assert MODULE_VERSION == "7.1.0"
 
 
 def _route(provider="factory", model="auto", reason="rota de teste", complexity="medium"):

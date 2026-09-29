@@ -220,3 +220,103 @@ def test_write_workspace_sem_sufixo_e_reconhecido():
 	assert canonical_permission_name("write_workspace") == "write_workspace_file"
 	assert canonical_permission_name("read_workspace") == "read_workspace_file"
 	assert canonical_permission_name("delete_workspace") == "delete_workspace_file"
+
+
+# ----------------------------------------------------------------- arquivos preservados
+
+def test_orcamento_excedido_reporta_os_arquivos_ja_escritos(tmp_path, monkeypatch):
+	"""Achado ao vivo (E2E real via Ollama Cloud, 2026-09-28): o teto de tokens
+	interrompia preservando os arquivos no DISCO, mas o resultado devolvido
+	tinha files=[] -- quem chama (orchestrator.py) via "if not build.files"
+	mostraria "o agente nao produziu arquivos" mesmo com arquivos reais lá."""
+	monkeypatch.setenv("NVDASTUDIO_MAX_TOKENS_PER_BUILD", "5")
+	(tmp_path / "manifest.ini").write_text("name = X\n", encoding="utf-8")
+
+	class Client:
+		def chat(self, *a, **kw):
+			return types.SimpleNamespace(content="trabalhando", tokens_used=10, tool_calls=[
+				{"id": "1", "function": {"name": "list_workspace", "arguments": {}}},
+			])
+
+	with patch("nvdastudio.ai.llm_factory.create_llm_client", return_value=Client()):
+		result = run_provider_agentic_build(
+			"pedido", provider="openai", model_id="m", workdir=str(tmp_path),
+			use_nvda_context=False,
+			state_store=AgentCheckpointStore(str(tmp_path / "s")),
+		)
+	assert "manifest.ini" in result.files
+
+
+def test_cancelamento_reporta_os_arquivos_ja_escritos(tmp_path):
+	"""Mesmo achado, caminho de cancelamento (_BuildCancelled)."""
+	(tmp_path / "manifest.ini").write_text("name = X\n", encoding="utf-8")
+
+	class Client:
+		def chat(self, *a, on_chunk=None, **kw):
+			if on_chunk:
+				on_chunk("x")
+			raise ad._BuildCancelled()
+
+	cancel_event = MagicMock()
+	cancel_event.is_set.return_value = True
+	with patch("nvdastudio.ai.llm_factory.create_llm_client", return_value=Client()):
+		result = run_provider_agentic_build(
+			"pedido", provider="openai", model_id="m", workdir=str(tmp_path),
+			use_nvda_context=False, cancel_event=cancel_event,
+			state_store=AgentCheckpointStore(str(tmp_path / "s")),
+		)
+	assert result.cancelled is True
+	assert "manifest.ini" in result.files
+
+
+def test_orchestrator_trata_orcamento_excedido_sem_dizer_que_nao_ha_arquivos():
+	"""Achado ao vivo: sem este ramo no orchestrator, budget_exceeded caía no
+	"if not build.files" -- mesmo com arquivos reais, a mensagem final dizia
+	que o agente nao produziu nada."""
+	from nvdastudio.core.orchestrator import Orchestrator
+
+	o = Orchestrator()
+	resultados = []
+	o._on_complete = resultados.append
+	o._suppress_complete_callback = False
+	fake_build = types.SimpleNamespace(
+		success=False, execution_ok=False, files=["manifest.ini"],
+		cancelled=False, budget_exceeded=True,
+		error="orçamento de 6.000.000 tokens por build foi atingido",
+		tokens=1, cost_usd=0.0, gate_report="", rounds=1,
+	)
+	with patch(
+		"nvdastudio.core.orchestrator._get_agentic_routes",
+		lambda _r="", _h=None: [types.SimpleNamespace(
+			provider="openai", model_id="m", reason="teste", complexity="medium", to_dict=lambda: {},
+		)],
+	), patch("nvdastudio.builder.agentic_driver.run_provider_agentic_build", return_value=fake_build):
+		o._run_agent("crie um addon")
+	assert resultados[0].success is False
+	assert "não produziu arquivos" not in (resultados[0].error or "")
+	assert "orçamento" in (resultados[0].error or "").lower()
+
+
+# ----------------------------------------------------------------- orçamento proporcional
+
+def test_orcamento_escala_com_max_turns_nao_e_numero_fixo(monkeypatch):
+	"""Achado ao vivo (dois E2E reais via Ollama Cloud, 2026-09-28): um teto
+	fixo não escala com quantos turnos a build tem permissão de gastar --
+	correction_rounds maior gera mais turnos permitidos, e cada turno nesse
+	provedor resenvia o contexto completo (sem cache/estado no servidor)."""
+	monkeypatch.delenv("NVDASTUDIO_MAX_TOKENS_PER_BUILD", raising=False)
+	pouco = ad._token_budget(max_turns=10)
+	muito = ad._token_budget(max_turns=48)
+	assert muito > pouco
+	assert muito == 48 * ad._TOKENS_POR_TURNO_ESTIMADO
+
+
+def test_orcamento_tem_piso_minimo_mesmo_com_poucos_turnos(monkeypatch):
+	monkeypatch.delenv("NVDASTUDIO_MAX_TOKENS_PER_BUILD", raising=False)
+	assert ad._token_budget(max_turns=1) == ad._TOKEN_BUDGET_MINIMO
+
+
+def test_override_absoluto_ignora_max_turns(monkeypatch):
+	monkeypatch.setenv("NVDASTUDIO_MAX_TOKENS_PER_BUILD", "42")
+	assert ad._token_budget(max_turns=1) == 42
+	assert ad._token_budget(max_turns=1000) == 42

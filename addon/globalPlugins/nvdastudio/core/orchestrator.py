@@ -11,7 +11,7 @@ from ..tool_system.approval import ApprovalWorkflow
 from ..utils.logger import get_logger
 from .orch_types import OrchestrationResult, StepResult
 
-MODULE_VERSION = "7.0.0"
+MODULE_VERSION = "7.1.0"
 _logger = get_logger("orchestrator")
 
 _AGENTIC_CORRECTION_ROUNDS = 2
@@ -302,6 +302,19 @@ class Orchestrator:
 		if getattr(build, "cancelled", False):
 			self._emit("CANCELADO")
 			self._finish(self._failure_result(user_query, "Geracao interrompida pelo usuario."))
+			return
+
+		if getattr(build, "budget_exceeded", False):
+			# Mesmo tratamento do cancelamento: o workdir fica preservado (nao
+			# zera self._agentic_workdir) para uma retomada futura, e a mensagem
+			# é a real -- achado ao vivo (2026-09-28): sem este ramo, o build
+			# caía no "não produziu arquivos" abaixo mesmo com arquivos reais
+			# no disco, porque o retorno da build só reportava o teto atingido.
+			self._emit("ORCAMENTO_EXCEDIDO")
+			self._finish(self._failure_result(
+				user_query,
+				getattr(build, "error", "") or "Orçamento de tokens da build foi atingido.",
+			))
 			return
 
 		self._agentic_workdir = None
