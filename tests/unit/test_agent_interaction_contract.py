@@ -320,6 +320,49 @@ def test_chat_router_failure_asks_beginner_friendly_question(dialog_class, monke
 	assert d._chat_history[-1]["text"] in reply
 
 
+def test_chat_router_survives_prose_before_json_achado_ao_vivo(dialog_class, monkeypatch):
+	"""Achado ao vivo (2026-09-29, teste real via Ollama Cloud, modo Alto): o
+	modelo respondeu com prosa em portugues ANTES do objeto JSON estruturado
+	(Ollama Cloud nao garante structured output estrito, ver
+	ai/ollama_client.py) -- json.loads cru rejeitava a resposta inteira com
+	"Expecting value: line 1 column 1", descartando uma decisao real e valida
+	e caindo na pergunta generica de fallback. Agora _process_chat_message usa
+	extract_json_object (tolerante a prosa/crases em torno do JSON) e aciona o
+	pipeline normalmente."""
+	d = object.__new__(dialog_class)
+	d._loaded_addon_context = None
+	d._chat_history = [{"role": "user", "text": "continue corrigindo"}]
+	d._get_quick_chat_model = MagicMock(return_value="modelo")
+	d._chat_finish = MagicMock()
+	d._package_after_current_build = False
+	d._trigger_creation_pipeline = MagicMock()
+	globals_ = dialog_class._process_chat_message.__globals__
+	monkeypatch.setitem(globals_, "create_llm_client", MagicMock())
+	monkeypatch.setattr(
+		globals_["trajectory_compressor"],
+		"compress",
+		lambda *_args, **_kwargs: ([], SimpleNamespace(was_compressed=False)),
+	)
+	resposta_real = (
+		"Vou continuar a correcao do GeminiTranscriber, adicionando os "
+		"comentarios que faltam.\n\n"
+		'{"action": "run_pipeline", "message": "Vou continuar a correcao.", '
+		'"task_specification": "corrigir os problemas restantes", '
+		'"package_requested": false, "task_complexity": "high", '
+		'"routing_preference": "balanced", "required_model_capabilities": []}'
+	)
+	monkeypatch.setitem(
+		globals_, "call_with_structured_output",
+		MagicMock(return_value=SimpleNamespace(content=resposta_real)),
+	)
+
+	d._process_chat_message("continue corrigindo")
+
+	reply = d._chat_finish.call_args.args[0]
+	assert "exemplo simples" not in reply
+	d._trigger_creation_pipeline.assert_called_once_with("corrigir os problemas restantes")
+
+
 def test_iteration_copies_original_and_preserves_binary_assets(tmp_path):
 	(tmp_path / "manifest.ini").write_text("name = x", encoding="utf-8")
 	(tmp_path / "icon.png").write_bytes(b"\x89PNG")

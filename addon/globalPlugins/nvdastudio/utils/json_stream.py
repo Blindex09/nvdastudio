@@ -5,9 +5,11 @@ A resposta estruturada do chat traz a fala para o usuário dentro de um campo
 a fala engole tudo de uma vez; este leitor entrega o texto decodificado do campo
 assim que cada fragmento chega, sem interpretar o conteúdo.
 """
+import json
+import re
 from typing import Callable
 
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
 
 _SIMPLE_ESCAPES = {'"': '"', "\\": "\\", "/": "/", "b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t"}
 _HIGH_SURROGATES = range(0xD800, 0xDC00)
@@ -109,3 +111,57 @@ class JsonFieldStreamer:
 			value = 0x10000 + ((self._high_surrogate - 0xD800) << 10) + (value - 0xDC00)
 		self._high_surrogate = 0
 		return chr(value)
+
+
+def extract_json_object(text: str) -> dict:
+	"""Interpreta o objeto JSON de uma resposta de LLM que pode nao vir estrita.
+
+	Achado ao vivo (2026-09-29, teste real via Ollama Cloud): providers sem
+	structured output garantido (o proprio ai/ollama_client.py documenta que
+	"Ollama Cloud nao suporta ... structured output real") por vezes cercam o
+	JSON com crases de markdown ou deixam prosa antes/depois -- json.loads cru
+	falhava com "Expecting value: line 1 column 1" mesmo com uma resposta boa
+	e completa (confirmado: JsonFieldStreamer.feed extraiu o campo "message"
+	corretamente da MESMA resposta que json.loads() rejeitava). Tenta, em
+	ordem: JSON puro; sem cercas de markdown; do primeiro '{' ao ultimo '}'
+	(com fechamento incremental se sobrar "Extra data" depois do objeto).
+	Repete a logica ja provada em ai/clarifier.py::_extract_json_fallback,
+	agora compartilhada -- nao uma heuristica nova.
+	"""
+	raw = (text or "").strip()
+	if not raw:
+		raise json.JSONDecodeError("texto vazio", raw, 0)
+	try:
+		return json.loads(raw)
+	except json.JSONDecodeError:
+		pass
+
+	clean = re.sub(r"^```(?:json)?\n?", "", raw)
+	clean = re.sub(r"\n?```$", "", clean).strip()
+	if clean != raw:
+		try:
+			return json.loads(clean)
+		except json.JSONDecodeError:
+			pass
+
+	start = clean.find("{")
+	if start == -1:
+		raise json.JSONDecodeError("sem { encontrado", clean, 0)
+	end = clean.rfind("}")
+	if end == -1 or start >= end:
+		raise json.JSONDecodeError("sem } encontrado", clean, 0)
+	candidate = clean[start:end + 1]
+	try:
+		return json.loads(candidate)
+	except json.JSONDecodeError as exc:
+		if "Extra data" not in str(exc):
+			raise
+		depth = 0
+		for i, ch in enumerate(candidate):
+			if ch == "{":
+				depth += 1
+			elif ch == "}":
+				depth -= 1
+				if depth == 0:
+					return json.loads(candidate[:i + 1])
+		raise

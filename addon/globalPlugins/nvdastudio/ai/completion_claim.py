@@ -12,12 +12,11 @@ classificador) já cobre o essencial, então perder só a nota extra é seguro.
 """
 from __future__ import annotations
 
-import json
-
 from ..utils.injection_guard import sanitize_untrusted_block
+from ..utils.json_stream import extract_json_object
 from ..utils.logger import get_logger
 
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
 _logger = get_logger("completion_claim")
 
 # Texto trivial (ex.: "Ok.", "Lendo o manifesto.") não vale o custo de
@@ -64,7 +63,7 @@ def claims_completion(text: str) -> bool:
 		resp = call_with_structured_output(
 			prompt, _SCHEMA, system_override=_SYSTEM, step_type="completion_claim",
 		)
-		data = json.loads(resp.content or "{}")
+		data = extract_json_object(resp.content or "{}")
 		return bool(data.get("claims_completion", False))
 	except Exception as exc:
 		_logger.debug("[DEBUG] classificador de alegacao de conclusao indisponivel: %s", exc)

@@ -20,6 +20,7 @@ from datetime import datetime
 from html.parser import HTMLParser
 
 from ..utils.hidden_process import CREATE_NO_WINDOW
+from ..utils.json_stream import extract_json_object
 from ..utils.logger import get_logger, log_decision
 from ..ai.llm_factory import create_llm_client
 from ..utils.project_policy import (
@@ -36,7 +37,7 @@ try:
 except ImportError:
 	_session_memory_mem = None  # type: ignore[assignment]
 
-MODULE_VERSION = "4.28.0"
+MODULE_VERSION = "4.29.0"
 
 # NVDA 2026.1+ is built with CPython 3.13 for 64-bit Windows.  Dependency
 # wheels must target that runtime, not the Python interpreter used to run
@@ -956,7 +957,7 @@ def _resolve_pip_names(
 			),
 			response_format={"type": "json_object"},
 		)
-		data = json.loads(resp.content or "{}")
+		data = extract_json_object(resp.content or "{}")
 		resolved = data.get("resolved", {})
 		for orig in names:
 			pip_name = (resolved.get(orig) or "").strip()

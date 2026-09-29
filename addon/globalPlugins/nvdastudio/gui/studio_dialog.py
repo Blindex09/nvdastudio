@@ -46,10 +46,10 @@ from ..builder.addon_loader import (
 from ..builder.trajectory_compressor import compressor as trajectory_compressor
 from ..memory.session_memory import memory, resolver_dir_do_banco
 from ..builder.nvda_context import PROMPT_VERSION, NVDA_ADDON_CHAT_SYSTEM_LITE as NVDA_ADDON_CHAT_SYSTEM
-from ..utils.json_stream import JsonFieldStreamer
+from ..utils.json_stream import JsonFieldStreamer, extract_json_object
 from ..utils.logger import get_logger, log_decision
 from ..utils.user_visible_text import sanitize_user_visible_text, summarize_generation_error
-MODULE_VERSION = "6.2.0"
+MODULE_VERSION = "6.3.0"
 
 # Janela curta (nao unicidade global): uma frase legitima pode reaparecer
 # muito depois numa sessao longa -- so o eco PROXIMO, das retentativas de um
@@ -652,8 +652,7 @@ class NVDAStudioDialog(wx.Dialog):
 				system_override=system_prompt,
 				response_format={"type": "json_object"},
 			)
-			content = (resp.content or "").strip()
-			data = json.loads(content)
+			data = extract_json_object(resp.content or "")
 			parsed = data.get("answers", [])
 			if isinstance(parsed, list):
 				for i in range(min(len(parsed), len(answers))):
@@ -907,7 +906,7 @@ class NVDAStudioDialog(wx.Dialog):
 				on_chunk=streamer.feed,
 				on_failover=_restart_stream,
 			)
-			payload = json.loads(resp.content or "")
+			payload = extract_json_object(resp.content or "")
 			action = payload["action"]
 			message = sanitize_user_visible_text(payload["message"])
 			task_specification = str(payload["task_specification"] or "").strip()
@@ -1484,8 +1483,7 @@ class NVDAStudioDialog(wx.Dialog):
 				response_schema,
 				system_override=system_prompt,
 			)
-			content = (resp.content or "").strip()
-			data = json.loads(content)
+			data = extract_json_object(resp.content or "")
 			parsed_intent = data.get("intent", "modify")
 			intent = parsed_intent if parsed_intent in {"package", "modify"} else "modify"
 			package_after_modification = bool(data.get("package_after_modification", False))

@@ -1,12 +1,12 @@
 import json
-import re
 from dataclasses import dataclass, field
 
 from .llm_factory import call_with_structured_output
 from .model_router import RoutingHints
+from ..utils.json_stream import extract_json_object
 from ..utils.logger import get_logger, log_llm_call, log_llm_response, log_decision
 
-MODULE_VERSION = "2.2.0"
+MODULE_VERSION = "2.3.0"
 _logger = get_logger("clarifier")
 
 SAFE_CLARIFICATION_QUESTION = (
@@ -245,71 +245,16 @@ def analyze_query(query: str) -> ClarificationResult:
 		if not raw.strip():
 			return _safe_clarification_fallback("a API retornou conteúdo vazio")
 
-		clean = raw.strip()
-		clean = re.sub(r"^```(?:json)?\n?", "", clean)
-		clean = re.sub(r"\n?```$", "", clean)
-
-		if not clean.strip():
-			return _safe_clarification_fallback("a resposta ficou vazia após a limpeza")
-
-		data = json.loads(clean)
+		data = extract_json_object(raw)
 		return _parse_clarifier_json(data)
 
-	except json.JSONDecodeError:
-		_logger.info("[INFO] Clarifier: JSON invalido. Tentando extrair objeto do texto...")
-		try:
-			data = _extract_json_fallback(raw)
-			return _parse_clarifier_json(data)
-		except (json.JSONDecodeError, KeyError) as exc2:
-			return _safe_clarification_fallback(f"resposta inválida: {exc2}")
+	except json.JSONDecodeError as exc:
+		return _safe_clarification_fallback(f"resposta inválida: {exc}")
 	except Exception as exc:
 		# Um erro de API nunca é decisão semântica: só a IA, pelo schema, declara
 		# "forbidden". Indisponibilidade ou HTTP 400 por outro motivo (schema,
 		# contexto grande) viram uma pergunta segura, não recusa ao usuário.
 		return _safe_clarification_fallback(f"falha na API: {exc}")
-
-
-def _extract_json_fallback(text: str) -> dict:
-	"""Tenta extrair o primeiro objeto JSON completo do texto.
-
-	v1.5.2 (2026-05-11): corrige 'Extra data' — modelo as vezes gera
-	JSON valido seguido de mais texto. Agora tenta parsear do primeiro {
-	ao ultimo } e, se falhar com Extra data, faz parse incremental
-	(fecha no primeiro objeto JSON completo).
-	"""
-	text = text.strip()
-	if not text:
-		raise json.JSONDecodeError("texto vazio", text, 0)
-
-	start = text.find("{")
-	if start == -1:
-		raise json.JSONDecodeError("sem { encontrado", text, 0)
-
-	# Tenta do primeiro { ao ultimo } (cobre JSON unico com nesting)
-	end = text.rfind("}")
-	if end != -1 and start < end:
-		candidate = text[start:end + 1]
-	else:
-		raise json.JSONDecodeError("sem } encontrado", text, 0)
-
-	# Se falhar com Extra data (texto apos o fechamento),
-	# tenta parse incremental: encontra o primeiro objeto completo
-	# contando nested braces.
-	try:
-		return json.loads(candidate)
-	except json.JSONDecodeError as e:
-		if "Extra data" not in str(e):
-			raise
-		depth = 0
-		for i, ch in enumerate(candidate):
-			if ch == "{":
-				depth += 1
-			elif ch == "}":
-				depth -= 1
-				if depth == 0:
-					obj = candidate[:i + 1]
-					return json.loads(obj)
-		raise
 
 
 def _parse_clarifier_json(data: dict) -> ClarificationResult:
