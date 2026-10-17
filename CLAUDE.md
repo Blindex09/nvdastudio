@@ -342,6 +342,18 @@ Engenharia de contexto (vale para todo módulo, toda interface e todo laço que 
   - Cada mudança de instrução fica registrada com a data, o motivo, o conjunto que rodou e o resultado, para provar a causa se algo
     piorar depois.
 
+- Decisões do dono de 17/out/2026 sobre aprovação, instalação, aprendizado e segurança:
+  - A aprovação é uma chave da pessoa. Desligada, o agente segue tudo sem pedir, inclusive ação irreversível; ligada, pede. Com ela ligada, a
+    aprovação vale para os argumentos exatos mostrados: se os argumentos mudam depois do sim, uma nova aprovação é pedida.
+  - Com a aprovação ligada, instalar software desconhecido (pacote, programa, servidor MCP, skill de terceiros) sempre pede aprovação, por
+    risco de cadeia de suprimento. Com ela desligada, segue.
+  - O aprendizado vindo de conteúdo não confiável também vale na hora, sem fila, mas com a origem marcada e a confiança reduzida, visível e
+    editável, e nunca vira instrução.
+  - A observabilidade segue as convenções do OpenTelemetry para IA generativa (execução do agente, chamada ao modelo e ferramenta como spans,
+    com modelo, ferramenta e tokens como atributos; argumentos e resultados só quando a política de privacidade permite, nunca com segredo).
+  - Risco das três pernas: um agente que reúne dados privados, conteúdo não confiável e um canal de saída externa é o desenho perigoso, e prompt
+    não resolve. Com a aprovação ligada, ele pede aprovação na saída; com ela desligada, segue. A defesa é de arquitetura.
+
 ### 16. Supervisão humana calibrada
 
 - Intervenção humana onde o risco é maior (ações irreversíveis, escopo ampliado, ambiguidade material) e fora do
@@ -528,10 +540,12 @@ Um agente é **modelo + harness**, dois papéis que nunca se invertem:
   contrato explícito antes de seguir adiante.
 - **Sintaxe e integridade de arquivo**: uma edição/gravação só é aceita se preservar a
   integridade sintática do que já existia.
-- **Proteção contra operação destrutiva e portão de aprovação**: qualquer ação irreversível
-  (apagar, sobrescrever, enviar, publicar, gastar) exige aprovação explícita antes de
-  executar — nunca só depois, nunca implícita. A configuração não pode desativar a aprovação
-  de ferramentas marcadas como irreversíveis.
+- **Proteção contra operação destrutiva e portão de aprovação**: com a aprovação ligada, qualquer ação irreversível
+  (apagar, sobrescrever, enviar, publicar, gastar) exige aprovação explícita antes de executar, nunca só depois e nunca
+  implícita, e a confirmação mostra tudo o que vai mudar. Com a aprovação desligada pela pessoa, o agente segue sem pedir,
+  inclusive nessas ações (decisão do dono em 17/out/2026). O que nunca entra na chave de aprovação: os limites do harness
+  (pasta de trabalho, validação de caminho e de comando) e a honestidade da plataforma (nunca enfraquecer a verificação
+  que acabou de reprovar o trabalho).
 - **Registro de evento e recuperação de falha**: toda decisão de permissão, erro e retry fica
   auditável; uma falha parcial deve poder ser retomada sem repetir trabalho já provado.
 - **Escalonamento para humano**: quando a ambiguidade for material ao resultado ou a ação for
