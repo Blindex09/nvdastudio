@@ -276,7 +276,7 @@ Engenharia de contexto (vale para todo módulo, toda interface e todo laço que 
   concluído quando: o que ele promete foi testado de verdade, ao vivo, na interface real; todo defeito achado foi
   corrigido com teste de regressão ou ficou registrado como pendência explícita; existe um README do módulo em
   `docs/modules/` explicando tudo o que ele entrega, o que foi medido, o que foi corrigido e o que ainda não está
-  provado; a suíte e o lint passam; e o trabalho foi commitado. Pendência que depende de decisão da pessoa é
+  provado; a suíte e o lint passam; o conjunto de regressão do módulo passa em tentativas repetidas e o auditor de invariantes não aponta nada (ver "Confiança medida", abaixo); e o trabalho foi commitado. Pendência que depende de decisão da pessoa é
   perguntada e registrada antes de seguir. Nunca passar ao módulo seguinte com o anterior em aberto.
 - Vale para todo provedor de IA, sem tratamento especial para nenhum: cada provedor passa pelos mesmos módulos e pelas mesmas
   regras deste arquivo, e um módulo só está concluído PARA UM PROVEDOR quando foi testado ao vivo, na interface real, naquele
@@ -309,6 +309,26 @@ Engenharia de contexto (vale para todo módulo, toda interface e todo laço que 
     contrário, e é corrigido com causa provada (regra 17) e teste de regressão antes de seguir.
   - A rodada conjunta compara com a última boa e aponta qual módulo piorou. Teste verde sozinho não basta (regra 11): o
     relatório diz o que rodou, o que foi verificado, o que falhou e o que não pôde ser testado.
+
+- Confiança medida, nunca presumida. Para cobrir os cenários sem depender só de teste ao vivo, vale em todos os módulos, modelos e
+  interfaces:
+  - Invariantes verificados em toda execução. Todo registro de execução, real ou de teste, é conferido por um verificador de código
+    contra propriedades que valem sempre: nenhuma execução termina sem resposta final; nenhuma chave, segredo ou nome interno aparece
+    na conversa nem nos registros; nenhum laço fica sem fim; nenhuma aprovação fica pendente sem um diálogo visível para a pessoa; um
+    status de concluído só existe com evidência; o gasto de uma tarefa fica na ordem de grandeza do caso. Todo defeito novo, de qualquer
+    rodada, vira uma propriedade nesse verificador.
+  - Falha real vira caso permanente, barato e determinístico. Além do teste de regressão da regra 12, a trajetória que causou o defeito
+    é reproduzida com o provedor roteirizado, sem gastar crédito, e roda a cada mudança. O teste ao vivo só confirma, nunca é o único
+    jeito de achar um problema.
+  - Taxa em tentativas repetidas, não um verde. O critério de um fluxo ao vivo que depende do modelo é uma taxa em várias tentativas
+    (por exemplo, todas as três a cinco passam), e não uma execução única: uma execução que passou é evidência fraca e uma que falhou
+    não prova regressão. O relatório mostra a taxa e separa intermitência do modelo de regressão do código, e quem confere é uma
+    leitura de amostras das execuções, para saber se a falha é do agente ou do avaliador.
+  - Promessa e prova. Cada frase de "o que o módulo entrega", na documentação do módulo, aponta o teste que a cobre. Frase sem teste
+    aparece como lacuna declarada, nunca como suposição.
+  - Confiança dita com limite. A entrega diz o que foi medido, com a taxa, e o que não foi medido (outros provedores, caminhos não
+    testados, o que ninguém previu). "Tudo funciona" só vale dentro desse recorte, e o monitoramento das execuções reais continua depois
+    da entrega.
 
 ### 16. Supervisão humana calibrada
 
@@ -362,7 +382,7 @@ fixo de trabalho (regra 8).
 - Observabilidade: registro estruturado de cada decisão, chamada ao modelo, ferramenta, handoff, guardrail e
   aprovação, com custo e tokens por tipo de chamada (regra 9) e sem segredo no registro. Toda trajetória pode ser
   reproduzida (replay) para provar a causa de uma falha (regra 17).
-- Evals como portão de entrega: conjunto dourado alimentado por falha real; avaliação da trajetória, não só do
+- Evals como portão de entrega: conjunto dourado alimentado por falha real, de forma automática (todo achado do auditor de invariantes e todo defeito corrigido vira caso permanente, regra 15); avaliação da trajetória, não só do
   resultado; várias execuções com estatística (uma execução não é evidência); testes adversariais; avaliação offline e
   online; detecção de deriva de desempenho. Falha real vira caso permanente (regra 12).
 - Roteamento por camada e custo (regra 9): camada rápida e camada alta, cascata, failover entre provedores e
