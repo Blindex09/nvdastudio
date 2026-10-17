@@ -330,6 +330,18 @@ Engenharia de contexto (vale para todo módulo, toda interface e todo laço que 
     testados, o que ninguém previu). "Tudo funciona" só vale dentro desse recorte, e o monitoramento das execuções reais continua depois
     da entrega.
 
+- Mudança numa instrução ao modelo é mudança de comportamento do sistema e tem portão. Vale para qualquer texto que o modelo recebe
+  (instrução de sistema, descrição de ferramenta, diretriz de narração, prompt do roteador, do juiz ou do revisor):
+  - Antes de entrar, roda-se o conjunto amplo de avaliações do módulo, em tentativas repetidas, e não só o caso que motivou a mudança.
+    Uma instrução que corrige um caso pode piorar outro, e isso só aparece no conjunto amplo (visto na prática por quem faz isso melhor:
+    uma mudança de instrução passou semanas de teste interno e só uma avaliação mais ampla mostrou a queda).
+  - A mudança entra isolada e, quando possível, com ablação: liga e desliga a frase nova e compara a taxa. Fica declarado para qual modelo
+    ou provedor ela vale; o que foi pensado para um modelo não vale para os outros sem prova.
+  - Depois de entrar, há um período de observação sobre as execuções reais: os invariantes e a taxa de cada fluxo são comparados com os de
+    antes, e a mudança é desfeita se algo piorar.
+  - Cada mudança de instrução fica registrada com a data, o motivo, o conjunto que rodou e o resultado, para provar a causa se algo
+    piorar depois.
+
 ### 16. Supervisão humana calibrada
 
 - Intervenção humana onde o risco é maior (ações irreversíveis, escopo ampliado, ambiguidade material) e fora do
