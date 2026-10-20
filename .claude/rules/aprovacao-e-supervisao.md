@@ -36,3 +36,4 @@ paths:
 - Com a aprovação ligada, instalar software desconhecido (pacote, programa, servidor MCP, skill de terceiros) sempre pede aprovação, por risco de
   cadeia de suprimento. Com ela desligada, segue.
 - Decisão de 20/out/2026: com a aprovação desligada, o agente apaga, move e altera onde a pessoa pedir, também fora da pasta de trabalho. Com ela ligada, ação fora da pasta pede aprovação com o caminho exato. Um pedido de aprovação que a IA de governança levanta sobre algo que a pessoa acabou de pedir continua sendo perguntado quando a aprovação está ligada (a pergunta mostra tudo o que vai mudar).
+- Confirmado pelo dono em 20/out/2026: com a aprovação ligada, ação fora da pasta de trabalho pede aprovação; só com a aprovação desligada ela não pede. Vale nos dois chats do Agentic e nos outros dois projetos.
