@@ -71,6 +71,15 @@ NVDAStudio: ao mudá-la num, muda-se nos outros dois na mesma entrega.
     evals como portão, com tentativas repetidas e casos vindos de falha real; roteamento por camada e custo; computador e navegador só em
     sandbox; harness revisado a cada geração de modelo; matriz de cobertura viva rodada antes de dar uma mudança por pronta. Contra o risco das três pernas, com a aprovação ligada o agente que reúne dados privados, conteúdo não confiável e saída externa pede aprovação na saída. (rules/conceitos-agenticos-2026.md)
 
+## Perguntas ao dono por cenário de uso (regra 19)
+
+19. Durante o desenvolvimento, a IA que desenvolve (qualquer uma, em qualquer ferramenta) faz perguntas ao dono em linguagem simples, como cenários
+    reais de uso: o que a pessoa faz, o que vê e ouve na tela e o que acontece nos bastidores, tiradas do CLAUDE.md e do `.claude`. Duas razões:
+    não esquecer nenhuma regra (cada cenário confere uma regra escrita com o que o dono espera hoje) e aprender como o dono usa o projeto, para
+    atender o fluxo real. Sem teto de perguntas: a IA decide quantas e quando, pelo tamanho e pelo risco do que está fazendo, no meio do trabalho e
+    a cada módulo ou mudança de fluxo. A resposta que contradiz o texto vira atualização das regras nos três projetos na mesma entrega.
+    (rules/evidencia-e-processo.md)
+
 ## Regras deste projeto (NVDAStudio)
 
 - Nenhum nicho declarado: o NVDAStudio cria, corrige, testa e empacota addons do leitor de telas NVDA por conversa, no computador de uma pessoa.

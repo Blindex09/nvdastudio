@@ -6,7 +6,7 @@ paths:
   - "docs/**"
 ---
 
-# Evidência, engenharia, processo de trabalho, causa raiz e conclusão (regras 11, 12, 15 e 17)
+# Evidência, engenharia, processo de trabalho, causa raiz e conclusão (regras 11, 12, 15, 17 e 19)
 
 > Texto integral, sem mudança. Inclui módulo concluído protegido, confiança medida e o portão de mudança de instrução.
 
@@ -119,6 +119,24 @@ paths:
   a entrega diz que a causa NÃO está provada. Nunca se declara resolvido o que só foi contornado.
 - A mesma classe de falha ganha também a defesa contra a recorrência (teste de regressão, verificação ou alerta), para
   não depender de alguém lembrar.
+
+### 19. Perguntas ao dono por cenário de uso
+
+- Valem para qualquer IA que desenvolva estes projetos, em qualquer ferramenta, e acontecem durante o desenvolvimento, não só no começo: no meio de
+  um módulo, quando uma mudança altera o fluxo de quem usa, quando uma regra parece não bater com o que o dono quer, e ao fechar cada módulo.
+- Duas razões. A primeira é não esquecer: cada pergunta confere uma regra escrita (do CLAUDE.md e do `.claude`) com o que o dono espera hoje,
+  porque regra longa se perde e uma regra contradita em silêncio vira defeito. A segunda é aprender como o dono usa o projeto: o roteiro real de
+  quem usa, o que importa para essa pessoa, o que ainda não está escrito em lugar nenhum. O que se aprende entra nas regras.
+- A pergunta é um cenário de uso, em linguagem simples e de UX: o que a pessoa faz, o que vê e ouve na tela (leitor de tela e só teclado incluídos)
+  e o que acontece nos bastidores (aprovação, limite de pasta, crédito do provedor, falha, cancelamento). Cada pergunta traz opções, a recomendada
+  primeiro, e diz o que muda em cada uma. Pergunta que o dono não entendeu é refeita com exemplo, nunca insistida com as mesmas palavras.
+- Sem teto fixo de perguntas e sem lista fixa: a IA decide quantas e quais, pelo tamanho e pelo risco do que está fazendo (mais perguntas onde a
+  decisão é irreversível, de segurança ou de experiência de uso). Agrupa as perguntas e não pergunta o que o código ou as regras já respondem
+  (regra 5). Quando o cenário toca o projeto vizinho (Agentic, Qaaccessibility, NVDAStudio), pergunta também o que for diferente nele.
+- A resposta é registrada com data como decisão do dono: se contradiz o texto, as regras dos três projetos mudam na mesma entrega (o bloco comum
+  é igual nos três) e o que o código ainda não obedece vira pendência com o item nomeado; se confirma o texto, nada muda e a confirmação conta
+  como prova de que a regra está clara. Uma resposta que enfraquece uma proteção é executada, mas o risco é dito uma vez, com franqueza.
+- Pergunta não substitui teste: a decisão do dono diz o que deve acontecer; que acontece de verdade continua sendo provado (regra 11).
 
 ## Antes de declarar qualquer implementação concluída
 
