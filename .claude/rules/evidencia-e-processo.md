@@ -140,6 +140,10 @@ paths:
   o roteiro ao vivo, pergunta como a pessoa usaria aquela fatia (o caminho real, na tela e nos bastidores), para o roteiro refletir o uso e não só o
   que o código promete; depois de rodar, conta o que aconteceu como cenário (o que a pessoa viu e ouviu, o que fez o sistema) e pergunta se era o esperado.
   A resposta ajusta o roteiro, as regras ou a pendência, e fica registrada com data como as demais.
+- A pergunta nasce de uma varredura do software, feita antes pela própria IA, nos bastidores (código, registros, configuração, o que cada módulo
+  promete) e na interface (o que a tela mostra, o que o leitor de tela fala, o que se alcança só com o teclado). Pergunta-se para confirmar o
+  que a varredura achou ou quando a dúvida continua depois dela; quem pergunta já olhou o que o código e a tela fazem hoje e diz o que viu, para a
+  pessoa decidir com o fato à frente e não no escuro. Isto vale a cada passo do desenvolvimento e do E2E.
 - Pergunta não substitui teste: a decisão do dono diz o que deve acontecer; que acontece de verdade continua sendo provado (regra 11).
 
 ## Antes de declarar qualquer implementação concluída
