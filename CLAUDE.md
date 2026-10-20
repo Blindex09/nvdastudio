@@ -77,8 +77,9 @@ NVDAStudio: ao mudá-la num, muda-se nos outros dois na mesma entrega.
     reais de uso: o que a pessoa faz, o que vê e ouve na tela e o que acontece nos bastidores, tiradas do CLAUDE.md e do `.claude`. Duas razões:
     não esquecer nenhuma regra (cada cenário confere uma regra escrita com o que o dono espera hoje) e aprender como o dono usa o projeto, para
     atender o fluxo real. Sem teto de perguntas: a IA decide quantas e quando, pelo tamanho e pelo risco do que está fazendo, no meio do trabalho e
-    a cada módulo ou mudança de fluxo. A resposta que contradiz o texto vira atualização das regras nos três projetos na mesma entrega.
-    (rules/evidencia-e-processo.md)
+    a cada módulo ou mudança de fluxo. A resposta que contradiz o texto vira atualização das regras nos três projetos na mesma entrega. Vale também na parte ao vivo (E2E): antes de
+    montar o roteiro ao vivo de um módulo, a IA pergunta como a pessoa usaria aquela fatia, e depois de rodar mostra o que aconteceu em cenário e
+    pergunta se era o esperado, para acompanhar cada módulo e cada parte. (rules/evidencia-e-processo.md)
 
 ## Regras deste projeto (NVDAStudio)
 

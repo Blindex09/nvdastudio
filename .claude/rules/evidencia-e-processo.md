@@ -136,6 +136,10 @@ paths:
 - A resposta é registrada com data como decisão do dono: se contradiz o texto, as regras dos três projetos mudam na mesma entrega (o bloco comum
   é igual nos três) e o que o código ainda não obedece vira pendência com o item nomeado; se confirma o texto, nada muda e a confirmação conta
   como prova de que a regra está clara. Uma resposta que enfraquece uma proteção é executada, mas o risco é dito uma vez, com franqueza.
+- Na parte ao vivo (E2E) as perguntas também acontecem, onde a IA achar necessário, para acompanhar cada módulo e cada fatia do software: antes de montar
+  o roteiro ao vivo, pergunta como a pessoa usaria aquela fatia (o caminho real, na tela e nos bastidores), para o roteiro refletir o uso e não só o
+  que o código promete; depois de rodar, conta o que aconteceu como cenário (o que a pessoa viu e ouviu, o que fez o sistema) e pergunta se era o esperado.
+  A resposta ajusta o roteiro, as regras ou a pendência, e fica registrada com data como as demais.
 - Pergunta não substitui teste: a decisão do dono diz o que deve acontecer; que acontece de verdade continua sendo provado (regra 11).
 
 ## Antes de declarar qualquer implementação concluída
