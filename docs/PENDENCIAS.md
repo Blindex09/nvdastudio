@@ -9,3 +9,4 @@ As regras estão em `.claude/rules/projeto-nvdastudio.md`. Falta o código, cada
 3. Linha de status com provedor e modelo no modo Studio, lida com as setas, nunca falada sozinha.
 4. Tirar o teto de tokens por construção e as rodadas de correção calculadas (regra 8), já registrados como dívida.
 5. Instalar no NVDA da pessoa segue a chave de aprovação; só a mensagem final falada sozinha.
+6. Autonomia do agente (decisão do dono, 21/out/2026, a mesma do Agentic): conferir cada laço, repetição e correção do pipeline de IA deste projeto contra a ordem escrita em `.claude/rules/projeto-nvdastudio.md` (fato ao modelo, raciocínio sobe, o modelo muda de caminho, só por último a rede de segurança). Onde o código encerra ou dita a estratégia antes disso, corrigir com teste. No Agentic isto já foi feito para o laço de ferramentas (commit 45d529e).

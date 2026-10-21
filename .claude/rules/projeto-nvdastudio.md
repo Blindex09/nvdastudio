@@ -84,3 +84,10 @@ dívida a remover, e a entrega com ressalvas descrita acima continua valendo.
 - Enquanto o assistente trabalha, a pessoa continua usando o computador e o NVDA normalmente: a janela do assistente nunca trava o NVDA nem o resto; só a mensagem final é falada sozinha.
 - Instalar o addon criado no NVDA da pessoa segue só a chave de aprovação, sem outra rede de segurança (decisão do dono); o risco de um addon com defeito impedir o NVDA de abrir foi dito e aceito.
 - No modo Studio, uma linha de status com o provedor e o modelo que estão trabalhando fica visível, lida com as setas e nunca falada sozinha; muda se o roteador trocar.
+
+## Decisão do dono de 21/out/2026: o agente é autônomo (a mesma do Agentic)
+
+- O agente de IA deste projeto é livre quanto à estratégia: se ajusta sozinho, aprende com os erros e se corrige, resolve os laços e os erros por dentro e fica cada vez mais estratégico e independente. O dono já repetiu isto muitas vezes: está escrito aqui e no `CLAUDE.md`.
+- Ordem diante de um laço ou de um erro, sempre nesta ordem: (1) o harness informa ao modelo apenas o fato (o que se repetiu e que nada de novo veio), sem dizer o que fazer; (2) o raciocínio sobe e o roteador leva a chamada para a camada mais forte; (3) o modelo muda de caminho por conta própria e aprende com o erro; (4) só se nada mudou depois disso, a rede de segurança da regra 8 encerra com entrega parcial honesta. O encerramento é o último recurso, deve ser muito raro, e cada vez que acontece é um sintoma a investigar.
+- Nenhum determinismo dita estratégia (regras 1 e 2): nem texto pronto dizendo ao modelo o que fazer, nem lista de passos. Todo laço novo nasce com um teste em que o laço se resolve sozinho antes de ser encerrado e outro em que a IA diz sempre "siga" e ele ainda assim termina.
+- O código deste projeto ainda não obedece em tudo: conferir o que cada laço faz hoje e registrar a diferença como pendência com o item nomeado, em `docs/PENDENCIAS.md`.
