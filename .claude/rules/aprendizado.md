@@ -35,5 +35,5 @@ paths:
 
 ## Decisões do dono de 20/out/2026 sobre o que a pessoa vê do aprendizado
 
-- O diálogo de memória mostra, adiciona e remove só o que a própria pessoa escreveu; o que o agente aprende sozinho nunca aparece nele (continua gravado por dentro, com a origem).
+- Não existe tela nem painel de memória em nenhum dos três projetos (o diálogo "Adicionar memória" do Agentic e o painel de memória do Qaaccessibility saem). A pessoa pede por conversa ("lembre disso", "esqueça aquilo"); o que o sistema aprende sozinho continua gravado por dentro, com a origem. Isto troca o que foi dito antes no mesmo dia.
 - Habilidade vinda da internet segue a chave de aprovação: com a aprovação ligada, fica aguardando a decisão da pessoa; desligada, entra sozinha, sem fila e sem aviso.

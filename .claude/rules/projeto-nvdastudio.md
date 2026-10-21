@@ -77,3 +77,10 @@ gera).
 
 Pelas decisões de 20/out/2026, o `correction_rounds` por complexidade e o orçamento de tokens derivado de `max_turns` (`_token_budget()`) são
 dívida a remover, e a entrega com ressalvas descrita acima continua valendo.
+
+## Decisões do dono de 20/out/2026 para este projeto
+
+- A chave de API de cada provedor fica no cofre de credenciais do Windows, nunca em texto simples no arquivo de configuração do NVDA.
+- Enquanto o assistente trabalha, a pessoa continua usando o computador e o NVDA normalmente: a janela do assistente nunca trava o NVDA nem o resto; só a mensagem final é falada sozinha.
+- Instalar o addon criado no NVDA da pessoa segue só a chave de aprovação, sem outra rede de segurança (decisão do dono); o risco de um addon com defeito impedir o NVDA de abrir foi dito e aceito.
+- No modo Studio, uma linha de status com o provedor e o modelo que estão trabalhando fica visível, lida com as setas e nunca falada sozinha; muda se o roteador trocar.
