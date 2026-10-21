@@ -32,3 +32,8 @@ paths:
 - O aprendizado é silencioso: não avisa na conversa e não há tela de memória para a pessoa ver ou apagar. A origem e a confiança reduzida do que
   veio de fora continuam gravadas por dentro (no registro técnico), para proteger contra envenenamento de memória. Isto troca a parte "visível e
   editável" da decisão de 17/out/2026.
+
+## Decisões do dono de 20/out/2026 sobre o que a pessoa vê do aprendizado
+
+- O diálogo de memória mostra, adiciona e remove só o que a própria pessoa escreveu; o que o agente aprende sozinho nunca aparece nele (continua gravado por dentro, com a origem).
+- Habilidade vinda da internet segue a chave de aprovação: com a aprovação ligada, fica aguardando a decisão da pessoa; desligada, entra sozinha, sem fila e sem aviso.
