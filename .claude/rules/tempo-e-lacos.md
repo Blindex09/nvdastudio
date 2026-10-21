@@ -59,3 +59,5 @@ paths:
     laço: as rodadas ao vivo registram o gasto de cada tarefa e o relatório destaca o que fugiu do normal. Esse sinal abre a
     investigação de causa (regra 17); parar a rodada para não gastar mais é permitido, desde que a evidência seja preservada
     antes.
+
+- Laço dentro de laço (achado de 20/out/2026): quando o laço de dentro termina porque estava preso (a IA mandou encerrar, ou a proteção contra repetição do harness encerrou), esse desfecho é um fato que sobe para o laço de fora, e o mesmo desfecho voltando pela segunda vez seguida encerra o laço de fora com o que já está provado. Sem isso, "encerrar" acabava só a volta de dentro e o laço de fora recomeçava outra, sete vezes seguidas. O revisor reescrever a objeção a cada volta não reinicia essa contagem. Todo laço de fora que chama um laço de dentro herda esta regra, e nasce com um teste em que o de dentro termina sempre preso e o revisor sempre pede algo diferente.
