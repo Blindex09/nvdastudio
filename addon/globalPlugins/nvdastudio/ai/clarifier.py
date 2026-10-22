@@ -117,8 +117,7 @@ _CLARIFIER_SYSTEM = (
 	'  "package_requested": false,\n'
 	'  "questions": ["pergunta 1"],\n'
 	'  "forbidden": false,\n'
-	'  "refusal_reason": "",\n'
-	'  "extra_features_planned": []\n'
+	'  "refusal_reason": ""\n'
 	'}\n'
 	'\n'
 	'TIPOS DE INTENT:\n'
@@ -139,8 +138,8 @@ _CLARIFIER_SYSTEM = (
 	'- Coletaria dados do usuario sem seu conhecimento ou ativacao explicita.\n'
 	'- Modificaria comportamento CORE do NVDA de forma perigosa.\n'
 	'\n'
-	'extra_features_planned - funcionalidades NAO pedidas que a IA adicionaria.\n'
-	'Se houver, gere UMA pergunta de confirmacao em questions.\n'
+	'Se a implementacao exigiria funcionalidades NAO pedidas pelo usuario, gere '
+	'UMA pergunta de confirmacao em questions antes de seguir.\n'
 	'\n'
 	'DETECCAO DE NIVEL:\n'
 	'- iniciante: linguagem simples, sem termos tecnicos\n'
@@ -177,7 +176,6 @@ class ClarificationResult:
 	user_level: str = "intermediario"
 	forbidden: bool = False
 	refusal_reason: str = ""
-	extra_features_planned: list[str] = field(default_factory=list)
 	intent: str = "create"           # create | iterate | surgical_edit | chat | forbidden
 	surgical_description: str = ""   # instrucao deterministica para surgical_edit
 	addon_architecture: str = "external"  # external | driver | deep_integration | ambiguous
@@ -227,7 +225,6 @@ def analyze_query(query: str) -> ClarificationResult:
 						"questions":                {"type": "array", "items": {"type": "string"}},
 						"forbidden":                {"type": "boolean"},
 						"refusal_reason":           {"type": "string"},
-						"extra_features_planned":   {"type": "array", "items": {"type": "string"}},
 					},
 					"required": ["intent", "addon_architecture", "needs_clarification", "user_level", "task_complexity", "routing_preference", "required_model_capabilities", "package_requested", "forbidden"],
 					"additionalProperties": False,
@@ -296,7 +293,6 @@ def _parse_clarifier_json(data: dict) -> ClarificationResult:
 		for capability in data.get("required_model_capabilities", [])
 		if str(capability).lower() in {"vision", "audio", "video"}
 	]
-	extra_features = [str(e) for e in data.get("extra_features_planned", []) if e]
 	package_requested = bool(data.get("package_requested", False))
 
 	log_decision(_logger, "intent_detectado",
@@ -324,7 +320,6 @@ def _parse_clarifier_json(data: dict) -> ClarificationResult:
 		return ClarificationResult(
 			needs_clarification=True, questions=questions,
 			user_level=user_level, intent=intent,
-			extra_features_planned=extra_features,
 			addon_architecture=addon_architecture,
 			task_complexity=task_complexity,
 			routing_preference=routing_preference,
@@ -337,7 +332,6 @@ def _parse_clarifier_json(data: dict) -> ClarificationResult:
 	return ClarificationResult(
 		needs_clarification=False, questions=[],
 		user_level=user_level, intent=intent,
-		extra_features_planned=extra_features,
 		addon_architecture=addon_architecture,
 		task_complexity=task_complexity,
 		routing_preference=routing_preference,
