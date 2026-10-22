@@ -37,3 +37,7 @@ paths:
 
 - Não existe tela nem painel de memória em nenhum dos três projetos (o diálogo "Adicionar memória" do Agentic e o painel de memória do Qaaccessibility saem). A pessoa pede por conversa ("lembre disso", "esqueça aquilo"); o que o sistema aprende sozinho continua gravado por dentro, com a origem. Isto troca o que foi dito antes no mesmo dia.
 - Habilidade vinda da internet segue a chave de aprovação: com a aprovação ligada, fica aguardando a decisão da pessoa; desligada, entra sozinha, sem fila e sem aviso.
+
+## Aprende com os erros e com os acertos (decisão do dono, 21/out/2026)
+
+O aprendizado vale também no meio da tarefa, e não só ao fim: uma cópia do agente revisa em segundo plano o que foi feito quando uma etapa termina (um fato, nunca um relógio) e guarda a lição em silêncio; a lição final da execução substitui a do meio. Com a pessoa ociosa e só quando o conjunto de habilidades aprendidas mudou, um curador junta as que dizem a mesma coisa, sem apagar nada. Quando o agente sai sozinho de uma repetição, o que se repetiu e quantas vezes recomeçou chega ao julgamento da lição como fato, e a lição é do modelo.
