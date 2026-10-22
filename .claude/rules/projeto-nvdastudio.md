@@ -103,3 +103,10 @@ dívida a remover, e a entrega com ressalvas descrita acima continua valendo.
 
 - Achar a causa de uma falha na própria execução, mudar de caminho e corrigir o resultado é trabalho do agente, e não de quem desenvolve: o harness informa o fato, o raciocínio sobe, o roteador tenta outro modelo, o agente recomeça uma vez e aprende com o erro, em silêncio.
 - Quem desenvolve, diante de qualquer falha, pergunta que mecanismo faltou para o agente ter achado e corrigido aquilo sozinho, e constrói esse mecanismo. O conserto à mão é só o passo para provar o mecanismo, e a entrega diz o que o agente já faz sozinho e o que ainda falta.
+
+## Respostas do dono às perguntas de cenário depois da revisão das regras (22/out/2026)
+
+- Exploração do roteador: só em tarefas fáceis e médias; na camada profunda o roteador escolhe só por evidência, sem experimentar. Um modelo que falha perde o bônus na hora.
+- Aviso ao modelo diante de uma repetição: continua sendo só o fato (o que se repetiu e que nada de novo veio); não há conselho de método nem licença para parar. Antes de mudar isso, mede-se quantas vezes a rede de segurança ainda dispara depois das correções.
+- Correção que a pessoa dá no meio da tarefa: vale em tarefas parecidas daqui em diante; entra na habilidade daquele tipo de tarefa, em silêncio, e a pessoa não precisa repetir.
+- Projetos vizinhos: o código do roteador por evidência, da atualização de habilidade lendo o texto atual e das orientações da pessoa no aprendizado só chega ao Qaaccessibility e ao NVDAStudio depois de provado no Agentic, um projeto de cada vez. O texto das regras já é igual nos três.

@@ -22,7 +22,7 @@ paths:
   que ele decide a estratégia (sem chamada extra): pouco quando o caminho é claro e o trabalho é fazer, mais quando há
   decisão difícil de verdade, subindo sozinho quando uma etapa falha. Nunca pensar sem limite por falta de escolha:
   pensamento a mais faz a pessoa esperar minutos e é pago em toda chamada. Se a pessoa escolheu um nível, vale o dela.
-- Exploração (decisão do dono, 22/out/2026): o roteador escolhe entre todos os modelos do provedor por evidência (taxa de sucesso, latência, custo, o que cada um oferece), sem lista de nomes. Um modelo sem evidência naquele tipo e camada recebe um bônus que diminui conforme as tentativas crescem (menor na camada profunda, onde errar custa mais), para que todos sejam experimentados e o roteador aprenda. O que cada modelo recebe de raciocínio e de capacidades é só o que ele oferece.
+- Exploração (decisão do dono, 22/out/2026): o roteador escolhe entre todos os modelos do provedor por evidência (taxa de sucesso, latência, custo, o que cada um oferece), sem lista de nomes. Um modelo sem evidência naquele tipo e camada recebe um bônus que diminui conforme as tentativas crescem (nenhum na camada profunda, onde errar custa mais: ali só a evidência decide), para que todos sejam experimentados e o roteador aprenda. O que cada modelo recebe de raciocínio e de capacidades é só o que ele oferece.
 - Executa várias ferramentas ao mesmo tempo quando isso ajuda; especialistas independentes rodam em ondas, e o
   progresso é emitido conforme cada um termina. A economia nunca esconde uma etapa que o relatório apresenta como
   concluída.
