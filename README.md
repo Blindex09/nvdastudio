@@ -67,6 +67,62 @@ python build.py
 
 Bibliotecas vendorizadas em `addon/globalPlugins/nvdastudio/lib/` e o cache de fonte do NVDA em `nvda_docs_cache/` não são código próprio e ficam fora do lint/mypy.
 
+## Plano para os conceitos agênticos de 2026 (ainda não implementado)
+
+Esta seção é um plano. Ela não descreve o comportamento atual do projeto.
+
+Quando começar: só depois de terminar o teste real ponta a ponta de todos os módulos que existem hoje. Depois disso, seguir a
+regra 15 do `CLAUDE.md`: um item de cada vez, testado ao vivo na interface real, com teste de regressão, README do módulo
+em `docs/modules/` e commit. Não começar um item com o anterior em aberto.
+
+O que é exigido e por quê está na regra 18 do `CLAUDE.md`. Última revisão: 2026-10-08. Os estados abaixo vieram de busca no
+código nessa data. Antes de começar cada item, conferir de novo se ainda é lacuna.
+
+Em todos os itens, o princípio das regras 1 a 17 continua valendo: a IA decide o significado, o código só protege e mede, e
+nenhum limite fixo de tempo, tokens ou etapas pode cortar uma execução que continua avançando.
+
+### Ordem sugerida para o NVDAStudio
+
+1. Convergir com a regra 8. Hoje o código impõe limites fixos: a tabela de rodadas de correção por complexidade em
+   `core/orchestrator.py` (`_AGENTIC_CORRECTION_ROUNDS_BY_COMPLEXITY`) e o teto agregado de tokens derivado de `max_turns` em
+   `builder/agentic_driver.py` (`_token_budget`). O que fazer: trocar esses tetos por encerramento por travamento (sem
+   progresso ou decisão repetida), por cancelamento ou por orçamento de custo que a própria pessoa configurou, mantendo a
+   entrega com ressalvas já existente. Pronto quando uma build grande real passar do antigo teto e concluir, com teste de
+   regressão.
+2. Skills em SKILL.md com carregamento progressivo. Hoje só há referências em comentários. O que fazer: um carregador com
+   índice leve (nome e descrição) e instruções completas só quando a IA pede; pasta de skills da pessoa; varredura de
+   segurança de skill de terceiros antes de habilitar; aprendizado que atualiza a skill existente em vez de duplicar (regra
+   10). Pronto quando um teste mostrar a skill entrando no contexto só sob demanda e o tamanho do índice medido.
+3. Cliente MCP. Hoje não existe nenhum módulo. O que fazer: permitir que o construtor use servidores MCP (por exemplo o
+   Accessibility MCP e a documentação do NVDA), com ferramenta negada por padrão, aprovação, validação de schema e a descrição
+   da ferramenta tratada como dado. Cuidado a verificar primeiro: o addon roda no Python embutido do NVDA e já traz
+   dependências dentro de `lib/`, então confirmar se o SDK do MCP cabe nesse esquema. Pronto quando um teste real chamar uma
+   ferramenta MCP e o registro mostrar a chamada.
+4. Conteúdo de fora é dado, nunca instrução. O que fazer: auditar toda ferramenta que traz conteúdo externo (busca, cache da
+   documentação do NVDA, arquivos do usuário) e criar testes adversariais de injeção. Pronto quando os testes passarem e a
+   cobertura estiver listada.
+5. Hooks de ciclo de vida. Hoje só `tools/tool_gateway.py`. O que fazer: eventos antes e depois de ferramenta, início e fim de
+   turno e parada, usados só para proteger, medir ou registrar.
+6. Observabilidade e replay. O que fazer: registro estruturado de cada decisão, chamada ao modelo, ferramenta e aprovação, com
+   custo por tipo de chamada, e replay determinístico de uma trajetória gravada. Pronto quando uma falha real puder ser
+   reproduzida a partir do registro (regra 17).
+7. Contexto. O que fazer: confirmar que o que sai do contexto é guardado inteiro e volta por identificador (regra 9) e
+   carregar ferramentas sob demanda, sem mudar a lista no meio da tarefa.
+8. Evals. O que fazer: conjunto dourado alimentado por falha real, avaliação da trajetória, estatística sobre várias
+   execuções (já existe `scripts/multi_run_eval.py`), testes adversariais e detecção de deriva.
+9. Matriz de cobertura executável nos moldes da do Qaaccessibility (`scripts/run_2026_agentic_coverage_matrix.py`).
+10. Memória em camadas, visível e editável pela pessoa, sem guardar segredo.
+
+Não se aplica: servidor MCP e A2A, porque o addon roda dentro do NVDA para uma pessoa e não há outro agente para delegar a ele
+nem para receber tarefas dele. Reavaliar se isso mudar.
+
+### Quando o plano estará concluído
+
+- Todos os itens acima têm módulo, teste de regressão, teste real ponta a ponta na interface e README do módulo.
+- A matriz de cobertura da regra 18 roda contra o sistema real e passa, com o resultado verdadeiro registrado.
+- Os evals rodam sem o andaime antigo a cada modelo novo, e o que o modelo já dispensa foi removido.
+- A parte específica do `CLAUDE.md` deixa de listar pendências e registra a data da última revisão.
+
 ## Regras de manutenção
 
 - Não manter código, arquivos, shims ou documentação sem consumidor real.
@@ -93,4 +149,4 @@ addon/globalPlugins/nvdastudio/
   utils/        logging, políticas, timeouts e segurança
 ```
 
-Histórico de mudanças deve ser consultado no controle de versão. Este README documenta apenas o comportamento atual.
+Histórico de mudanças deve ser consultado no controle de versão. Este README documenta o comportamento atual; a única exceção é a seção do plano dos conceitos agênticos de 2026, marcada como não implementada.
