@@ -73,6 +73,9 @@ paths:
     rodada ao vivo, na interface real, com o resultado real gravado e datado. O módulo novo só está concluído se os
     anteriores continuam funcionando junto com ele. Um módulo antigo que quebra é defeito do módulo novo até prova em
     contrário, e é corrigido com causa provada (regra 17) e teste de regressão antes de seguir.
+  - Passo ao vivo que falha para a rodada na hora (decisão do dono, 22/out/2026): preserva-se a evidência, acha-se a causa (regra 17), corrige-se com
+    teste de regressão e o MESMO passo é repetido logo, antes de seguir para o próximo. A rodada só continua com o passo verde; falhas não se
+    juntam para corrigir depois. A rodada que parou num vermelho é parcial e nunca certifica nada.
   - A rodada conjunta compara com a última boa e aponta qual módulo piorou. Teste verde sozinho não basta (regra 11): o
     relatório diz o que rodou, o que foi verificado, o que falhou e o que não pôde ser testado.
 

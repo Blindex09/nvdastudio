@@ -50,7 +50,7 @@ NVDAStudio: ao mudá-la num, muda-se nos outros dois na mesma entrega.
 12. Engenharia de qualidade: código limpo; em Python, ruff, mypy e pytest sempre; todo bug real corrigido ganha teste de regressão; nenhum
     arquivo extra, rascunho ou script descartável no projeto; código morto sai.
 15. Processo: ver o que já existe no código, nos commits e nas docs antes de codar; testes baratos antes, ao vivo só confirma; um módulo de
-    cada vez, e módulo concluído fica protegido e entra na regressão conjunta com tag local; confiança medida e nunca presumida (invariantes
+    cada vez, e módulo concluído fica protegido e entra na regressão conjunta com tag local; passo ao vivo que falha para a rodada na hora, corrige-se com causa provada e o mesmo passo se repete antes de seguir; confiança medida e nunca presumida (invariantes
     verificados em toda execução, falha real vira caso permanente barato, taxa em tentativas repetidas, promessa e prova, confiança dita com
     limite); mudança numa instrução ao modelo tem portão (conjunto amplo, ablação, observação, registro). Documentar na pasta do módulo e
     commitar ao final; o envio (push) do branch de trabalho é permitido (decisão do dono, 20/out/2026); nunca merge sem ordem. Documentos para a pessoa em texto direto, sem asteriscos, em português.
