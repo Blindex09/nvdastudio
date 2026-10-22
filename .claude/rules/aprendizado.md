@@ -41,3 +41,9 @@ paths:
 ## Aprende com os erros e com os acertos (decisão do dono, 21/out/2026)
 
 O aprendizado vale também no meio da tarefa, e não só ao fim: uma cópia do agente revisa em segundo plano o que foi feito quando uma etapa termina (um fato, nunca um relógio) e guarda a lição em silêncio; a lição final da execução substitui a do meio. Com a pessoa ociosa e só quando o conjunto de habilidades aprendidas mudou, um curador junta as que dizem a mesma coisa, sem apagar nada. Quando o agente sai sozinho de uma repetição, o que se repetiu e quantas vezes recomeçou chega ao julgamento da lição como fato, e a lição é do modelo.
+
+## O que se aproveita do Hermes no aprendizado (decisão do dono, 22/out/2026)
+
+- A orientação que a pessoa dá no meio da tarefa para corrigir ou redirecionar o trabalho é o sinal mais forte do que guardar. Ela fica registrada durante toda a execução (não se apaga ao ser aplicada) e é mostrada ao modelo que decide a lição, como fato; é ele quem julga, pelo significado, o que vale guardar.
+- Atualizar uma habilidade já guardada é feito a partir do texto atual dela, inteiro (ler antes de escrever): o modelo que junta o aprendizado novo recebe o que a habilidade já sabe. Se a junção não puder ser feita, o aprendizado novo é acrescentado depois do texto atual e nada que a habilidade sabia se perde.
+- Não se guarda como regra: falha do ambiente (programa ou pacote não instalado, caminho que mudou, credencial não configurada), afirmação negativa sobre uma ferramenta ("a ferramenta X não funciona") nem erro passageiro que passou em outra tentativa (a lição é o jeito de tentar de novo). Medido ao vivo em 22/out/2026 com cinco casos em tentativas repetidas: a instrução atual da lição já respeita isto (24 a 25 de 25), então o texto não mudou; o que foi acrescentado são fatos para o juiz, não regras.
