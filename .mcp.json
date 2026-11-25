@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "nvdastudio": {
+      "command": "python",
+      "args": ["-m", "nvdastudio_mcp"],
+      "env": {
+        "PYTHONPATH": "src",
+        "NVDASTUDIO_WORKSPACE": "workspace"
+      }
+    }
+  }
+}

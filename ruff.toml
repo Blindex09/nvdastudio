@@ -1,0 +1,10 @@
+# nvda_docs_cache/ e copia de referencia do codigo-fonte REAL do NVDA e do
+# AddonTemplate, lida como texto puro (nunca importada nem executada).
+extend-exclude = ["src/nvdastudio_mcp/nvda_docs_cache"]
+
+[lint]
+select = ["E", "F", "W", "B", "UP"]
+# Os modulos herdados do projeto anterior (addon_builder, nvda_context, ...)
+# usam TAB como indentacao; o codigo novo usa 4 espacos. W191/E101 ficam
+# ignorados ate a migracao dos herdados.
+ignore = ["E501", "UP007", "UP006", "UP035", "UP045", "B904", "W191", "E101"]

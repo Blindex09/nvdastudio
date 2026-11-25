@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nvdastudio-mcp"
+version = "0.1.0"
+description = "Servidor MCP para o Claude criar, corrigir, testar e empacotar addons do leitor de telas NVDA"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-2.0-or-later" }
+dependencies = ["mcp>=1.30,<2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "hypothesis>=6.100", "ruff", "mypy"]
+
+[project.scripts]
+nvdastudio-mcp = "nvdastudio_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+nvdastudio_mcp = ["nvda_docs_cache/**/*"]
