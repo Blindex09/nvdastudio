@@ -560,6 +560,8 @@ def bundle_addon_dependencies(
 				"[AVISO] Nome de pacote rejeitado (invalido/inseguro): %r. "
 				"Apenas nomes PEP 508 basicos sao aceitos.", pkg
 			)
+			if on_package_progress:
+				on_package_progress(pkg, "ignored", "nome invalido ou inseguro: so nomes simples de pacote sao aceitos")
 			continue
 		# em vez do nome pip correto "google-auth-oauthlib". Extrai apenas o root
 		# antes do primeiro ponto para filtro E para o pip install. (v3.2.0)
@@ -571,6 +573,8 @@ def bundle_addon_dependencies(
 				"[BUNDLE] Ignorado '%s': e modulo NVDA/stdlib/local do addon, "
 				"nao precisa de pip install.", pkg
 			)
+			if on_package_progress:
+				on_package_progress(pkg, "ignored", "modulo do NVDA, da biblioteca padrao ou do proprio addon: nao precisa de pip")
 			continue
 		if pkg_install != pkg:
 			_logger.info(
@@ -2854,7 +2858,7 @@ def generate_store_submission(
 		"homepage":            addon_url or source_url,
 		"minNVDAVersion":      min_nvda_obj,
 		"lastTestedVersion":   last_nvda_obj,
-		"URL":                 download_url or f"https://github.com/{addon_id}/releases/download/v{addon_version}/{addon_id}.nvda-addon",
+		"URL":                 download_url,
 		"sha256":              sha256,
 		"sourceURL":           source_url or addon_url or "",
 		"license":             license_name,
@@ -2878,5 +2882,6 @@ def generate_store_submission(
 	return {
 		"json_path": json_path,
 		"sha256":    sha256,
+		"missing_fields": [k for k in ("homepage", "URL", "sourceURL", "licenseURL") if not metadata[k]],
 		"metadata":  metadata,
 	}

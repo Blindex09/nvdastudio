@@ -27,11 +27,11 @@ Claude Desktop (`claude_desktop_config.json`):
 
 ## Ferramentas
 
-- Conhecimento: `nvda_guia`, `nvda_regras`, `nvda_fonte`.
-- Addons: `addon_listar`, `addon_criar`, `addon_arvore`, `addon_ler`, `addon_gravar`, `addon_apagar`.
-- Verificação: `addon_validar`, `addon_corrigir_estrutura`, `addon_testar` (sintaxe, lint, tipos, carregamento, resiliência, testes).
-- Pacote: `addon_dependencias`, `addon_empacotar`, `pacote_inspecionar`, `pacote_abrir_no_nvda`, `loja_submissao`.
-- Roteiros: `criar_addon`, `corrigir_addon`, `revisar_acessibilidade`. Recursos: `nvdastudio://guia` e `nvdastudio://guia/{topico}`.
+- Conhecimento: `nvda_guide`, `nvda_rules`, `nvda_source`.
+- Addons: `addon_list`, `addon_create`, `addon_tree`, `addon_read`, `addon_write`, `addon_delete`.
+- Verificação: `addon_validate`, `addon_fix_structure`, `addon_test` (sintaxe, lint, tipos, carregamento, resiliência, testes).
+- Pacote: `addon_dependencies`, `addon_package`, `package_inspect`, `package_open_in_nvda`, `store_submission`.
+- Roteiros: `create_addon`, `fix_addon`, `review_accessibility`. Recursos: `nvdastudio://guide` e `nvdastudio://guide/{topico}`.
 
 Baseline dos addons novos: NVDA 2026.1.1+, testado em 2026.2.0.
 

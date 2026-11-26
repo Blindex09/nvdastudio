@@ -17,10 +17,10 @@ from nvdastudio_mcp.server import build_server
 from nvdastudio_mcp.workspace import Workspace
 
 EXPECTED_TOOLS = {
-    "nvda_guia", "nvda_regras", "nvda_fonte", "addon_listar", "addon_criar", "addon_arvore",
-    "addon_ler", "addon_gravar", "addon_apagar", "addon_validar", "addon_corrigir_estrutura",
-    "addon_testar", "addon_dependencias", "addon_empacotar", "pacote_inspecionar",
-    "pacote_abrir_no_nvda", "loja_submissao",
+    "nvda_guide", "nvda_rules", "nvda_source", "addon_list", "addon_create", "addon_tree",
+    "addon_read", "addon_write", "addon_delete", "addon_validate", "addon_fix_structure",
+    "addon_test", "addon_dependencies", "addon_package", "package_inspect",
+    "package_open_in_nvda", "store_submission",
 }
 
 
@@ -32,14 +32,14 @@ def _run(workspace: Workspace, scenario):
     return asyncio.run(main())
 
 
-async def _call(client, name: str, **args: Any) -> dict[str, Any]:
-    result = await client.call_tool(name, args)
+async def _call(client, tool: str, /, **args: Any) -> dict[str, Any]:
+    result = await client.call_tool(tool, args)
     payload = result.structuredContent
     if payload is None:
         text = result.content[0].text  # type: ignore[union-attr]
-        payload = {"_erro": text} if result.isError else json.loads(text)
+        payload = {"_error": text} if result.isError else json.loads(text)
     if result.isError:
-        return {"_erro": result.content[0].text}  # type: ignore[union-attr]
+        return {"_error": result.content[0].text}  # type: ignore[union-attr]
     return payload.get("result", payload)
 
 
@@ -58,69 +58,69 @@ def test_lista_todas_as_ferramentas_e_os_roteiros(ws):
 
     tools, prompts = _run(ws, scenario)
     assert tools == EXPECTED_TOOLS
-    assert prompts == {"criar_addon", "corrigir_addon", "revisar_acessibilidade"}
+    assert prompts == {"create_addon", "fix_addon", "review_accessibility"}
 
 
 def test_fluxo_criar_gravar_validar_empacotar_inspecionar(ws):
     async def scenario(client):
-        created = await _call(client, "addon_criar", nome="Ola", resumo="Diz ola")
-        assert created["validacao"]["ok"], created
-        listed = await _call(client, "addon_listar")
+        created = await _call(client, "addon_create", name="Ola", summary="Diz ola")
+        assert created["validation"]["ok"], created
+        listed = await _call(client, "addon_list")
         written = await _call(
-            client, "addon_gravar", addon="Ola",
-            arquivos=[{"caminho": "../fora.py", "conteudo": "x = 1"},
-                      {"caminho": "extra.txt", "conteudo": "oi"}],
+            client, "addon_write", addon="Ola",
+            files=[{"path": "../fora.py", "content": "x = 1"},
+                      {"path": "extra.txt", "content": "oi"}],
         )
-        packed = await _call(client, "addon_empacotar", addon="Ola")
-        inspected = await _call(client, "pacote_inspecionar", pacote=packed["pacote"])
+        packed = await _call(client, "addon_package", addon="Ola")
+        inspected = await _call(client, "package_inspect", package=packed["package"])
         return created, listed, written, packed, inspected
 
     created, listed, written, packed, inspected = _run(ws, scenario)
     assert listed["addons"] == ["Ola"]
-    assert written["bloqueados"] == ["../fora.py"] and written["gravados"] == ["extra.txt"]
+    assert written["blocked"] == ["../fora.py"] and written["written"] == ["extra.txt"]
     assert not (ws.root.parent / "fora.py").exists()
-    assert packed["empacotado"] is True and packed["pacote"] == "dist/Ola-0.1.0.nvda-addon"
-    with zipfile.ZipFile(ws.root / packed["pacote"]) as archive:
+    assert packed["packaged"] is True and packed["package"] == "dist/Ola-0.1.0.nvda-addon"
+    with zipfile.ZipFile(ws.root / packed["package"]) as archive:
         assert "manifest.ini" in archive.namelist()
-    assert inspected["nome"] == "Ola" and inspected["erros_de_leitura"] == []
+    assert inspected["name"] == "Ola" and inspected["read_errors"] == []
 
 
 def test_empacotar_recusa_addon_com_problemas(ws):
     async def scenario(client):
-        await _call(client, "addon_criar", nome="Ola")
-        await _call(client, "addon_apagar", addon="Ola", caminho="globalPlugins/Ola/__init__.py")
-        return await _call(client, "addon_empacotar", addon="Ola")
+        await _call(client, "addon_create", name="Ola")
+        await _call(client, "addon_delete", addon="Ola", path="globalPlugins/Ola/__init__.py")
+        return await _call(client, "addon_package", addon="Ola")
 
     result = _run(ws, scenario)
-    assert result["empacotado"] is False and not result["validacao"]["ok"]
+    assert result["packaged"] is False and not result["validation"]["ok"]
     assert not (ws.root / "dist").exists()
 
 
-def test_nome_com_caminho_vira_erro_de_ferramenta(ws):
+def test_nome_com_caminho_vira_error_de_ferramenta(ws):
     async def scenario(client):
-        return await _call(client, "addon_validar", addon="../fora")
+        return await _call(client, "addon_validate", addon="../fora")
 
-    assert "invalido" in _run(ws, scenario)["_erro"]
+    assert "invalido" in _run(ws, scenario)["_error"]
 
 
 def test_manifest_nao_pode_ser_apagado(ws):
     async def scenario(client):
-        await _call(client, "addon_criar", nome="Ola")
-        return await _call(client, "addon_apagar", addon="Ola", caminho="manifest.ini")
+        await _call(client, "addon_create", name="Ola")
+        return await _call(client, "addon_delete", addon="Ola", path="manifest.ini")
 
-    assert "manifest" in _run(ws, scenario)["_erro"]
+    assert "manifest" in _run(ws, scenario)["_error"]
 
 
-def test_testar_sintaxe_acha_erro_e_nao_executado_nao_vira_sucesso(ws):
+def test_testar_sintaxe_acha_error_e_nao_executado_nao_vira_sucesso(ws):
     async def scenario(client):
-        await _call(client, "addon_criar", nome="Ola")
-        await _call(client, "addon_gravar", addon="Ola",
-                    arquivos=[{"caminho": "globalPlugins/Ola/quebrado.py", "conteudo": "def (:\n"}])
-        return await _call(client, "addon_testar", addon="Ola", etapas=["sintaxe"])
+        await _call(client, "addon_create", name="Ola")
+        await _call(client, "addon_write", addon="Ola",
+                    files=[{"path": "globalPlugins/Ola/quebrado.py", "content": "def (:\n"}])
+        return await _call(client, "addon_test", addon="Ola", stages=["syntax"])
 
     result = _run(ws, scenario)
-    assert result["falhou"] == ["sintaxe"]
-    assert "quebrado.py" in result["etapas"][0]["erro"]
+    assert result["failed"] == ["syntax"]
+    assert "quebrado.py" in result["stages"][0]["error"]
 
 
 def test_validar_aplica_as_regras_por_ast(ws):
@@ -132,44 +132,44 @@ def test_validar_aplica_as_regras_por_ast(ws):
     )
 
     async def scenario(client):
-        await _call(client, "addon_criar", nome="Ola")
-        return await _call(client, "addon_gravar", addon="Ola",
-                           arquivos=[{"caminho": "globalPlugins/Ola/papel.py", "conteudo": code}])
+        await _call(client, "addon_create", name="Ola")
+        return await _call(client, "addon_write", addon="Ola",
+                           files=[{"path": "globalPlugins/Ola/papel.py", "content": code}])
 
-    problems = _run(ws, scenario)["validacao"]["problemas"]
-    assert any(p["codigo"] == "NVDA-060" and "papel.py" in p["mensagem"] for p in problems)
+    problems = _run(ws, scenario)["validation"]["problems"]
+    assert any(p["code"] == "NVDA-060" and "papel.py" in p["message"] for p in problems)
 
 
 def test_etapa_desconhecida_e_recusada(ws):
     async def scenario(client):
-        await _call(client, "addon_criar", nome="Ola")
-        return await _call(client, "addon_testar", addon="Ola", etapas=["magia"])
+        await _call(client, "addon_create", name="Ola")
+        return await _call(client, "addon_test", addon="Ola", stages=["magia"])
 
-    assert "desconhecidas" in _run(ws, scenario)["_erro"]
+    assert "desconhecidas" in _run(ws, scenario)["_error"]
 
 
 def test_conhecimento_do_nvda(ws):
     async def scenario(client):
         return (
-            await _call(client, "nvda_guia", topico="manifest"),
-            await _call(client, "nvda_regras", prefixo="WX-A11Y"),
-            await _call(client, "nvda_fonte", busca="def script"),
-            await _call(client, "nvda_fonte", arquivo="../../../etc/passwd"),
+            await _call(client, "nvda_guide", topic="manifest"),
+            await _call(client, "nvda_rules", prefix="WX-A11Y"),
+            await _call(client, "nvda_source", search="def script"),
+            await _call(client, "nvda_source", file="../../../etc/passwd"),
         )
 
     guia, regras, fonte, fuga = _run(ws, scenario)
-    assert "minimumNVDAVersion" in guia["secoes"][0]["texto"]
-    assert regras["total"] > 0 and all(r["codigo"].startswith("WX-A11Y") for r in regras["regras"])
-    assert fonte["resultados"]
-    assert "_erro" in fuga
+    assert "minimumNVDAVersion" in guia["sections"][0]["text"]
+    assert regras["total"] > 0 and all(r["code"].startswith("WX-A11Y") for r in regras["rules"])
+    assert fonte["results"]
+    assert "_error" in fuga
 
 
 def test_leitura_marca_o_conteudo_como_dado(ws):
     async def scenario(client):
-        await _call(client, "addon_criar", nome="Ola")
-        return await _call(client, "addon_ler", addon="Ola", caminho="manifest.ini")
+        await _call(client, "addon_create", name="Ola")
+        return await _call(client, "addon_read", addon="Ola", path="manifest.ini")
 
-    assert "DADO NAO CONFIAVEL" in _run(ws, scenario)["texto"]
+    assert "DADO NAO CONFIAVEL" in _run(ws, scenario)["text"]
 
 
 def test_servidor_por_stdio_responde_e_nao_suja_o_stdout(tmp_path):
@@ -182,9 +182,51 @@ def test_servidor_por_stdio_responde_e_nao_suja_o_stdout(tmp_path):
         async with stdio_client(params) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
-                created = await session.call_tool("addon_criar", {"nome": "Ola"})
+                created = await session.call_tool("addon_create", {"name": "Ola"})
                 tools = await session.list_tools()
                 return len(tools.tools), created.isError
 
-    count, is_error = asyncio.run(asyncio.wait_for(main(), 60))
-    assert count == len(EXPECTED_TOOLS) and not is_error
+    count, is_errorr = asyncio.run(asyncio.wait_for(main(), 60))
+    assert count == len(EXPECTED_TOOLS) and not is_errorr
+
+
+def test_verificacao_que_nao_rodou_nao_vira_ok(ws):
+    """Resiliencia de um app module (sem globalPlugins) nao executa nada: deve voltar not_run."""
+
+    async def scenario(client):
+        await _call(client, "addon_create", name="App", kind="appModule", app="notepad")
+        return await _call(client, "addon_test", addon="App", stages=["resilience"])
+
+    result = _run(ws, scenario)
+    assert result["stages"][0]["status"] == "not_run"
+    assert result["not_run"] == ["resilience"]
+
+
+def test_dependencias_ignoradas_voltam_com_o_motivo(ws):
+    async def scenario(client):
+        await _call(client, "addon_create", name="Ola")
+        return await _call(client, "addon_dependencies", addon="Ola", packages=["../evil", "json", "wx"])
+
+    result = _run(ws, scenario)
+    assert result["installed"] == []
+    assert [p["package"] for p in result["progress"]] == ["../evil", "json", "wx"]
+    assert all(p["status"] == "ignored" and p["detail"] for p in result["progress"])
+
+
+def test_loja_nao_inventa_url_de_download(ws):
+    async def scenario(client):
+        await _call(client, "addon_create", name="Ola")
+        packed = await _call(client, "addon_package", addon="Ola")
+        return await _call(client, "store_submission", package=packed["package"])
+
+    result = _run(ws, scenario)
+    assert result["metadata"]["URL"] == ""
+    assert "URL" in result["missing_fields"] and "homepage" in result["missing_fields"]
+
+
+def test_addon_sem_url_informada_nao_ganha_endereco_falso(ws):
+    async def scenario(client):
+        await _call(client, "addon_create", name="Ola")
+        return await _call(client, "addon_read", addon="Ola", path="manifest.ini")
+
+    assert "url =" not in _run(ws, scenario)["text"]

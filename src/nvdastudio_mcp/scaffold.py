@@ -95,7 +95,7 @@ def build_scaffold(
     summary: str = "",
     author: str = "Autor <autor@example.com>",
     app_name: str = "",
-    url: str = "https://github.com/autor/addon",
+    url: str = "",
 ) -> ScaffoldFiles:
     """Monta os arquivos do esqueleto (caminho relativo -> conteudo)."""
     if not _NAME.match(name):
@@ -122,8 +122,8 @@ def build_scaffold(
         f"summary = {summary}\n"
         f"description = {summary}\n"
         f"author = {author}\n"
-        f"url = {url}\n"
-        f"version = 0.1.0\n"
+        + (f"url = {url}\n" if url else "")
+        + "version = 0.1.0\n"
         f"docFileName = readme.html\n"
         f"minimumNVDAVersion = {PROJECT_MIN_NVDA}\n"
         f"lastTestedNVDAVersion = {PROJECT_LAST_TESTED_NVDA}\n"

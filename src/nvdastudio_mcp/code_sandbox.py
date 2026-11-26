@@ -29,6 +29,8 @@ def _run_hidden(*args, **kwargs):
 	proposito: os testes que dao patch em code_sandbox.subprocess.run
 	continuam valendo."""
 	kwargs["creationflags"] = kwargs.get("creationflags", 0) | CREATE_NO_WINDOW
+	# O stdin do servidor e o protocolo MCP: um filho nunca pode herda-lo nem le-lo.
+	kwargs.setdefault("stdin", subprocess.DEVNULL)
 	return subprocess.run(*args, **kwargs)
 
 _SANDBOX_TIMEOUT = 10  # segundos
@@ -493,6 +495,8 @@ class CodeSandbox:
         evidence: list[str] = []
         for scenario in scenarios:
             result = self.validate_addon_execution(files, timeout, scenario)
+            if result.success and result.error:
+                return result  # nada foi executado (ex.: sem globalPlugins): nao e sucesso
             evidence.append(f"{scenario}: {_result_evidence(result)}")
             if not result.success:
                 return SandboxResult(

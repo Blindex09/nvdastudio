@@ -13,7 +13,7 @@ harness (conhecimento do NVDA, confinamento de arquivos, validação, teste, emp
 3. stdout é do protocolo MCP: nada imprime nele. Registro vai para stderr (`logger.py`), sem segredo.
 4. Honestidade: ferramenta que não pôde rodar devolve `nao_executado`, nunca sucesso. Sem Docker e sem a imagem `python:3.11-slim` não há
    execução isolada de código de addon, e isso aparece no resultado.
-5. Instalar no NVDA só abre o pacote (`pacote_abrir_no_nvda`); quem confirma é a pessoa no diálogo do NVDA.
+5. Instalar no NVDA só abre o pacote (`package_open_in_nvda`); quem confirma é a pessoa no diálogo do NVDA.
 6. Cada ferramenta tem anotações (somente leitura, destrutiva, mundo aberto) corretas e descrição em português que diz o que devolve.
 7. Texto para a pessoa em português, direto, sem asteriscos soltos.
 8. Antes de dizer "pronto": `ruff check .`, `mypy src` e `pytest`; mudança na costura entre módulos exige ler os dois lados. Todo bug
