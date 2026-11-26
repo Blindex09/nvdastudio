@@ -45,19 +45,48 @@ _SAFE_PKG_NAME: re.Pattern = re.compile(
 )
 
 
-# Gestures reservados pelo NVDA core — addons nao devem redefinir esses atalhos.
-# Fonte: NVDA User Guide e codigo-fonte do NVDA (inputCore, globalCommands).
+# Gestures de teclado que o NVDA 2026.3.1 ja usa em globalCommands.py (layouts desktop e
+# laptop), sem o prefixo "kb:", em minusculas e com os modificadores em ordem alfabetica
+# (ver _normalize_gesture). Addons nao devem redefinir esses atalhos.
 # Usado por _check_reserved_gestures() / NVDA-009.
 _NVDA_CORE_GESTURES: frozenset = frozenset({
-	"kb:nvda+n", "kb:nvda+f1", "kb:nvda+f2", "kb:nvda+q",
-	"kb:nvda+shift+s", "kb:nvda+p", "kb:nvda+ctrl+p",
-	"kb:nvda+v", "kb:nvda+t", "kb:nvda+b", "kb:nvda+end",
-	"kb:nvda+shift+end", "kb:nvda+numpad5", "kb:nvda+numpad8",
-	"kb:nvda+numpad9", "kb:nvda+numpad7", "kb:nvda+numpad4",
-	"kb:nvda+numpad6", "kb:nvda+1", "kb:nvda+2", "kb:nvda+3",
-	"kb:nvda+4", "kb:nvda+5", "kb:nvda+6", "kb:nvda+7",
-	"kb:nvda+8", "kb:nvda+f3", "kb:nvda+f4",
+	"alt+control+nvda+t", "alt+nvda+downarrow", "alt+nvda+end", "alt+nvda+home", "alt+nvda+j", "alt+nvda+k",
+	"alt+nvda+l", "alt+nvda+leftarrow", "alt+nvda+m", "alt+nvda+r", "alt+nvda+rightarrow", "alt+nvda+s",
+	"alt+nvda+shift+downarrow", "alt+nvda+shift+leftarrow", "alt+nvda+shift+rightarrow",
+	"alt+nvda+shift+uparrow", "alt+nvda+t", "alt+nvda+tab", "alt+nvda+uparrow", "control+nvda+.",
+	"control+nvda+[", "control+nvda+]", "control+nvda+a", "control+nvda+b", "control+nvda+c", "control+nvda+d",
+	"control+nvda+downarrow", "control+nvda+end", "control+nvda+escape", "control+nvda+f1", "control+nvda+f2",
+	"control+nvda+f3", "control+nvda+g", "control+nvda+home", "control+nvda+k", "control+nvda+leftarrow",
+	"control+nvda+m", "control+nvda+o", "control+nvda+p", "control+nvda+pagedown", "control+nvda+pageup",
+	"control+nvda+r", "control+nvda+rightarrow", "control+nvda+s", "control+nvda+shift+.",
+	"control+nvda+shift+downarrow", "control+nvda+shift+f1", "control+nvda+shift+leftarrow",
+	"control+nvda+shift+pagedown", "control+nvda+shift+pageup", "control+nvda+shift+rightarrow",
+	"control+nvda+shift+uparrow", "control+nvda+space", "control+nvda+t", "control+nvda+u",
+	"control+nvda+uparrow", "control+nvda+v", "control+nvda+w", "control+nvda+x", "control+nvda+z", "numpad1",
+	"numpad2", "numpad3", "numpad4", "numpad5", "numpad6", "numpad7", "numpad8", "numpad9", "numpaddivide",
+	"numpadmultiply", "numpadplus", "nvda+.", "nvda+1", "nvda+2", "nvda+3", "nvda+4", "nvda+5", "nvda+6",
+	"nvda+7", "nvda+[", "nvda+]", "nvda+a", "nvda+b", "nvda+backspace", "nvda+c", "nvda+d", "nvda+delete",
+	"nvda+downarrow", "nvda+end", "nvda+enter", "nvda+f", "nvda+f1", "nvda+f10", "nvda+f12", "nvda+f2",
+	"nvda+f9", "nvda+home", "nvda+k", "nvda+l", "nvda+leftarrow", "nvda+m", "nvda+n", "nvda+numpad1",
+	"nvda+numpad2", "nvda+numpad3", "nvda+numpad4", "nvda+numpad5", "nvda+numpad6", "nvda+numpad7",
+	"nvda+numpad8", "nvda+numpad9", "nvda+numpaddelete", "nvda+numpaddivide", "nvda+numpadenter",
+	"nvda+numpadminus", "nvda+numpadmultiply", "nvda+p", "nvda+pagedown", "nvda+pageup", "nvda+q", "nvda+r",
+	"nvda+rightarrow", "nvda+s", "nvda+shift+-", "nvda+shift+.", "nvda+shift+=", "nvda+shift+[", "nvda+shift+]",
+	"nvda+shift+a", "nvda+shift+b", "nvda+shift+backspace", "nvda+shift+d", "nvda+shift+delete",
+	"nvda+shift+downarrow", "nvda+shift+end", "nvda+shift+f", "nvda+shift+f9", "nvda+shift+i", "nvda+shift+l",
+	"nvda+shift+leftarrow", "nvda+shift+m", "nvda+shift+n", "nvda+shift+numpaddelete", "nvda+shift+numpadminus",
+	"nvda+shift+o", "nvda+shift+pagedown", "nvda+shift+pageup", "nvda+shift+rightarrow", "nvda+shift+s",
+	"nvda+shift+uparrow", "nvda+shift+w", "nvda+shift+z", "nvda+space", "nvda+t", "nvda+tab", "nvda+u",
+	"nvda+uparrow", "nvda+x", "shift+numpad1", "shift+numpad2", "shift+numpad3", "shift+numpad7",
+	"shift+numpad9", "shift+numpaddivide", "shift+numpadmultiply",
 })
+
+
+def _normalize_gesture(gesture: str) -> str:
+	"""kb(laptop):NVDA+Shift+S -> shift+nvda+s ordenado: modificadores em ordem alfabetica."""
+	g = re.sub(r"^kb(\((?:desktop|laptop)\))?:", "", gesture.lower())
+	tokens = g.split("+")
+	return "+".join(sorted(tokens[:-1]) + [tokens[-1]])
 
 
 def _package_exists_on_pypi(pkg: str) -> bool:
@@ -719,6 +748,33 @@ def package_addon(addon_folder: str, output_path: str | None = None) -> str:
 	return zip_path
 
 
+# Simbolos removidos, descontinuados ou movidos para winBindings.* (NVDA 2026.1+), conforme
+# user_docs/en/changes.md do NVDA (API Breaking Changes e Deprecations). "SM_" e prefixo.
+_NVDA_WIN_LEGACY_SYMBOLS: dict[str, frozenset[str]] = {
+	"winKernel": frozenset({
+		"DUPLICATE_SAME_ACCESS", "GENERIC_READ", "GENERIC_WRITE", "PROCESS_QUERY_INFORMATION",
+		"PROCESS_TERMINATE", "PROCESS_ALL_ACCESS", "PROCESS_VM_OPERATION", "PROCESS_VM_READ",
+		"PROCESS_VM_WRITE", "PROCESS_INFORMATION", "STARTUPINFO", "STARTUPINFOW", "advapi32",
+		"kernel32", "FILETIME", "SYSTEMTIME", "TIME_ZONE_INFORMATION",
+	}),
+	"winUser": frozenset({
+		"GUITHREADINFO", "HWINEVENTHOOK", "WINEVENTPROC", "WNDCLASSEXW", "WNDPROC", "PAINTSTRUCT",
+		"user32", "HardwareInput", "Input", "KeyBdInput", "MouseInput", "NMHdrStruct", "INPUT_MOUSE",
+		"INPUT_KEYBOARD", "KEYEVENTF_KEYUP", "KEYEVENTF_UNICODE", "Input_I", "PUL",
+	}),
+	"winGDI": frozenset({"user32", "GdiplusStartupInput", "GdiplusStartupOutput"}),
+	"wincon": frozenset({
+		"COORD", "CONSOLE_SCREEN_BUFFER_INFO", "CONSOLE_SELECTION_INFO", "CHAR_INFO", "PHANDLER_ROUTINE",
+	}),
+}
+
+
+def _is_legacy_win_symbol(module: str, symbol: str) -> bool:
+	if module == "winUser" and symbol.startswith("SM_"):
+		return True
+	return symbol in _NVDA_WIN_LEGACY_SYMBOLS.get(module, frozenset())
+
+
 def _plugin_dirs(addon_folder: str) -> list[str]:
 	"""Pastas com codigo de ponto de entrada do addon, para as checagens por arquivo.
 
@@ -879,7 +935,7 @@ def _check_reserved_gestures(addon_folder: str) -> list[str]:
 	problems: list[str] = []
 
 	# Regex que captura qualquer string entre aspas contendo "kb:nvda+"
-	_gesture_re = re.compile(r'["\']([^"\']*kb:nvda\+[^"\']*)["\']', re.IGNORECASE)
+	_gesture_re = re.compile(r'["\'](kb(?:\((?:desktop|laptop)\))?:[^"\']+)["\']', re.IGNORECASE)
 
 	for pdir_path in _plugin_dirs(addon_folder):
 		for py_file in os.listdir(pdir_path):
@@ -891,11 +947,9 @@ def _check_reserved_gestures(addon_folder: str) -> list[str]:
 					src = fh.read()
 			except OSError:
 				continue
-			if "nvda+" not in src.lower():
-				continue
 			for match in _gesture_re.finditer(src):
 				gesture = match.group(1).lower()
-				if gesture in _NVDA_CORE_GESTURES:
+				if _normalize_gesture(gesture) in _NVDA_CORE_GESTURES:
 					# Calcula numero de linha da ocorrencia
 					lineno = src[: match.start()].count("\n") + 1
 					problems.append(
@@ -1247,8 +1301,11 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 
 	# NVDA-005: Formato de versao
 	version = manifest_fields.get("version", "")
-	if version and not re.match(r"^\d+\.\d+\.\d+$", version):
-		problems.append(f"NVDA-005: manifest.ini: version='{version}' formato invalido. Use major.minor.patch.")
+	if version and not re.match(r"^\d+\.\d+(\.\d+)?$", version):
+		problems.append(
+			f"NVDA-005: manifest.ini: version='{version}' formato invalido. "
+			f"A Add-on Store aceita major.minor ou major.minor.patch."
+		)
 
 	# NVDA-006: Monkey-patching
 	for rel, code in all_py:
@@ -1312,6 +1369,12 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 	min_nvda = manifest_fields.get("minimumNVDAVersion", "")
 	if min_nvda and parse_version_tuple(min_nvda) < (2019, 3, 0):
 		problems.append(f"NVDA-013: manifest.ini: minimumNVDAVersion={min_nvda} abaixo do minimo.")
+	last_nvda = manifest_fields.get("lastTestedNVDAVersion", "")
+	if min_nvda and last_nvda and parse_version_tuple(min_nvda) > parse_version_tuple(last_nvda):
+		problems.append(
+			f"NVDA-013: manifest.ini: minimumNVDAVersion={min_nvda} maior que "
+			f"lastTestedNVDAVersion={last_nvda}; o minimo tem de ser menor ou igual ao ultimo testado."
+		)
 
 	# NVDA-015: config.conf.spec ausente
 	#
@@ -1373,12 +1436,6 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 			for node in ast.walk(tree)
 		):
 			problems.append(f"NVDA-020: {rel}: from NVDAObjects import IAccessible. Use from NVDAObjects.IAccessible import IAccessible.")
-
-	# NVDA-027: WebView2 sem disableBrowseMode
-	for rel, code in all_py:
-		if "msedgewebview2" in rel.lower():
-			if "class AppModule" in code and "disableBrowseModeByDefault" not in code:
-				problems.append(f"NVDA-027: {rel}: AppModule msedgewebview2 sem disableBrowseModeByDefault.")
 
 	# NVDA-028 não é um erro de compatibilidade: Optional/Union continuam
 	# suportados no Python do NVDA. Modernização de estilo pertence ao lint e
@@ -1593,24 +1650,31 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 		):
 			problems.append(f"NVDA-050: {rel}: overlay class herda de NVDAObject base. Use IAccessible/UIA/Window/JABObject.")
 
-	# NVDA-052: Uso de APIs legadas winUser/winKernel/winGDI/shellapi/ftdi2
+	# NVDA-052: simbolos de winUser/winKernel/winGDI/wincon removidos, descontinuados ou movidos
+	# para winBindings (user_docs/en/changes.md do NVDA: API Breaking Changes e Deprecations).
+	# So acusa o simbolo, nunca o modulo inteiro: winUser.getForegroundWindow() e
+	# winKernel.LCIDToLocaleName() continuam validos.
 	for rel, code in all_py:
 		tree = _tree(code)
 		if tree is None:
 			continue
-		legacy_imports = {
-			alias.name.split(".")[0]
-			for node in ast.walk(tree) if isinstance(node, ast.Import)
-			for alias in node.names
-		}
-		legacy_imports.update(
-			node.module.split(".")[0] for node in ast.walk(tree)
-			if isinstance(node, ast.ImportFrom) and node.module
-		)
-		if legacy_imports.intersection({"winUser", "winKernel", "winGDI", "shellapi"}):
-			problems.append(f"NVDA-052: {rel}: uso de import legado de winUser/winKernel/winGDI/shellapi. Migre para winBindings.")
-		elif "ftdi2" in legacy_imports:
-			problems.append(f"NVDA-052: {rel}: uso de import legado de ftdi2. Migre para o subpacote ftdi2 com snake_case.")
+		for node in ast.walk(tree):
+			module = symbol = ""
+			if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+				module, symbol = node.value.id, node.attr
+			elif isinstance(node, ast.ImportFrom) and node.module in _NVDA_WIN_LEGACY_SYMBOLS:
+				for alias in node.names:
+					if _is_legacy_win_symbol(node.module, alias.name):
+						problems.append(
+							f"NVDA-052: {rel}: linha {node.lineno}: {node.module}.{alias.name} foi "
+							f"removido, descontinuado ou movido para winBindings (changes.md do NVDA)."
+						)
+				continue
+			if module in _NVDA_WIN_LEGACY_SYMBOLS and _is_legacy_win_symbol(module, symbol):
+				problems.append(
+					f"NVDA-052: {rel}: linha {getattr(node, 'lineno', 0)}: {module}.{symbol} foi removido, "
+					f"descontinuado ou movido para winBindings (changes.md do NVDA)."
+				)
 
 	# NVDA-053: SAPI 4/5 32-bit voices
 	for rel, code in all_py:
@@ -1919,7 +1983,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 			for line in manifest_content.splitlines():
 				if "=" in line and not line.strip().startswith("#"):
 					key, _, value = line.partition("=")
-					manifest_fields[key.strip()] = value.strip()
+					manifest_fields[key.strip()] = value.strip().strip('"').strip("'")
 			for campo in ["name", "author", "version", "minimumNVDAVersion", "lastTestedNVDAVersion"]:
 				if campo not in manifest_content:
 					problems.append(
@@ -2079,17 +2143,6 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 				if "def terminate" not in code:
 					problems.append(
 						f"NVDA-004: {fname}: metodo terminate() ausente."
-					)
-
-			# NVDA-051: Se tem UI (dialogs), deve ter menu Ferramentas.
-			# Mesma restricao ao __init__.py PRINCIPAL (nao qualquer __init__.py
-			# da arvore) que ESTRUTURA-005/NVDA-003/NVDA-004 acima.
-			if _e_init_principal and ("wx.Dialog" in code or "wx.Frame" in code):
-				if "_ensure_menu_item" not in code:
-					problems.append(
-						f"NVDA-051: {fname}: addon com interface de usuario sem "
-						f"item no menu Ferramentas (NVDA > Menu > Ferramentas). "
-						f"Implementar _ensure_menu_item() + _get_tools_menu()."
 					)
 
 	# ESTRUTURA-009: imports relativos sem modulo correspondente.

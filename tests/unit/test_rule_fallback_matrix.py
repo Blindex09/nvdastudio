@@ -35,7 +35,7 @@ def test_fallback_matrix_cobre_todas_as_regras():
     # Cobertura dela e o default STRICT_ONLY, que e a semantica correta:
     # nao ha implementacao alternativa para "chamador e definicao tem que
     # casar" -- ou casam, ou o addon quebra na primeira tecla.
-    assert len(all_rule_ids) == 97, "Esperado: 62 NVDA + 14 WX + 12 DTK + 9 ARCH = 97 regras"
+    assert len(all_rule_ids) == 98, "Esperado: 63 NVDA + 14 WX + 12 DTK + 9 ARCH = 98 regras"
     assert set(overrides.keys()).issubset(all_rule_ids), "Overrides contem IDs fora do catalogo de regras"
 
     # A cobertura completa depende do default STRICT_ONLY no builder + overrides.

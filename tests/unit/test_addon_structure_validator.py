@@ -65,7 +65,7 @@ class TestValidateAddonStructureCompleto:
         (tmp_path / "manifest.ini").write_text(
             "name = MeuAddon\nsummary = MeuAddon\nauthor = Teste <teste@exemplo.com>\n"
             "version = 1.0.0\n"
-            "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.2.0\n",
+            "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.3.1\n",
             encoding="utf-8"
         )
         gp = tmp_path / "globalPlugins" / "meuAddon"
@@ -102,7 +102,7 @@ class TestValidateAddonStructureCompleto:
 
         (tmp_path / "manifest.ini").write_text(
             "name = MeuAddon\nsummary = MeuAddon\nauthor = Teste\nversion = 1.0.0\n"
-            "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.2.0\n",
+            "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.3.1\n",
             encoding="utf-8",
         )
         root = tmp_path / "globalPlugins"
@@ -366,10 +366,11 @@ class TestValidateAddonStructureCompatibility2026:
         )
         gp = tmp_path / "globalPlugins" / "MeuAddon"
         gp.mkdir(parents=True)
-        # Importa winUser legado
+        # Usa um simbolo de winUser que o NVDA moveu para winBindings.user32
         (gp / "__init__.py").write_text(
             "import addonHandler\nimport globalPluginHandler\n"
             "import winUser\n"
+            "LIB = winUser.user32\n"
             "addonHandler.initTranslation()\n"
             "class GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
             "    def terminate(self): super().terminate()\n",
@@ -427,3 +428,30 @@ class TestValidateAddonStructureCompatibility2026:
 
         problems = validate_addon_structure(str(tmp_path))
         assert any("NVDA-054" in p for p in problems), problems
+
+
+class TestNvda052SoAcusaSimboloDescontinuado:
+    """Modulos como winUser continuam validos: so os simbolos listados no changes.md do NVDA saem."""
+
+    def _problems(self, tmp_path, linha: str) -> list[str]:
+        from nvdastudio_mcp.addon_builder import validate_addon_structure, write_addon_file
+        from nvdastudio_mcp.scaffold import build_scaffold
+
+        files = build_scaffold("MeuAddon").files
+        key = "globalPlugins/MeuAddon/__init__.py"
+        files[key] = "import winUser\nimport winKernel\n" + files[key] + "\n\ndef usa():\n\t" + linha + "\n"
+        for rel, content in files.items():
+            write_addon_file(str(tmp_path), rel, content)
+        return [p for p in validate_addon_structure(str(tmp_path)) if p.startswith("NVDA-052")]
+
+    def test_funcao_valida_de_winuser_passa(self, tmp_path):
+        assert self._problems(tmp_path, "return winUser.getForegroundWindow()") == []
+
+    def test_funcao_recomendada_de_winkernel_passa(self, tmp_path):
+        assert self._problems(tmp_path, 'return winKernel.LCIDToLocaleName(1033)') == []
+
+    def test_simbolo_movido_e_reportado(self, tmp_path):
+        assert self._problems(tmp_path, "return winKernel.FILETIME()")
+
+    def test_constante_sm_de_winuser_e_reportada(self, tmp_path):
+        assert self._problems(tmp_path, "return winUser.SM_CXSCREEN")

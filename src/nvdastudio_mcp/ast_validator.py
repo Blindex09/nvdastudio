@@ -329,25 +329,23 @@ def validate_wx_a11y_002_accelerators(codigo: str) -> ASTValidationResult:
 
 
 # ---------------------------------------------------------------------------
-# NVDA-060 — controlTypes.ROLE_*/STATE_* (API REMOVIDA no NVDA 2022.1)
+# NVDA-060 — controlTypes.ROLE_*/STATE_* (aliases legados, mantidos so por compatibilidade)
 # ---------------------------------------------------------------------------
 
 def validate_nvda060_controltypes(codigo: str) -> ASTValidationResult:
     """
     Detecta o uso da API `controlTypes.ROLE_*` / `controlTypes.STATE_*`.
 
-    Nao e depreciacao: essas constantes foram REMOVIDAS no NVDA 2022.1 e
-    substituidas por `controlTypes.Role.*` / `controlTypes.State.*` (enums). Um
-    addon que as usa levanta AttributeError em runtime -- para o usuario de leitor de tela,
-    a funcionalidade simplesmente nao acontece, sem nenhuma mensagem.
+    Essas constantes foram substituidas por `controlTypes.Role.*` / `controlTypes.State.*`
+    (enums). O NVDA ainda as expoe em controlTypes/deprecatedAliases.py, "apenas para
+    compatibilidade com addons"; funcionam hoje, mas sao legado e nao devem ser usadas
+    em codigo novo.
 
     Cobre os dois caminhos de uso:
       - acesso por atributo:  controlTypes.ROLE_BUTTON
       - import direto:        from controlTypes import ROLE_BUTTON
 
-    Escolhido para validacao deterministica por ser decidivel sem ambiguidade:
-    o nome ou existe no AST ou nao existe. Zero falso positivo possivel, contra
-    um defeito que quebra o addon inteiro.
+    E decidivel sem ambiguidade: o nome ou existe no AST ou nao existe.
 
     Fail-open: SyntaxError retorna ok=True.
     """
@@ -367,7 +365,7 @@ def validate_nvda060_controltypes(codigo: str) -> ASTValidationResult:
         vistos.add(nome)
         moderno = nome.replace("ROLE_", "Role.", 1) if nome.startswith("ROLE_") else nome.replace("STATE_", "State.", 1)
         violacoes.append(
-            f"{forma} usa `{nome}`, removido no NVDA 2022.1 -- "
+            f"{forma} usa `{nome}`, alias legado mantido so por compatibilidade -- "
             f"use `controlTypes.{moderno}` (enum)"
         )
 
@@ -577,6 +575,88 @@ def validate_nvda056_messagedialog_thread(codigo: str) -> ASTValidationResult:
 
 
 # ---------------------------------------------------------------------------
+# NVDA-064 -- callback de botao do gui.message.MessageDialog
+# ---------------------------------------------------------------------------
+
+_DIALOG_BUTTON_METHODS = frozenset({
+    "addButton", "addOkButton", "addCancelButton", "addYesButton", "addNoButton",
+    "addSaveButton", "addApplyButton", "addCloseButton", "addHelpButton",
+    "addDontSaveButton",
+})
+
+
+def _accepts_one_positional(args: ast.arguments, skip_self: bool) -> bool:
+    positional = [*args.posonlyargs, *args.args]
+    if skip_self and positional:
+        positional = positional[1:]
+    if args.vararg is not None:
+        return True
+    required = len(positional) - len(args.defaults)
+    return len(positional) >= 1 and required <= 1
+
+
+def validate_nvda064_dialog_callback(codigo: str) -> ASTValidationResult:
+    """
+    O NVDA chama o callback de um botao de MessageDialog com UM argumento posicional
+    (um `Payload`): `callback(payload)` (gui/message.py). `lambda: ...` ou um metodo sem
+    parametro alem de `self` levanta TypeError quando o botao e acionado, e o botao
+    simplesmente nao faz nada para quem usa o leitor de telas.
+
+    So reporta quando o callback e uma lambda ou uma funcao/metodo definido no proprio
+    arquivo, onde a assinatura e um fato. Fail-open: SyntaxError retorna ok=True.
+    """
+    if not codigo or not codigo.strip():
+        return ASTValidationResult(ok=True, violacoes=[])
+    try:
+        tree = ast.parse(codigo)
+    except SyntaxError:
+        return ASTValidationResult(ok=True, violacoes=[])
+
+    definicoes: dict[str, tuple[ast.arguments, bool]] = {}
+    for classe in [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]:
+        for item in classe.body:
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                definicoes.setdefault(item.name, (item.args, True))
+    for item in tree.body:
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            definicoes[item.name] = (item.args, False)
+
+    violacoes: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        nome = func.attr if isinstance(func, ast.Attribute) else func.id if isinstance(func, ast.Name) else ""
+        if nome not in _DIALOG_BUTTON_METHODS and nome != "Button":
+            continue
+        for kw in node.keywords:
+            if kw.arg != "callback":
+                continue
+            valor = kw.value
+            if isinstance(valor, ast.Lambda):
+                if not _accepts_one_positional(valor.args, skip_self=False):
+                    violacoes.append(
+                        f"linha {node.lineno}: callback=lambda de {nome}() nao aceita o argumento "
+                        f"que o NVDA passa (payload); use `lambda payload: ...`."
+                    )
+                continue
+            alvo = ""
+            if isinstance(valor, ast.Name):
+                alvo = valor.id
+            elif isinstance(valor, ast.Attribute) and isinstance(valor.value, ast.Name) and valor.value.id == "self":
+                alvo = valor.attr
+            if alvo in definicoes:
+                args, eh_metodo = definicoes[alvo]
+                skip = eh_metodo and isinstance(valor, ast.Attribute)
+                if not _accepts_one_positional(args, skip_self=skip):
+                    violacoes.append(
+                        f"linha {node.lineno}: o callback '{alvo}' de {nome}() nao aceita o argumento "
+                        f"que o NVDA passa (payload); declare `def {alvo}(self, payload)`."
+                    )
+    return ASTValidationResult(ok=len(violacoes) == 0, violacoes=violacoes)
+
+
+# ---------------------------------------------------------------------------
 # Conjunto completo, usado pelo servidor MCP em addon_validar
 # ---------------------------------------------------------------------------
 
@@ -587,6 +667,7 @@ AST_RULES = (
     ("NVDA-060", validate_nvda060_controltypes),
     ("WX-A11Y-013", validate_wx_a11y_013_key_events),
     ("NVDA-056", validate_nvda056_messagedialog_thread),
+    ("NVDA-064", validate_nvda064_dialog_callback),
 )
 
 

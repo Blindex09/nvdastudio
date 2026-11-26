@@ -3,7 +3,7 @@ MODULE_VERSION = "1.1.0"
 # Baseline oficial do projeto. O NVDAStudio atual nao mantem compatibilidade
 # ativa com versoes anteriores a esta linha.
 PROJECT_MIN_NVDA = "2026.1.1"
-PROJECT_LAST_TESTED_NVDA = "2026.2.0"
+PROJECT_LAST_TESTED_NVDA = "2026.3.1"
 PROJECT_SUPPORTED_RANGE = "2026.1.1+"
 
 # Pastas de ponto de entrada que o NVDA carrega; qualquer uma basta para o addon existir.

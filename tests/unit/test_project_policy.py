@@ -18,7 +18,7 @@ class TestProjectPolicyConstants:
         assert PROJECT_MIN_NVDA == "2026.1.1"
 
     def test_last_tested(self):
-        assert PROJECT_LAST_TESTED_NVDA == "2026.2.0"
+        assert PROJECT_LAST_TESTED_NVDA == "2026.3.1"
 
     def test_supported_range(self):
         assert PROJECT_SUPPORTED_RANGE == "2026.1.1+"

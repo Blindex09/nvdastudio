@@ -20,7 +20,7 @@ def test_validador_detecta_string_configobj_convertida_em_lista(tmp_path):
     (tmp_path / "manifest.ini").write_text(
         "name = x\nsummary = X\nauthor = Tester\nversion = 1.0.0\n"
         "description = Audio, video, imagem e PDF\n"
-        "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.2.0\n",
+        "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.3.1\n",
         encoding="utf-8",
     )
     problems = validate_addon_structure(str(tmp_path))

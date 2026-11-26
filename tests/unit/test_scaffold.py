@@ -24,7 +24,7 @@ def test_esqueleto_de_app_module_passa_no_validador(tmp_path):
 def test_esqueleto_usa_o_baseline_do_projeto(tmp_path):
     manifest = build_scaffold("MeuAddon").files["manifest.ini"]
     assert "minimumNVDAVersion = 2026.1.1" in manifest
-    assert "lastTestedNVDAVersion = 2026.2.0" in manifest
+    assert "lastTestedNVDAVersion = 2026.3.1" in manifest
 
 
 def test_codigo_do_esqueleto_usa_tab(tmp_path):

@@ -235,7 +235,7 @@ class TestPortaoFinalSobreOPacote:
 				"manifest.ini",
 				"name = MeuAddon\nsummary = X\ndescription = X\nauthor = A <a@b.c>\n"
 				"url = https://example.com\nversion = 1.0.0\ndocFileName = userGuide.html\n"
-				"minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.2.0\n",
+				"minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.3.1\n",
 			)
 			zf.writestr("doc/en/userGuide.html", "<html><body>guia</body></html>")
 			for nome, conteudo in arquivos.items():

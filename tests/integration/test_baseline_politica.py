@@ -22,7 +22,7 @@ summary = Addon com versao no baseline oficial
 author = Tester <test@example.com>
 version = 1.0.0
 minimumNVDAVersion = 2026.1.1
-lastTestedNVDAVersion = 2026.2.0
+lastTestedNVDAVersion = 2026.3.1
 """
 
 _INIT_PY = """import globalPluginHandler

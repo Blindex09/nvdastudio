@@ -67,10 +67,9 @@ NVDA_DETECTION_RULES: list[tuple[str, str, str]] = [
 	# Simbolos prefixados com _ sao privados e podem mudar em qualquer release NVDA, inclusive patches.
 	# Nao ha aviso de deprecacao para API privada — o addon quebra silenciosamente apos update do NVDA.
 	("NVDA-026", "Moderado", "Import de simbolo privado do NVDA (prefixo _) — ex: from someModule import _internalFunction. Simbolos _ sao privados e podem mudar em qualquer release NVDA sem aviso (skill: nvda-addon-dev §22); use apenas API publica documentada"),
-	# NVDA-027: adicionado em v3.11.0 — AppModule para WebView2 sem disableBrowseModeByDefault (skill: nvda-addon-dev §3.2)
-	# Apps baseadas em msedgewebview2.exe ativam browse mode propria alem do browse mode do NVDA.
-	# Sem disableBrowseModeByDefault = True, o usuario tem dois browse modes ativos simultaneamente.
-	("NVDA-027", "Serio",    "AppModule para msedgewebview2.exe sem disableBrowseModeByDefault = True — apps WebView2 ja tem browse mode proprio; sem esse flag o NVDA ativa um segundo browse mode causando comportamento duplicado e confuso para o usuario (skill: nvda-addon-dev §3.2)"),
+	# Fonte: Developer Guide do NVDA, "App modules for hosted apps" e Example 3: apps com Edge WebView2
+	# aparecem como pagina web por padrao; disableBrowseModeByDefault e OPCIONAL (design).
+	("NVDA-027", "Menor",    "Decisao de design, nao defeito: em app module de app que usa Edge WebView2 (o nome do modulo e o do app, como olk.py, nao msedgewebview2.py), `disableBrowseModeByDefault = True` desliga o modo de navegacao automatico; o Developer Guide diz que a linha pode ser removida se o addon quiser o modo de navegacao"),
 	# NVDA-028: adicionado em v3.12.0 — type hints com Optional[]/Union[] em vez de X | None / X | Y (skill: nvda-addon-dev §18)
 	# Python 3.13 (NVDA 2026.1+) suporta plenamente a sintaxe de uniao nativa. X | None e X | Y
 	# sao formas legadas que a skill proibe explicitamente em codigo novo.
@@ -127,9 +126,9 @@ NVDA_DETECTION_RULES: list[tuple[str, str, str]] = [
 	# Bug encontrado: MediaTranscriber nao registrava item em menu Ferramentas
 	# Fallback: se addon pode ter menu, deve implementar _ensure_menu_item() + _get_tools_menu()
 	# com wx.CallAfter para thread safety
-	("NVDA-051", "Serio",    "Addon com interface de usuario nao registra item no menu Ferramentas do NVDA (NVDA > Menu > Ferramentas > [Addon Name]) -- implementar _ensure_menu_item() + _get_tools_menu() com Bind(wx.EVT_MENU, ...) e thread-safety via wx.CallAfter(). Remocao em terminate()."),
+	("NVDA-051", "Menor",    "Sugestao de usabilidade, nao exigencia do NVDA: addon com interface propria costuma ser mais facil de achar com um item no menu Ferramentas do NVDA, alem do atalho. O Developer Guide do NVDA nao exige isso."),
 	# NVDA 2026.1+ Compatibility rules
-	("NVDA-052", "Serio",    "Uso de APIs legadas winUser, winKernel, winGDI, shellapi ou ftdi2 - migre para winBindings.* submodules ou ftdi2 subpackage (NVDA 2026.1+)."),
+	("NVDA-052", "Moderado", "Uso de simbolo de winUser/winKernel/winGDI/wincon removido, descontinuado ou movido para winBindings.* (NVDA 2026.1+; user_docs/en/changes.md: API Breaking Changes e Deprecations). So os simbolos listados la; o resto dos modulos continua valido."),
 	("NVDA-053", "Critico",  "Uso de sapi5/sapi4 para vozes de 32 bits sem portabilidade ARM64EC ou sem suporte a sapi5_32/sapi4_32 (NVDA 2026.1+)."),
 	("NVDA-054", "Moderado", "Uso de typing_extensions - NVDA 2026.1+ com Python 3.13 fornece suporte nativo; remova a dependencia typing_extensions."),
 	# oficial (github.com/nvdaaddons/DevGuide, download.nvaccess.org/documentation/developerGuide.html,
@@ -141,10 +140,9 @@ NVDA_DETECTION_RULES: list[tuple[str, str, str]] = [
 	("NVDA-057", "Moderado", "@script sem usar as constantes SCRCAT_* para o parametro category (usa string livre em vez disso), ou ignora os flags canPropagate/bypassInputHelp/allowInSleepMode/speakOnDemand/resumeSayAllMode quando o script deveria funcionar durante Input Help, modo de sono, modo de fala sob demanda do NVDA, ou precisa retomar o Say All apos ser executado"),
 	("NVDA-058", "Moderado", "installTasks.py ou uninstallTasks.py importa modulos alem do estritamente necessario -- onInstall()/onUninstall() rodam num estado restrito (pre-reinicio do NVDA, pasta .pendingInstall); imports desnecessarios aumentam risco de falha nesse estado"),
 	("NVDA-059", "Serio",    "manifest.ini com addonId/name contendo caracteres fora de letras, numeros, underscore e hifen (ex: espaco, ponto, unicode) -- a Add-on Store valida o nome com uma regex restrita; caracteres fora desse conjunto rejeitam a submissao"),
-	# Developer Guide oficial (download.nvaccess.org/documentation/developerGuide.html
-	# 2026.1.1), 2 gaps de conteudo reais encontrados (nao existia regra
-	# equivalente, nao e so ajuste de callback/fallback).
-	("NVDA-060", "Critico",  "Uso de controlTypes.ROLE_*/controlTypes.STATE_* (API pre-2021.2, REMOVIDA no NVDA 2022.1) em vez de controlTypes.Role.*/controlTypes.State.* -- baseline do projeto e NVDA 2026.1.1, entao codigo com a forma antiga falha ao carregar (AttributeError), nao so gera warning de deprecacao"),
+		# Fonte: source/controlTypes/deprecatedAliases.py do NVDA 2026.3.1 -- os aliases ROLE_*/STATE_*
+	# continuam existindo "for backwards compatibility with add-ons only": funcionam, mas sao legado.
+	("NVDA-060", "Moderado", "Uso de controlTypes.ROLE_*/controlTypes.STATE_* em vez de controlTypes.Role.*/controlTypes.State.* -- o NVDA mantem esses aliases so por compatibilidade com addons antigos (controlTypes/deprecatedAliases.py, 'do not extend'); funcionam hoje, mas sao legado e podem sair numa proxima mudanca de API. Use o enum (mapeamento 1:1)"),
 	("NVDA-061", "Moderado", "Character Descriptions ausente ou mal formatado: addon com necessidade de descrever caracteres individualmente (ex: driver de fala, dicionario fonetico) sem locale/<lang>/characterDescriptions.dic em UTF-8 com pares caractere/descricao separados por TAB, linhas em branco e comentarios '#' ignorados (skill: nvda-addon-dev, Developer Guide secao 'Character Descriptions')"),
 	# regras nao tinha NENHUMA cobertura de secure mode (tela de login/UAC/tela
 	# segura), uma exigencia real e atual de revisao da Add-on Store. Fonte:
@@ -170,6 +168,12 @@ NVDA_DETECTION_RULES: list[tuple[str, str, str]] = [
 	 "para nunca derrubar o leitor de tela) transforma o defeito numa mensagem "
 	 "generica. Quando um arquivo DECLARA o contrato que outro implementa, os dois "
 	 "lados tem que casar literalmente"),
+	# Fonte: gui/message.py do NVDA (MessageDialog._executeCommand chama callback(payload)).
+	("NVDA-064", "Serio", "Callback de botao de gui.message.MessageDialog que nao aceita o "
+	 "argumento que o NVDA passa. O NVDA chama callback(payload) com exatamente um argumento "
+	 "posicional (um Payload); `callback=lambda: ...` ou um metodo so com `self` levanta "
+	 "TypeError quando o botao e acionado e o botao nao faz nada. Use `lambda payload: ...` ou "
+	 "`def metodo(self, payload)`"),
 ]
 
 # ------------------------------------------------------------------
@@ -347,7 +351,7 @@ Para NVDA 2025.x, BACK_COMPAT_TO = 2025.1.0, portanto lastTestedNVDAVersion >= 2
 Se o addon precisar continuar preparado para NVDA 2026.1+, evite DLLs 32-bit, binarios compilados sem validacao de ABI e APIs removidas.
 NVDA 2026.1 — BREAKING CHANGES (skill: nvda-addon-specialist §NVDA 2026.1):
   - Python 3.13 64-bit: NVDA e suas extensoes sao 64-bit. Nao gere .dll/.pyd 32-bit.
-  - winUser, winKernel, winGDI, shellapi e hwIo.hid.hidDll movidos para winBindings.* — use from winBindings import winUser, winKernel.
+  - Alguns simbolos de winUser, winKernel, winGDI e wincon foram removidos, descontinuados ou movidos para winBindings.* (veja changes.md do NVDA: API Breaking Changes e Deprecations); os modulos em si continuam existindo. Use addon_validar (NVDA-052) para achar os simbolos afetados.
   - versionInfo: copyrightYears e url movidos para buildVersion — use from buildVersion import copyrightYears, url.
   - NVDAHelper.localLib mudou de ctypes.CDLL para modulo — use NVDAHelper.localLib.dll para o objeto CDLL.
   - sapi5 agora e 64-bit; use sapi5_32 para vozes SAPI 32-bit (sem audio ducking). sapi4 removido — use sapi4_32.
@@ -669,19 +673,11 @@ NVDA-026 Moderado: Import de simbolo privado do NVDA (prefixo _) — API instave
     from NVDAObjects.IAccessible import IAccessible
   Se precisar de comportamento interno, use extension points (§7) em vez de acessar simbolos privados.
 
-NVDA-027 Serio: AppModule para msedgewebview2.exe sem disableBrowseModeByDefault = True.
-  Apps baseadas em WebView2 (msedgewebview2.exe) ja ativam browse mode proprio.
-  Sem esse flag, o NVDA ativa um segundo browse mode simultaneamente — usuario fica preso em
-  modo de navegacao incorreto, Tab navega por elementos errados, forms nao funcionam.
-  Arquivo: appModules/msedgewebview2.py
-  Obrigatorio:
-    class AppModule(appModuleHandler.AppModule):
-        disableBrowseModeByDefault: bool = True
-  Correto (desativa browse mode automatico do NVDA para WebView2):
-    class AppModule(appModuleHandler.AppModule):
-        disableBrowseModeByDefault = True
-        # ...resto dos handlers
-  NUNCA omita disableBrowseModeByDefault em AppModule para msedgewebview2.exe.
+NVDA-027 Menor: AppModule de app com Edge WebView2 (Developer Guide, Example 3).
+  O app module leva o nome do APP (por exemplo olk.py para o Outlook novo), nao msedgewebview2.py.
+  Apps WebView2 aparecem como pagina web e o NVDA usa o modo de navegacao nelas por padrao.
+  `disableBrowseModeByDefault: bool = True` na classe AppModule desliga isso; e opcional, uma
+  decisao de design: remova a linha se quiser que a pessoa navegue com os comandos do modo de navegacao.
 
 NVDA-028 Menor: Type hint usando X | None ou X | Y em vez da sintaxe moderna (skill: nvda-addon-dev §18).
   NVDA 2026.1+ usa Python 3.13. Use sempre a sintaxe nativa de uniao:
@@ -875,12 +871,12 @@ NVDA-050 Moderado: NVDAObject overlay class herda de NVDAObject (base) em vez de
     from NVDAObjects.IAccessible import IAccessible
     class MinhaOverlay(IAccessible): ...
 
-NVDA-051 Serio: Addon com interface de usuario DEVE registrar item no menu Ferramentas do NVDA.
+NVDA-051 Menor: sugestao de usabilidade (o Developer Guide do NVDA nao exige): addon com interface
+  propria pode registrar um item no menu Ferramentas do NVDA, alem do atalho de teclado.
   Menu: NVDA > Menu > Ferramentas > [Nome do Addon]
-  Obrigatorio quando: addon tem dialogs, configuracoes ou funcoes acionaveis pelo usuario.
   Implementacao: _ensure_menu_item() + _get_tools_menu() + wx.CallAfter para thread-safety.
   Remocao: cleanup completo em terminate() com Unbind().
-  Template obrigatorio:
+  Exemplo opcional:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._menu_item = None
@@ -1539,7 +1535,7 @@ INFERENCIA ARCH-003: qual tipo de addon criar?
   "addon para Notepad" -> appModules/notepad.py
   "addon para Firefox" -> appModules/firefox.py (ou waterfox, librewolf, etc.)
   "addon para wwahost" -> NVDA-040: use nvdaBuiltin.appModules.wwahost.AppModule como base
-  "addon para msedgewebview2" -> NVDA-027: inclua disableBrowseModeByDefault = True
+  "addon para app com Edge WebView2 (olk.exe, etc.)" -> NVDA-027: o modulo leva o nome do app; disableBrowseModeByDefault = True e opcional
   "app com TTS proprio / self-voicing" -> NVDA-034: inclua sleepMode = True
 - funcionalidade global (qualquer app) -> GlobalPlugin
   "anunciar area de transferencia", "atalho global", "addon de traducao", etc.

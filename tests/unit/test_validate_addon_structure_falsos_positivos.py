@@ -19,7 +19,7 @@ def _make_addon(tmp_path, init_code="", extra_files=None, manifest=None):
     mf = manifest or (
         "name = MeuAddon\nsummary = MeuAddon\nauthor = Teste <teste@exemplo.com>\n"
         "version = 1.0.0\n"
-        "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.2.0\n"
+        "minimumNVDAVersion = 2026.1.1\nlastTestedNVDAVersion = 2026.3.1\n"
     )
     with open(os.path.join(str(tmp_path), "manifest.ini"), "w") as f:
         f.write(mf)

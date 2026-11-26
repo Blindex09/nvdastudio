@@ -48,7 +48,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     scriptCategory = _("{name}")
 
     # Translators: Descricao do comando de exemplo em Gestos de entrada
-    @script(description=_("Diz que o addon esta funcionando"), gesture="kb:NVDA+shift+{key}")
+    @script(description=_("Diz que o addon esta funcionando"), gesture="kb:NVDA+control+shift+{key}")
     def script_dizerOla(self, gesture):
         # Translators: Mensagem falada pelo comando de exemplo
         ui.message(_("{name} esta funcionando"))
@@ -70,7 +70,7 @@ class AppModule(appModuleHandler.AppModule):
     scriptCategory = _("{name}")
 
     # Translators: Descricao do comando de exemplo em Gestos de entrada
-    @script(description=_("Diz que o addon do aplicativo esta ativo"), gesture="kb:NVDA+shift+{key}")
+    @script(description=_("Diz que o addon do aplicativo esta ativo"), gesture="kb:NVDA+control+shift+{key}")
     def script_dizerOla(self, gesture):
         # Translators: Mensagem falada pelo comando de exemplo
         ui.message(_("{name} esta ativo neste aplicativo"))
