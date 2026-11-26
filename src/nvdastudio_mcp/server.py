@@ -10,7 +10,6 @@ integrity).
 
 import ast
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +33,7 @@ from .addon_loader import load_addon_from_nvda_addon
 from .code_sandbox import CodeSandbox, SandboxResult
 from .injection_guard import sanitize_untrusted_block
 from .logger import get_logger
+from .nvda_install import NvdaInstallError, open_in_nvda
 from .rule_registry import active_rules
 from .scaffold import KINDS, ScaffoldError, build_scaffold
 from .workspace import Workspace, WorkspaceError
@@ -516,21 +516,21 @@ def build_server(workspace: Workspace | None = None) -> FastMCP:
 
     @mcp.tool(annotations=_OPEN_WORLD)
     def package_open_in_nvda(package: str) -> dict[str, Any]:
-        """Opens the .nvda-addon with NVDA, which shows its own installation dialog.
+        """Hands the .nvda-addon to the RUNNING NVDA, which shows its own install dialog.
 
-        The person confirms the installation, in the NVDA dialog. This tool
-        installs nothing by itself and only works on Windows.
+        Calls NVDA's own installer entry point (nvda_slave.exe) and then checks whether a
+        new NVDA window appeared. Returns `dialog_detected` (true/false), the exit code and
+        the titles of the new windows. If `dialog_detected` is false, do not tell the person
+        the dialog opened: ask them. Fails when NVDA is not installed or not running, and
+        only works on Windows. The person confirms or cancels in the NVDA dialog; this tool
+        installs nothing by itself.
         """
 
         def run() -> dict[str, Any]:
-            if sys.platform != "win32":
-                raise ToolError("opening in NVDA only works on Windows")
-            path = ws.package_path(package)
-            os.startfile(str(path))  # type: ignore[attr-defined]  # noqa: S606
-            return {
-                "opened": str(path),
-                "next_step": "The person confirms the installation in the NVDA dialog and restarts NVDA.",
-            }
+            try:
+                return dict(open_in_nvda(ws.package_path(package)))
+            except NvdaInstallError as exc:
+                raise ToolError(str(exc)) from exc
 
         return guarded(run)  # type: ignore[no-any-return]
 
