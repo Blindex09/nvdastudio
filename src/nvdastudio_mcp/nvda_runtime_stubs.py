@@ -5,40 +5,40 @@ import tempfile
 import types
 
 
-# Diretorio de config REALISTA para a validacao em sandbox. Addons leem
-# NVDAState.WritePaths.configDir (uma STRING) e a usam em os.path.join. O stub
-# generico (_Permissive) devolvia um mock truthy NAO-string, e o os.path.join
-# rejeitava um HistoryManager que la fora funcionaria). Um caminho real e
-# descartavel faz o padrao comum (ler configDir e juntar um arquivo) funcionar
-# na validacao como funcionaria dentro do NVDA.
+# REALISTIC config directory for validation in the sandbox. Add-ons read
+# NVDAState.WritePaths.configDir (a STRING) and use it in os.path.join. The
+# generic stub (_Permissive) returned a truthy NON-string mock, and os.path.join
+# rejected a HistoryManager that would work out there). A real, disposable
+# path makes the common pattern (read configDir and join a file) work
+# in validation as it would inside NVDA.
 _STUB_CONFIG_DIR = os.path.join(tempfile.gettempdir(), "nvdastudio_stub_config")
 
 
 class _StubWritePaths:
-	"""Espelha nvda/source/NVDAState.WritePaths -- os caminhos que addons leem
-	com frequencia, como STRINGS reais em vez de mock permissivo."""
+	"""Mirrors nvda/source/NVDAState.WritePaths -- the paths that add-ons read
+	often, as real STRINGS instead of a permissive mock."""
 	configDir = _STUB_CONFIG_DIR
 	addonsDir = os.path.join(_STUB_CONFIG_DIR, "addons")
 	addonStoreDir = os.path.join(_STUB_CONFIG_DIR, "addonStore")
 
 
 def _stub_should_write_to_disk() -> bool:
-	# A validacao NUNCA escreve em disco de verdade -- addons checam isto antes
-	# de salvar; False mantem a validacao read-only .
+	# Validation NEVER really writes to disk -- add-ons check this before
+	# saving; False keeps validation read-only.
 	return False
 
 
 class _Permissive:
-	"""Aceita qualquer chamada/atributo/uso como context manager ou decorator
-	sem lancar excecao -- cobre a maior parte da API do NVDA que o codigo
-	gerado so CHAMA (nao subclassa)."""
+	"""Accepts any call/attribute/use as a context manager or decorator
+	without raising -- covers most of the NVDA API that the generated
+	code only CALLS (does not subclass)."""
 
 	def __call__(self, *args, **kwargs):
-		# Usado tanto como funcao comum (ui.message(...)) quanto como
-		# FABRICA de decorator (@script(description=...)) -- nesse ultimo
-		# caso, o unico argumento posicional costuma ser a funcao decorada;
-		# devolve ela sem modificar pra nao quebrar chamadas subsequentes
-		# tipo self.script_meuComando(...).
+		# Used both as a plain function (ui.message(...)) and as a
+		# decorator FACTORY (@script(description=...)) -- in the latter
+		# case, the only positional argument is usually the decorated function;
+		# it returns it unmodified so as not to break subsequent calls
+		# such as self.script_myCommand(...).
 		if len(args) == 1 and callable(args[0]) and not kwargs:
 			return args[0]
 		return _Permissive()
@@ -69,8 +69,8 @@ class _Permissive:
 
 
 class GlobalPlugin:
-	"""Base real pra `class X(globalPluginHandler.GlobalPlugin)` -- precisa
-	ser classe de verdade (nao instancia), MagicMock nao serve de base."""
+	"""Real base for `class X(globalPluginHandler.GlobalPlugin)` -- it must
+	be a real class (not an instance), a MagicMock does not work as a base."""
 	def __init__(self, *args, **kwargs):
 		super().__init__()
 
@@ -114,29 +114,29 @@ class _WxDialog:
 
 def _init_translation_stub() -> None:
 	"""
-	Imita `addonHandler.initTranslation()` do NVDA de verdade.
+	Imitates the real NVDA `addonHandler.initTranslation()`.
 
-	O NVDA injeta `_` (e as variantes de gettext) nos GLOBAIS DO MODULO QUE
-	CHAMOU -- e por isso que todo addon correto faz `import addonHandler` +
-	`addonHandler.initTranslation()` e depois usa `_("texto")` livremente.
+	NVDA injects `_` (and the gettext variants) into the GLOBALS OF THE MODULE THAT
+	CALLED IT -- which is why every correct add-on does `import addonHandler` +
+	`addonHandler.initTranslation()` and then uses `_("text")` freely.
 
-	O stub antigo era um no-op. Consequencia medida: um addon MINIMAMENTE
-	CORRETO pela propria regra NVDA-019 deste projeto --
+	The old stub was a no-op. Measured consequence: a MINIMALLY
+	CORRECT add-on by this project's own NVDA-019 rule --
 
 	    import addonHandler
 	    addonHandler.initTranslation()
 	    class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	        scriptCategory = _("Meu Addon")
 
-	recusando codigo certo. A verificacao estava errada, nao o addon.
+	rejecting correct code. The check was wrong, not the add-on.
 
-	Injetar nos globais do CHAMADOR, e nao em builtins, preserva a semantica
-	real: um modulo que usa gettext SEM inicializar continua quebrando, que e
-	exatamente o defeito que a regra NVDA-003 existe para pegar.
+	Injecting into the CALLER's globals, and not into builtins, preserves the real
+	semantics: a module that uses gettext WITHOUT initializing keeps breaking, which is
+	exactly the defect the NVDA-003 rule exists to catch.
 	"""
 	quadro = inspect.currentframe()
 	chamador = quadro.f_back if quadro is not None else None
-	if chamador is None:  # pragma: no cover - CPython sempre da o frame
+	if chamador is None:  # pragma: no cover - CPython always gives the frame
 		return
 	globais = chamador.f_globals
 	globais.setdefault("_", lambda texto: texto)
@@ -153,7 +153,7 @@ def _make_module(name: str, **attrs) -> types.ModuleType:
 	return mod
 
 
-# Pacotes do NVDA cujos submodulos podem ser resolvidos com stub permissivo.
+# NVDA packages whose submodules can be resolved with a permissive stub.
 _PACOTES_NVDA = (
 	"gui", "config", "speech", "NVDAObjects", "addonHandler", "braille",
 	"synthDriverHandler", "brailleDisplayDrivers", "textInfos", "documentBase",
@@ -162,9 +162,9 @@ _PACOTES_NVDA = (
 
 
 class _NVDASubmoduleFinder:
-	"""Resolve `pacoteNVDA.qualquercoisa` com um modulo permissivo."""
+	"""Resolves `nvdaPackage.anything` with a permissive module."""
 
-	def find_module(self, fullname, path=None):  # pragma: no cover - API antiga
+	def find_module(self, fullname, path=None):  # pragma: no cover - old API
 		return None
 
 	def find_spec(self, fullname, path=None, target=None):
@@ -185,8 +185,8 @@ class _CarregadorPermissivo:
 
 
 def install() -> None:
-	"""Registra os stubs em sys.modules -- idempotente, chamar antes de
-	importar qualquer codigo de addon gerado."""
+	"""Registers the stubs in sys.modules -- idempotent, call before
+	importing any generated add-on code."""
 	stubs: dict[str, types.ModuleType] = {
 		"wx": _make_module("wx", Dialog=_WxDialog, Panel=_WxDialog, Frame=_WxDialog),
 		"gui": _make_module("gui", SettingsPanel=SettingsPanel, mainFrame=_Permissive()),
@@ -230,18 +230,18 @@ def install() -> None:
 	for name, mod in stubs.items():
 		if name not in sys.modules:
 			sys.modules[name] = mod
-	# Alguns modulos NVDA tem submodulos referenciados via "from X import Y" --
-	# stub permissivo como fallback pra qualquer coisa nao explicitamente
-	# listada acima (nunca unittest.mock -- ver nota de MODULE_VERSION 1.0.0).
+	# Some NVDA modules have submodules referenced via "from X import Y" --
+	# permissive stub as a fallback for anything not explicitly
+	# listed above (never unittest.mock -- see the MODULE_VERSION 1.0.0 note).
 	sys.modules.setdefault("addonHandler.addonVersionCheck", _make_module("addonHandler.addonVersionCheck"))
 
-	# Qualquer SUBMODULO de um pacote NVDA conhecido resolve sozinho.
+	# Any SUBMODULE of a known NVDA package resolves by itself.
 	#
-	# Antes, cada submodulo precisava estar listado a mao, e um que faltasse
-	# e gui/message.py e um dos arquivos que o proprio projeto injeta nos
-	# usar uma API e reprovavamos quem usasse.
+	# Before, each submodule had to be listed by hand, and one that was missing
+	# (gui/message.py is one of the files the project itself injects into
+	# add-ons) made us reject whoever used an API.
 	#
-	# So cobre submodulos de pacotes NVDA. Import de biblioteca de terceiros
-	# continua falhando, que e o que a verificacao existe para pegar.
+	# It only covers submodules of NVDA packages. Importing a third-party
+	# library keeps failing, which is what the check exists to catch.
 	if not any(isinstance(f, _NVDASubmoduleFinder) for f in sys.meta_path):
 		sys.meta_path.append(_NVDASubmoduleFinder())

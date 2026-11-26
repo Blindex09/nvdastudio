@@ -1,9 +1,9 @@
-"""Pasta de trabalho do NVDAStudio e confinamento de caminhos.
+"""NVDAStudio workspace folder and path confinement.
 
-Toda ferramenta que le ou grava arquivo passa por aqui. O que o Claude manda
-(nome do addon, caminho relativo) e entrada nao confiavel: nada resolve para
-fora da pasta de trabalho, nem por `..`, nem por caminho absoluto, nem por
-link simbolico.
+Every tool that reads or writes a file goes through here. What Claude sends
+(add-on name, relative path) is untrusted input: nothing resolves outside the
+workspace folder, not through `..`, not through an absolute path, not through
+a symbolic link.
 """
 
 import os
@@ -14,7 +14,7 @@ _MAX_ADDON_NAME = 64
 
 
 class WorkspaceError(Exception):
-    """Pedido que sai da pasta de trabalho ou aponta para algo que nao existe."""
+    """Request that leaves the workspace folder or points to something that does not exist."""
 
 
 def default_root() -> Path:
@@ -35,11 +35,11 @@ class Workspace:
     def _inside(self, candidate: Path, base: Path) -> Path:
         resolved = candidate.resolve()
         if resolved != base and base not in resolved.parents:
-            raise WorkspaceError(f"caminho fora da pasta permitida: {candidate}")
+            raise WorkspaceError(f"path outside the allowed folder: {candidate}")
         return resolved
 
     def addon_dir(self, addon: str, *, must_exist: bool = True) -> Path:
-        """Pasta de um addon, dado o nome (uma unica pasta direto na raiz)."""
+        """Folder of an add-on, given its name (a single folder directly at the root)."""
         name = addon.strip()
         if (
             not name
@@ -48,34 +48,34 @@ class Workspace:
             or any(sep in name for sep in ("/", "\\", ":"))
         ):
             raise WorkspaceError(
-                "nome de addon invalido: use apenas o nome da pasta, sem caminho"
+                "invalid add-on name: use only the folder name, without a path"
             )
         path = self._inside(self.root / name, self.root)
         if path == self.root:
-            raise WorkspaceError("nome de addon invalido")
+            raise WorkspaceError("invalid add-on name")
         if must_exist and not path.is_dir():
-            raise WorkspaceError(f"addon nao encontrado na pasta de trabalho: {name}")
+            raise WorkspaceError(f"add-on not found in the workspace folder: {name}")
         return path
 
     def file_in_addon(self, addon: str, relative: str) -> Path:
-        """Arquivo dentro de um addon; `relative` nunca escapa da pasta do addon."""
+        """File inside an add-on; `relative` never escapes the add-on folder."""
         base = self.addon_dir(addon)
         rel = relative.replace("\\", "/").strip()
         if not rel or rel.startswith("/") or (len(rel) > 1 and rel[1] == ":"):
-            raise WorkspaceError(f"caminho relativo invalido: {relative!r}")
+            raise WorkspaceError(f"invalid relative path: {relative!r}")
         return self._inside(base / rel, base)
 
     def package_path(self, package: str) -> Path:
-        """Pacote .nvda-addon dentro da pasta de trabalho."""
+        """A .nvda-addon package inside the workspace folder."""
         rel = package.replace("\\", "/").strip()
         if not rel.lower().endswith(".nvda-addon"):
-            raise WorkspaceError("o pacote precisa terminar em .nvda-addon")
+            raise WorkspaceError("the package must end in .nvda-addon")
         candidate = Path(rel)
         if not candidate.is_absolute():
             candidate = self.root / candidate
         path = self._inside(candidate, self.root)
         if not path.is_file():
-            raise WorkspaceError(f"pacote nao encontrado: {package}")
+            raise WorkspaceError(f"package not found: {package}")
         return path
 
     def list_addons(self) -> list[str]:

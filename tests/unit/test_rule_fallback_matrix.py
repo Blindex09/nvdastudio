@@ -40,14 +40,14 @@ def test_fallback_matrix_cobre_todas_as_regras():
 
     # A cobertura completa depende do default STRICT_ONLY no builder + overrides.
     assert "RULE_FALLBACK_MATRIX: dict[str, tuple[str, str]] = _build_rule_fallback_matrix()" in src
-    assert '("STRICT_ONLY", "Sem fallback: corrigir exatamente a violacao da regra.")' in src
+    assert '("STRICT_ONLY", "No fallback: fix the rule violation exactly.")' in src
 
 
 def test_fallback_matrix_e_injetada_no_guia():
     src, _ = _load_module_ast()
 
     assert "RULE_FALLBACK_MATRIX_TEXT: str = _format_rule_fallback_matrix()" in src
-    assert "MATRIZ DE FALLBACK POR REGRA (COBERTURA 100%)" in src
+    assert "PER-RULE FALLBACK MATRIX (100% COVERAGE)" in src
 
     # A matriz entra no guia de desenvolvimento servido ao Claude.
     assert src.count("{RULE_FALLBACK_MATRIX_TEXT}") >= 1

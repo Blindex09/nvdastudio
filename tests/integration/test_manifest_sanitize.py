@@ -136,7 +136,7 @@ class TestE2ManifestSanitize:
 		problems = validate_addon_structure(addon_folder)
 		# Nao deve haver erros de estrutura ou NVDA-003/004 — apenas eventuais avisos menores
 		criticos = [p for p in problems if any(
-			tag in p for tag in ["ESTRUTURA-001", "ESTRUTURA-002", "ESTRUTURA-003",
-			                     "ESTRUTURA-004", "ESTRUTURA-005", "NVDA-003", "NVDA-004"]
+			tag in p for tag in ["STRUCTURE-001", "STRUCTURE-002", "STRUCTURE-003",
+			                     "STRUCTURE-004", "STRUCTURE-005", "NVDA-003", "NVDA-004"]
 		)]
 		assert criticos == [], f"Problemas criticos inesperados: {criticos}"

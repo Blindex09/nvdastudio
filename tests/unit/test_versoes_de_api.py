@@ -22,7 +22,7 @@ def test_versao_com_aspas_como_no_guia_do_desenvolvedor_e_aceita(tmp_path):
 
 def test_minimo_maior_que_ultimo_testado_e_reportado(tmp_path):
     problems = _problems(tmp_path, minimumNVDAVersion="2026.3.1", lastTestedNVDAVersion="2026.1.0")
-    assert any("maior que" in p for p in problems)
+    assert any("is greater than" in p for p in problems)
 
 
 def test_versao_do_addon_major_minor_e_valida(tmp_path):

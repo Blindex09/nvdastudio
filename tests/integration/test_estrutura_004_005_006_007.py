@@ -51,13 +51,13 @@ _DOC_HTML = """\
 
 
 # ---------------------------------------------------------------------------
-# E12 — ESTRUTURA-004: nenhum .py em globalPlugins/
+# E12 — STRUCTURE-004: nenhum .py em globalPlugins/
 # ---------------------------------------------------------------------------
 
 class TestE12Estrutura004:
 	"""
 	globalPlugins/ existe mas so contem arquivos nao-Python.
-	O validador deve reportar ESTRUTURA-004.
+	O validador deve reportar STRUCTURE-004.
 	"""
 
 	def test_sem_py_em_globalPlugins_gera_estrutura004(self, tmp_path):
@@ -73,13 +73,13 @@ class TestE12Estrutura004:
 		addon_folder, _ = save_addon_files(blocks, str(tmp_path), "AddonE12", use_timestamp=False)
 
 		problems = validate_addon_structure(addon_folder)
-		assert any("ESTRUTURA-004" in p for p in problems), (
-			f"ESTRUTURA-004 deveria ser detectado. Problemas: {problems}"
+		assert any("STRUCTURE-004" in p for p in problems), (
+			f"STRUCTURE-004 deveria ser detectado. Problemas: {problems}"
 		)
 
 	def test_estrutura004_nao_dispara_sem_py_fora_de_globalPlugins(self, tmp_path):
 		"""
-		__init__.py em globalPlugins/ garante que ESTRUTURA-004 NAO dispara —
+		__init__.py em globalPlugins/ garante que STRUCTURE-004 NAO dispara —
 		a presenca de pelo menos um .py e suficiente.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
@@ -93,19 +93,19 @@ class TestE12Estrutura004:
 		addon_folder, _ = save_addon_files(blocks, str(tmp_path), "AddonE12", use_timestamp=False)
 
 		problems = validate_addon_structure(addon_folder)
-		assert not any("ESTRUTURA-004" in p for p in problems), (
-			f"ESTRUTURA-004 NAO deveria disparar com __init__.py presente. Problemas: {problems}"
+		assert not any("STRUCTURE-004" in p for p in problems), (
+			f"STRUCTURE-004 NAO deveria disparar com __init__.py presente. Problemas: {problems}"
 		)
 
 
 # ---------------------------------------------------------------------------
-# E12 — ESTRUTURA-005: __init__.py sem GlobalPlugin nem AppModule
+# E12 — STRUCTURE-005: __init__.py sem GlobalPlugin nem AppModule
 # ---------------------------------------------------------------------------
 
 class TestE12Estrutura005:
 	"""
 	__init__.py existe mas nao declara class GlobalPlugin nem class AppModule.
-	O validador deve reportar ESTRUTURA-005.
+	O validador deve reportar STRUCTURE-005.
 	"""
 
 	def test_init_sem_globalPlugin_gera_estrutura005(self, tmp_path):
@@ -120,14 +120,14 @@ class TestE12Estrutura005:
 		addon_folder, _ = save_addon_files(blocks, str(tmp_path), "AddonE12", use_timestamp=False)
 
 		problems = validate_addon_structure(addon_folder)
-		assert any("ESTRUTURA-005" in p for p in problems), (
-			f"ESTRUTURA-005 deveria ser detectado. Problemas: {problems}"
+		assert any("STRUCTURE-005" in p for p in problems), (
+			f"STRUCTURE-005 deveria ser detectado. Problemas: {problems}"
 		)
 
 	def test_init_sem_globalPlugin_nao_dispara_nvda003_004(self, tmp_path):
 		"""
 		_INIT_SEM_CLASS tem initTranslation e terminate — NVDA-003/004 NAO disparam.
-		Apenas ESTRUTURA-005 e reportado.
+		Apenas STRUCTURE-005 e reportado.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -159,19 +159,19 @@ class TestE12Estrutura005:
 		addon_folder, _ = save_addon_files(blocks, str(tmp_path), "AddonE12", use_timestamp=False)
 
 		problems = validate_addon_structure(addon_folder)
-		assert not any("ESTRUTURA-005" in p for p in problems), (
-			f"ESTRUTURA-005 NAO deve disparar com class GlobalPlugin presente. Problemas: {problems}"
+		assert not any("STRUCTURE-005" in p for p in problems), (
+			f"STRUCTURE-005 NAO deve disparar com class GlobalPlugin presente. Problemas: {problems}"
 		)
 
 
 # ---------------------------------------------------------------------------
-# E12 — ESTRUTURA-006: pasta doc/ ausente
+# E12 — STRUCTURE-006: pasta doc/ ausente
 # ---------------------------------------------------------------------------
 
 class TestE12Estrutura006:
 	"""
 	Addon correto estruturalmente mas sem pasta doc/.
-	O validador deve reportar ESTRUTURA-006.
+	O validador deve reportar STRUCTURE-006.
 	"""
 
 	def test_sem_doc_gera_estrutura006(self, tmp_path):
@@ -185,15 +185,15 @@ class TestE12Estrutura006:
 		]
 		# garantir_doc=False: este teste verifica o VALIDADOR, nao a rede de
 		# seguranca. Com o fallback ligado (padrao desde addon_builder 4.22.0)
-		# um addon sem doc/ deixa de existir, e ESTRUTURA-006 nao teria como
+		# um addon sem doc/ deixa de existir, e STRUCTURE-006 nao teria como
 		# disparar -- o que testaria o fallback, nao a regra.
 		addon_folder, _ = save_addon_files(
 			blocks, str(tmp_path), "AddonE12", use_timestamp=False, garantir_doc=False,
 		)
 
 		problems = validate_addon_structure(addon_folder)
-		assert any("ESTRUTURA-006" in p for p in problems), (
-			f"ESTRUTURA-006 deveria ser detectado. Problemas: {problems}"
+		assert any("STRUCTURE-006" in p for p in problems), (
+			f"STRUCTURE-006 deveria ser detectado. Problemas: {problems}"
 		)
 
 	def test_com_doc_nao_gera_estrutura006(self, tmp_path):
@@ -208,23 +208,23 @@ class TestE12Estrutura006:
 		addon_folder, _ = save_addon_files(blocks, str(tmp_path), "AddonE12", use_timestamp=False)
 
 		problems = validate_addon_structure(addon_folder)
-		assert not any("ESTRUTURA-006" in p for p in problems), (
-			f"ESTRUTURA-006 NAO deve disparar com doc/ presente. Problemas: {problems}"
+		assert not any("STRUCTURE-006" in p for p in problems), (
+			f"STRUCTURE-006 NAO deve disparar com doc/ presente. Problemas: {problems}"
 		)
 
 
 # ---------------------------------------------------------------------------
-# E12 — ESTRUTURA-007: multiplas pastas de plugin com __init__.py
+# E12 — STRUCTURE-007: multiplas pastas de plugin com __init__.py
 # ---------------------------------------------------------------------------
 
 class TestE12Estrutura007:
 	"""
 	Duas pastas em globalPlugins/ cada uma com __init__.py — o NVDA carregaria
 	dois GlobalPlugin simultaneamente causando conflito de atalhos.
-	O validador deve reportar ESTRUTURA-007.
+	O validador deve reportar STRUCTURE-007.
 
 	Nota: save_addon_files() executa _deduplicate_blocks() internamente, que
-	funde multiplos plugin dirs em um unico canonico — prevenindo ESTRUTURA-007
+	funde multiplos plugin dirs em um unico canonico — prevenindo STRUCTURE-007
 	no fluxo normal de geracao. Para testar o PATH DE FALHA do validador,
 	cria-se a estrutura diretamente em disco (sem passar).
 	Isso representa acessos diretos ao addon_folder (ex: edicao manual, testes
@@ -255,8 +255,8 @@ class TestE12Estrutura007:
 
 		addon_folder = self._criar_addon_com_duas_pastas(tmp_path)
 		problems = validate_addon_structure(addon_folder)
-		assert any("ESTRUTURA-007" in p for p in problems), (
-			f"ESTRUTURA-007 deveria ser detectado. Problemas: {problems}"
+		assert any("STRUCTURE-007" in p for p in problems), (
+			f"STRUCTURE-007 deveria ser detectado. Problemas: {problems}"
 		)
 
 	def test_estrutura007_menciona_nomes_das_pastas(self, tmp_path):
@@ -264,9 +264,9 @@ class TestE12Estrutura007:
 
 		addon_folder = self._criar_addon_com_duas_pastas(tmp_path)
 		problems = validate_addon_structure(addon_folder)
-		msg007 = next(p for p in problems if "ESTRUTURA-007" in p)
+		msg007 = next(p for p in problems if "STRUCTURE-007" in p)
 		assert "PluginA" in msg007 or "PluginB" in msg007, (
-			f"ESTRUTURA-007 deveria mencionar os nomes das pastas. Mensagem: {msg007}"
+			f"STRUCTURE-007 deveria mencionar os nomes das pastas. Mensagem: {msg007}"
 		)
 
 	def test_pasta_unica_nao_gera_estrutura007(self, tmp_path):
@@ -281,6 +281,6 @@ class TestE12Estrutura007:
 		addon_folder, _ = save_addon_files(blocks, str(tmp_path), "AddonE12", use_timestamp=False)
 
 		problems = validate_addon_structure(addon_folder)
-		assert not any("ESTRUTURA-007" in p for p in problems), (
-			f"ESTRUTURA-007 NAO deve disparar com uma unica pasta de plugin. Problemas: {problems}"
+		assert not any("STRUCTURE-007" in p for p in problems), (
+			f"STRUCTURE-007 NAO deve disparar com uma unica pasta de plugin. Problemas: {problems}"
 		)

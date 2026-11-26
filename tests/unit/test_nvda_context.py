@@ -106,14 +106,14 @@ class TestNvdaDetectionRules:
         """NVDA-001: falta nextHandler — critico."""
         rule = next((r for r in NVDA_DETECTION_RULES if r[0] == "NVDA-001"), None)
         assert rule is not None
-        assert "Critico" in rule[1] or "critico" in rule[1].lower()
+        assert rule[1] == "Critical"
         assert "nextHandler" in rule[2]
 
     def test_regra_017_dll_64bit(self):
         """NVDA-017: DLL 32-bit em NVDA 64-bit — critico para forward-compatibility."""
         rule = next((r for r in NVDA_DETECTION_RULES if r[0] == "NVDA-017"), None)
         assert rule is not None
-        assert "Critico" in rule[1] or "critico" in rule[1].lower()
+        assert rule[1] == "Critical"
 
     def test_regra_018_versao_minima(self):
         """NVDA-018: minimumNVDAVersion abaixo de 2019.3.0."""
@@ -122,7 +122,7 @@ class TestNvdaDetectionRules:
         assert "2019.3" in rule[2]
 
     def test_severidades_validas(self):
-        severidades = {"Critico", "Serio", "Moderado", "Menor"}
+        severidades = {"Critical", "Serious", "Moderate", "Minor"}
         for _, sev, _ in NVDA_DETECTION_RULES:
             assert sev in severidades, f"Severidade invalida: {sev}"
 
@@ -157,7 +157,7 @@ class TestWxA11yRules:
         """
         rule = next((r for r in WX_A11Y_RULES if r[0] == "WX-A11Y-005"), None)
         assert rule is not None
-        assert "Serio" in rule[1], f"WX-A11Y-005 deve ser Serio: {rule[1]}"
+        assert "Serious" in rule[1], f"WX-A11Y-005 deve ser Serious: {rule[1]}"
         assert "ShowModal" in rule[2] or "SetFocus" in rule[2], f"Deve mencionar ShowModal/SetFocus: {rule[2]}"
 
     def test_regra_013_evtkeydow_listbox_critico(self):
@@ -166,7 +166,7 @@ class TestWxA11yRules:
         """
         rule = next((r for r in WX_A11Y_RULES if r[0] == "WX-A11Y-013"), None)
         assert rule is not None
-        assert "Critico" in rule[1], f"WX-A11Y-013 deve ser Critico: {rule[1]}"
+        assert "Critical" in rule[1], f"WX-A11Y-013 deve ser Critical: {rule[1]}"
         assert "EVT_CHAR_HOOK" in rule[2] or "EVT_KEY_DOWN" in rule[2], f"Deve mencionar EVT: {rule[2]}"
 
     def test_regra_014_listctrl_item_activated(self):
@@ -175,7 +175,7 @@ class TestWxA11yRules:
         """
         rule = next((r for r in WX_A11Y_RULES if r[0] == "WX-A11Y-014"), None)
         assert rule is not None
-        assert "Serio" in rule[1], f"WX-A11Y-014 deve ser Serio: {rule[1]}"
+        assert "Serious" in rule[1], f"WX-A11Y-014 deve ser Serious: {rule[1]}"
         assert "EVT_LIST_ITEM_ACTIVATED" in rule[2], f"Deve mencionar EVT_LIST_ITEM_ACTIVATED: {rule[2]}"
 
     def test_regras_001_002_003_sao_criticas(self):
@@ -185,7 +185,7 @@ class TestWxA11yRules:
         for rid in ("WX-A11Y-001", "WX-A11Y-002", "WX-A11Y-003"):
             rule = next((r for r in WX_A11Y_RULES if r[0] == rid), None)
             assert rule is not None
-            assert "Critico" in rule[1], f"{rid} deve ser Critico: {rule[1]}"
+            assert "Critical" in rule[1], f"{rid} deve ser Critical: {rule[1]}"
 
 
 class TestDtkA11yRules:
@@ -215,19 +215,19 @@ class TestDtkA11yRules:
         """DTK-A11Y-001: controle interativo sem Name via UIA/MSAA — Critico."""
         rule = next((r for r in DTK_A11Y_RULES if r[0] == "DTK-A11Y-001"), None)
         assert rule is not None
-        assert "Critico" in rule[1], f"DTK-A11Y-001 deve ser Critico: {rule[1]}"
+        assert "Critical" in rule[1], f"DTK-A11Y-001 deve ser Critical: {rule[1]}"
         assert "Name" in rule[2] or "UIA" in rule[2] or "MSAA" in rule[2]
 
     def test_regra_005_teclado_inalcancavel_critico(self):
         """DTK-A11Y-005: elemento interativo nao alcancavel via teclado — Critico."""
         rule = next((r for r in DTK_A11Y_RULES if r[0] == "DTK-A11Y-005"), None)
         assert rule is not None
-        assert "Critico" in rule[1], f"DTK-A11Y-005 deve ser Critico: {rule[1]}"
-        assert "teclado" in rule[2].lower()
+        assert "Critical" in rule[1], f"DTK-A11Y-005 deve ser Critical: {rule[1]}"
+        assert "keyboard" in rule[2].lower()
 
     def test_regra_010_modal_focus_escape_serio(self):
         """DTK-A11Y-010: dialogo modal nao prende o foco — Serio."""
         rule = next((r for r in DTK_A11Y_RULES if r[0] == "DTK-A11Y-010"), None)
         assert rule is not None
-        assert "Serio" in rule[1], f"DTK-A11Y-010 deve ser Serio: {rule[1]}"
+        assert "Serious" in rule[1], f"DTK-A11Y-010 deve ser Serious: {rule[1]}"
         assert "modal" in rule[2].lower() or "dialogo" in rule[2].lower()

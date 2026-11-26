@@ -35,7 +35,7 @@ def test_app_module_sem_nexthandler_e_reportado(tmp_path):
 
 def test_app_module_com_import_relativo_orfao_e_reportado(tmp_path):
     problems = validate_addon_structure(_addon(tmp_path, APP_MODULE_RUIM))
-    assert any(p.startswith("ESTRUTURA-009") and "ausente" in p for p in problems), problems
+    assert any(p.startswith("STRUCTURE-009") and "ausente" in p for p in problems), problems
 
 
 def test_app_module_correto_continua_sem_problemas(tmp_path):

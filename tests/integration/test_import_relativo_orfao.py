@@ -16,7 +16,7 @@ lastTestedNVDAVersion = 2026.1.1
 """
 
 # __init__.py importa gmail_service.py que existe — OK
-# gmail_service.py importa gmail_oauth.py que NAO existe — ESTRUTURA-009
+# gmail_service.py importa gmail_oauth.py que NAO existe — STRUCTURE-009
 _INIT_PY = """import globalPluginHandler
 import addonHandler
 from .gmail_service import GmailService
@@ -102,13 +102,13 @@ def _make_blocks_sem_orfao():
 class TestE5ImportRelativoOrfao:
 	"""
 	Regressao do bug de producao do GmailSummarizer:
-	from .gmail_oauth import sem gmail_oauth.py presente deve disparar ESTRUTURA-009.
+	from .gmail_oauth import sem gmail_oauth.py presente deve disparar STRUCTURE-009.
 	"""
 
 	def test_import_orfao_dispara_estrutura009(self, tmp_path):
 		"""
 		`from .gmail_oauth import ...` sem gmail_oauth.py deve resultar em
-		ESTRUTURA-009 no validate.
+		STRUCTURE-009 no validate.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -117,17 +117,17 @@ class TestE5ImportRelativoOrfao:
 			_make_blocks_com_orfao(), str(tmp_path), "GmailSummarizer", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		e009 = [p for p in problems if "ESTRUTURA-009" in p]
+		e009 = [p for p in problems if "STRUCTURE-009" in p]
 		assert len(e009) >= 1, (
-			f"Import relativo orfao deve disparar ESTRUTURA-009. Problemas: {problems}"
+			f"Import relativo orfao deve disparar STRUCTURE-009. Problemas: {problems}"
 		)
 		assert "gmail_oauth" in e009[0], (
-			f"ESTRUTURA-009 deve mencionar o modulo ausente. Mensagem: {e009[0]}"
+			f"STRUCTURE-009 deve mencionar o modulo ausente. Mensagem: {e009[0]}"
 		)
 
 	def test_addon_completo_sem_orfaos_passa_limpo(self, tmp_path):
 		"""
-		Quando gmail_oauth.py existe, ESTRUTURA-009 nao deve ser reportado.
+		Quando gmail_oauth.py existe, STRUCTURE-009 nao deve ser reportado.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -136,15 +136,15 @@ class TestE5ImportRelativoOrfao:
 			_make_blocks_completo(), str(tmp_path), "GmailSummarizer", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		e009 = [p for p in problems if "ESTRUTURA-009" in p]
+		e009 = [p for p in problems if "STRUCTURE-009" in p]
 		assert e009 == [], (
-			f"Addon completo (todos os modulos presentes) nao deve ter ESTRUTURA-009. "
+			f"Addon completo (todos os modulos presentes) nao deve ter STRUCTURE-009. "
 			f"Problemas: {problems}"
 		)
 
 	def test_estrutura009_menciona_arquivo_origem(self, tmp_path):
 		"""
-		A mensagem de ESTRUTURA-009 deve mencionar o arquivo que faz o import orfao.
+		A mensagem de STRUCTURE-009 deve mencionar o arquivo que faz o import orfao.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -153,16 +153,16 @@ class TestE5ImportRelativoOrfao:
 			_make_blocks_com_orfao(), str(tmp_path), "GmailSummarizer", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		e009 = [p for p in problems if "ESTRUTURA-009" in p]
+		e009 = [p for p in problems if "STRUCTURE-009" in p]
 		assert any("gmail_service" in p for p in e009), (
-			f"ESTRUTURA-009 deve mencionar o arquivo origem do import. Mensagem: {e009}"
+			f"STRUCTURE-009 deve mencionar o arquivo origem do import. Mensagem: {e009}"
 		)
 
 	def test_import_de_subpacote_nao_dispara_falso_positivo(self, tmp_path):
 		"""
 		`from .apps import X` onde apps/ e um SUBPACOTE (apps/__init__.py), nao um
 		arquivo apps.py solto, e um padrao Python valido e NAO deve disparar
-		ESTRUTURA-009.
+		STRUCTURE-009.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -196,7 +196,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			blocks, str(tmp_path), "AcoesRapidas", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		e009 = [p for p in problems if "ESTRUTURA-009" in p]
+		e009 = [p for p in problems if "STRUCTURE-009" in p]
 		assert e009 == [], (
 			f"Subpacote apps/__init__.py deve satisfazer 'from .apps import ...'. Problemas: {e009}"
 		)

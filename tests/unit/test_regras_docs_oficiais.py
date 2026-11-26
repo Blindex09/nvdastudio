@@ -7,12 +7,12 @@ class TestCincoRegrasNovas:
 	def test_nvda_055_pip_bundlado_nao_e_api_estavel(self):
 		assert "NVDA-055" in _RULES_BY_ID
 		_, desc = _RULES_BY_ID["NVDA-055"]
-		assert "api estavel" in desc.lower() or "nao sao api" in desc.lower()
+		assert "stable add-on api" in desc.lower()
 
 	def test_nvda_056_messagedialog_thread_safety(self):
 		assert "NVDA-056" in _RULES_BY_ID
 		severity, desc = _RULES_BY_ID["NVDA-056"]
-		assert severity == "Critico"
+		assert severity == "Critical"
 		assert "thread" in desc.lower() and "crash" in desc.lower()
 
 	def test_nvda_057_scrcat_e_flags_do_script(self):
@@ -28,10 +28,10 @@ class TestCincoRegrasNovas:
 	def test_nvda_059_addonid_regex_restrito(self):
 		assert "NVDA-059" in _RULES_BY_ID
 		_, desc = _RULES_BY_ID["NVDA-059"]
-		assert "addonId" in desc or "letras, numeros" in desc.lower()
+		assert "addonId" in desc or "letters, digits" in desc.lower()
 
 	def test_todas_tem_severidade_valida(self):
-		validas = {"Critico", "Serio", "Moderado", "Menor"}
+		validas = {"Critical", "Serious", "Moderate", "Minor"}
 		for rid in ("NVDA-055", "NVDA-056", "NVDA-057", "NVDA-058", "NVDA-059"):
 			severity, _ = _RULES_BY_ID[rid]
 			assert severity in validas, f"{rid} tem severidade invalida: {severity}"

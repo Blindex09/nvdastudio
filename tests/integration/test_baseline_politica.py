@@ -68,13 +68,13 @@ def _make_blocks_baseline():
 
 class TestE8BaselinePolitica:
 	"""
-	validate_addon_structure deve emitir POLITICA-001/002 para versoes
+	validate_addon_structure deve emitir POLICY-001/002 para versoes
 	abaixo do baseline oficial do projeto.
 	"""
 
 	def test_minimum_abaixo_do_baseline_gera_politica001(self, tmp_path):
 		"""
-		minimumNVDAVersion = 2019.3.0 deve disparar POLITICA-001.
+		minimumNVDAVersion = 2019.3.0 deve disparar POLICY-001.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -83,16 +83,16 @@ class TestE8BaselinePolitica:
 			_make_blocks_legado(), str(tmp_path), "AddonLegado", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		p001 = [p for p in problems if "POLITICA-001" in p]
+		p001 = [p for p in problems if "POLICY-001" in p]
 		assert len(p001) >= 1, (
-			f"minimumNVDAVersion=2019.3.0 deve disparar POLITICA-001. "
+			f"minimumNVDAVersion=2019.3.0 deve disparar POLICY-001. "
 			f"Problemas: {problems}"
 		)
 		assert "2019.3.0" in p001[0] or "baseline" in p001[0].lower()
 
 	def test_last_tested_abaixo_do_baseline_gera_politica002(self, tmp_path):
 		"""
-		lastTestedNVDAVersion = 2024.1.0 deve disparar POLITICA-002.
+		lastTestedNVDAVersion = 2024.1.0 deve disparar POLICY-002.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -101,16 +101,16 @@ class TestE8BaselinePolitica:
 			_make_blocks_legado(), str(tmp_path), "AddonLegado", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		p002 = [p for p in problems if "POLITICA-002" in p]
+		p002 = [p for p in problems if "POLICY-002" in p]
 		assert len(p002) >= 1, (
-			f"lastTestedNVDAVersion=2024.1.0 deve disparar POLITICA-002. "
+			f"lastTestedNVDAVersion=2024.1.0 deve disparar POLICY-002. "
 			f"Problemas: {problems}"
 		)
 
 	def test_addon_com_baseline_correto_nao_dispara_politica(self, tmp_path):
 		"""
-		Addon com versoes no baseline oficial (2026.1.1) nao deve ter POLITICA-001
-		nem POLITICA-002.
+		Addon com versoes no baseline oficial (2026.1.1) nao deve ter POLICY-001
+		nem POLICY-002.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -119,14 +119,14 @@ class TestE8BaselinePolitica:
 			_make_blocks_baseline(), str(tmp_path), "AddonBaseline", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		politica = [p for p in problems if "POLITICA-001" in p or "POLITICA-002" in p]
+		politica = [p for p in problems if "POLICY-001" in p or "POLICY-002" in p]
 		assert politica == [], (
 			f"Addon com baseline correto nao deve ter POLITICA. Problemas: {problems}"
 		)
 
 	def test_mensagem_politica001_menciona_baseline(self, tmp_path):
 		"""
-		A mensagem de POLITICA-001 deve mencionar o baseline oficial do projeto.
+		A mensagem de POLICY-001 deve mencionar o baseline oficial do projeto.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -136,7 +136,7 @@ class TestE8BaselinePolitica:
 			_make_blocks_legado(), str(tmp_path), "AddonLegado", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		p001 = [p for p in problems if "POLITICA-001" in p]
+		p001 = [p for p in problems if "POLICY-001" in p]
 		assert any(PROJECT_MIN_NVDA in p for p in p001), (
-			f"POLITICA-001 deve mencionar o baseline {PROJECT_MIN_NVDA}. Mensagem: {p001}"
+			f"POLICY-001 deve mencionar o baseline {PROJECT_MIN_NVDA}. Mensagem: {p001}"
 		)

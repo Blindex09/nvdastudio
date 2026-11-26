@@ -43,7 +43,7 @@ class TestValidateAddonStructurePastaInexistente:
         from nvdastudio_mcp.addon_builder import validate_addon_structure
         result = validate_addon_structure("/caminho/que/nao/existe_xyz")
         assert len(result) >= 1
-        assert any("nao encontrada" in p.lower() or "ausente" in p.lower()
+        assert any("not found" in p.lower() or "missing" in p.lower()
                    for p in result)
 
     def test_retorna_lista(self):
@@ -116,7 +116,7 @@ class TestValidateAddonStructureCompleto:
         assert not any(
             code in problem
             for problem in problems
-            for code in ("ESTRUTURA-005", "NVDA-003", "NVDA-004")
+            for code in ("STRUCTURE-005", "NVDA-003", "NVDA-004")
         )
 
 
@@ -283,7 +283,7 @@ class TestValidateAddonStructurePoliticaBaseline:
         (tmp_path / "doc").mkdir()
 
         problems = validate_addon_structure(str(tmp_path))
-        assert any("POLITICA-001" in p for p in problems), problems
+        assert any("POLICY-001" in p for p in problems), problems
 
     def test_last_tested_abaixo_do_baseline_gera_politica_002(self, tmp_path):
         from nvdastudio_mcp.addon_builder import validate_addon_structure
@@ -305,7 +305,7 @@ class TestValidateAddonStructurePoliticaBaseline:
         (tmp_path / "doc").mkdir()
 
         problems = validate_addon_structure(str(tmp_path))
-        assert any("POLITICA-002" in p for p in problems), problems
+        assert any("POLICY-002" in p for p in problems), problems
 
 
 class TestValidateAddonStructureLibExclusao:
@@ -348,7 +348,7 @@ class TestValidateAddonStructureLibExclusao:
             f"lib/ gerou falsos positivos: {lib_problems}"
         )
         assert not any(
-            "ESTRUTURA-005" in p or "NVDA-003" in p or "NVDA-004" in p
+            "STRUCTURE-005" in p or "NVDA-003" in p or "NVDA-004" in p
             for p in problems
         ), f"Falsos positivos de estrutura detectados: {problems}"
 

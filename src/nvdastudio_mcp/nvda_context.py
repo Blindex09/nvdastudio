@@ -9,234 +9,234 @@ from .project_policy import (
 
 
 # ------------------------------------------------------------------
-# Regras de deteccao NVDA-001..040, NVDA-042..050
+# NVDA detection rules NVDA-001..040, NVDA-042..050
 # ------------------------------------------------------------------
 
 NVDA_DETECTION_RULES: list[tuple[str, str, str]] = [
-	# (rule_id, severity, descricao)
-	("NVDA-001", "Critico",  "Falta nextHandler() em event handler"),
-	("NVDA-002", "Critico",  "Bloqueio da thread principal (sleep, I/O sincrono, HTTP bloqueante)"),
-	("NVDA-003", "Serio",    "Modulo usa gettext sem chamar addonHandler.initTranslation()"),
-	("NVDA-004", "Serio",    "Falta terminate() para cleanup de recursos persistentes"),
-	("NVDA-005", "Serio",    "Formato incorreto de versao no manifest ou lastTestedNVDAVersion < BACK_COMPAT_TO do NVDA alvo -- a Add-on Store valida minimumNVDAVersion/lastTestedNVDAVersion contra o catalogo real de versoes lancadas (nvdaAPIVersions.json), nao so contra o formato numerico YYYY.N.P"),
-	("NVDA-006", "Moderado", "Monkey-patching de modulos do core NVDA"),
-	("NVDA-007", "Moderado", "Script sem decorator @script"),
-	("NVDA-008", "Moderado", "Script sem description no decorator"),
-	("NVDA-009", "Moderado", "Atalho hardcoded conflita com NVDA core"),
-	("NVDA-010", "Serio",    "Atualizacao de UI de thread background sem wx.CallAfter() -- as 3 formas sancionadas de voltar para a GUI thread sao wx.CallAfter() (assincrono), wx.CallLater(ms, func) (assincrono com atraso) e gui.guiHelper.wxCallOnMain() (sincrono, espera o resultado); nunca toque em controles wx direto de uma thread nao-GUI"),
-	("NVDA-011", "Moderado", "Driver sem classmethod check()"),
-	("NVDA-012", "Menor",    "Clausula except: bare (captura tudo sem logar)"),
-	("NVDA-013", "Serio",    "Range de versao de API incompativel no manifest"),
-	("NVDA-014", "Menor",    "SHA256 ausente para submissao ao Add-on Store"),
-	("NVDA-015", "Moderado", "Configuracoes nao usam config.conf.spec"),
-	("NVDA-016", "Serio",    "Vulnerabilidade em secure mode (sem check shouldWriteToDisk())"),
-	("NVDA-017", "Critico",  "DLL 32-bit em NVDA 64-bit (2026.1+): incompativel"),
-	("NVDA-018", "Serio",    "minimumNVDAVersion abaixo de 2019.3.0 (exige Python 2)"),
-	# NVDA-019..021: adicionados em v3.2.0 (skill: nvda-addon-dev)
-	("NVDA-019", "Serio",    "# Translators: comment ausente imediatamente antes de chamada _()"),
-	("NVDA-020", "Moderado", "Import de re-export transitivo: use from NVDAObjects.IAccessible import IAccessible, nao from NVDAObjects import IAccessible"),
-	("NVDA-021", "Moderado", "Indentacao com espacos em vez de TABS (NVDA usa TABS como padrao de codificacao)"),
-	# NVDA-022: adicionado em v3.4.0 — root cause do GmailSummarizer (settings panel nunca aparecia)
-	("NVDA-022", "Critico",  "Import 3rd party em nivel de modulo em arquivo de servico — impede carregamento do addon inteiro (incluindo settings panel) se dependencia nao bundlada em lib/"),
-	# NVDA-023: adicionado em v3.5.0 — annotation com tipo lazy causa NameError no carregamento do modulo
-	("NVDA-023", "Critico",  "Type annotation que referencia tipo importado de forma lazy (dentro do metodo) — NameError no carregamento do modulo: use string literal '->\"Tipo\"' para forward reference"),
-	# NVDA-024: adicionado em v3.6.0 — categoryClasses.append sem guard causa painel duplicado no Tab
-	("NVDA-024", "Serio",    "NVDASettingsDialog.categoryClasses.append() sem guard 'if Panel not in categoryClasses' — se o addon for recarregado sem terminate() bem-sucedido, o painel aparece duplicado e o Tab navega entre dois paineis sobrepostos"),
-	# NVDA-025: adicionado em v3.7.0 — secao config.conf generica causa colisao entre addons
-	("NVDA-025", "Critico",  "config.conf usa secao generica (ex: 'meuAddon') em vez do addonId unico — multiplos addons com o mesmo nome de secao sobrescrevem configuracoes uns dos outros; use sempre o addonId real do manifest.ini"),
-	# NVDA-037: adicionado em v3.9.0 — BrailleDisplayDriver (renumerado de NVDA-044 em v3.8.0)
-	("NVDA-037", "Moderado", "BrailleDisplayDriver sem numCols, display() ou isThreadSafe — campos obrigatorios para que o NVDA saiba o tamanho do display e envie celulas corretamente"),
-	# NVDA-038: adicionado em v3.10.0 — SynthDriver sem supportedNotifications obrigatorias (skill: nvda-addon-dev §25)
-	# synthIndexReached e synthDoneSpeaking sao OBRIGATORIOS em supportedNotifications e devem ser notificados
-	# em speak(). Sem eles, "say all", leitura por paragrafo e callbacks de indice (braille) param de funcionar.
-	("NVDA-038", "Critico",  "SynthDriver sem supportedNotifications declarando synthIndexReached e synthDoneSpeaking — ambos obrigatorios (skill: nvda-addon-dev §25); sem eles 'say all', leitura por paragrafo e braille on-index param de funcionar"),
-	# NVDA-039: adicionado em v3.18.0 -- AppModule mapeando multiplos executaveis sem registerExecutableWithAppModule (skill: nvda-addon-dev par.3.2)
-	# registerExecutableWithAppModule() e o mecanismo oficial para um AppModule cobrir varios executaveis.
-	("NVDA-039", "Moderado", "AppModule com multiplos arquivos appModules/*.py identicos para executaveis da mesma suite -- use appModuleHandler.registerExecutableWithAppModule(executableName, appModuleName) para mapear executaveis extras ao mesmo AppModule e unregisterExecutable() em terminate() (skill: nvda-addon-dev par.3.2)"),
-	# NVDA-042..048: adicionados/corrigidos em v3.8.0-v3.9.0
-	("NVDA-042", "Moderado", "Usa _() para strings plurais em vez de ngettext() — gera texto errado: '1 itens encontrados'. Use ngettext(singular, plural, count).format(n=count)"),
-	("NVDA-043", "Moderado", "Braille Translation Table ausente ou mal declarada: falta arquivo .utb em brailleTables/ ou secao [brailleTables] no manifest.ini com displayName, contracted, output, input"),
-	("NVDA-044", "Moderado", "Symbol Dictionary ausente ou mal formatado: falta locale/<lang>/symbols-*.dic com secao 'symbols:' e entradas TAB-separadas ou secao [symbolDictionaries] no manifest.ini"),
-	("NVDA-045", "Menor",    "Locale Gesture Remapping ausente ou mal formatado: falta locale/<lang>/gestures.ini com secoes [module.ClassName] e bindings 'scriptName = gesture'"),
-	("NVDA-046", "Moderado", "Speech Dictionary sem formato correto — cada linha deve ter 4 campos TAB-separados: padrao, reposicao, case_sensitive, tipo. Declarar em manifest.ini [speechDictionaries]"),
-	("NVDA-047", "Serio",    "manifest.ini: url nao comeca com https:// — Add-on Store rejeita URLs sem HTTPS"),
-	("NVDA-048", "Critico",  "wxPython bundlado em lib/ (entradas wx*) — NVDA ja fornece wxPython; bundlar causa conflito de versao e aumento desnecessario do pacote"),
-	# NVDA-040: adicionado em v3.9.2 — AppModule para hosts especiais (UWP/wwahost)
-	("NVDA-040", "Serio",    "AppModule para wwahost.exe nao herda de nvdaBuiltin.appModules.wwahost.AppModule — herdar so de appModuleHandler.AppModule ignora o comportamento especial para apps UWP"),
-	# NVDA-026: adicionado em v3.11.0 — import de simbolo privado do NVDA (skill: nvda-addon-dev §22)
-	# Simbolos prefixados com _ sao privados e podem mudar em qualquer release NVDA, inclusive patches.
-	# Nao ha aviso de deprecacao para API privada — o addon quebra silenciosamente apos update do NVDA.
-	("NVDA-026", "Moderado", "Import de simbolo privado do NVDA (prefixo _) — ex: from someModule import _internalFunction. Simbolos _ sao privados e podem mudar em qualquer release NVDA sem aviso (skill: nvda-addon-dev §22); use apenas API publica documentada"),
-	# Fonte: Developer Guide do NVDA, "App modules for hosted apps" e Example 3: apps com Edge WebView2
-	# aparecem como pagina web por padrao; disableBrowseModeByDefault e OPCIONAL (design).
-	("NVDA-027", "Menor",    "Decisao de design, nao defeito: em app module de app que usa Edge WebView2 (o nome do modulo e o do app, como olk.py, nao msedgewebview2.py), `disableBrowseModeByDefault = True` desliga o modo de navegacao automatico; o Developer Guide diz que a linha pode ser removida se o addon quiser o modo de navegacao"),
-	# NVDA-028: adicionado em v3.12.0 — type hints com Optional[]/Union[] em vez de X | None / X | Y (skill: nvda-addon-dev §18)
-	# Python 3.13 (NVDA 2026.1+) suporta plenamente a sintaxe de uniao nativa. X | None e X | Y
-	# sao formas legadas que a skill proibe explicitamente em codigo novo.
-	("NVDA-028", "Menor",    "Type hint usando Optional/Union da typing em vez da sintaxe moderna X | None / X | Y. NVDA 2026.1+ usa Python 3.13 — use int | None, str | None, etc."),
-	# NVDA-029: adicionado em v3.12.0 — line endings CRLF em vez de LF (skill: nvda-addon-dev §18)
-	# A skill e explicita: UTF-8 + LF. CRLF em arquivos Python causa problemas no scons build do NVDA
-	("NVDA-029", "Menor",    "Line endings CRLF (\\r\\n) em arquivo Python do addon — NVDA exige LF (\\n) conforme coding standards (skill: nvda-addon-dev §18). CRLF causa problemas no scons build e no controle de versao"),
-	# NVDA-030: adicionado em v3.13.0 — GlobalPlugin/AppModule __init__ sem super().__init__(*args, **kwargs) (skill: nvda-addon-dev §3.1, §3.2)
-	# A skill mostra explicitamente o padrao: super().__init__(*args, **kwargs) e obrigatorio.
-	# Sem a chamada, globalPluginHandler nao completa a inicializacao do plugin — atalhos podem
-	# nao ser registrados e o plugin pode falhar silenciosamente na inicializacao do NVDA.
-	# O *args, **kwargs e necessario pois o NVDA pode passar argumentos ao construtor em versoes futuras.
-	("NVDA-030", "Serio",    "GlobalPlugin ou AppModule com __init__ que nao chama super().__init__(*args, **kwargs) — a inicializacao do plugin pelo globalPluginHandler/appModuleHandler nao e completada corretamente; atalhos podem nao ser registrados e o plugin falha silenciosamente (skill: nvda-addon-dev §3.1, §3.2)"),
-	# NVDA-031: adicionado em v3.13.0 — SynthDriver sem metodo cancel() (skill: nvda-addon-dev §25)
-	# cancel() faz parte do "minimum viable driver" da skill §25.
-	# Sem cancel(), pressionar Escape nao para a fala — comportamento completamente quebrado para o usuario.
-	# NVDA chama cancel() sempre que o usuario pressiona Ctrl ou Escape para interromper a leitura.
-	("NVDA-031", "Critico",  "SynthDriver sem metodo cancel() — obrigatorio no minimum viable driver (skill: nvda-addon-dev §25). Sem cancel(), pressionar Ctrl/Escape nao para a fala; o usuario fica preso ouvindo audio que nao consegue interromper"),
-	# NVDA-032: adicionado em v3.14.0 — extension point registrado em __init__ sem unregister em terminate() (skill: nvda-addon-dev §7)
-	# register() sem unregister() correspondente em terminate() e memory leak garantido.
-	# Pior: se o addon for recarregado (NVDA+Ctrl+F3), o handler fica registrado multiplas vezes
-	# — cada evento NVDA dispara o handler N vezes (N = numero de recargas).
-	# O NVDA nao avisa — o bug so aparece como comportamento duplicado ou crashs esporadicos.
-	("NVDA-032", "Serio",    "Extension point registrado em __init__ (speech.filter_speechSequence.register, extensionPoints Action/Filter/Decider.register, etc.) sem unregister correspondente em terminate() — memory leak e handler duplicado a cada recarga do plugin (skill: nvda-addon-dev §7). Padrao: sempre chamar .unregister() em terminate() ANTES de super().terminate()"),
-	# NVDA-033: adicionado em v3.14.0 — event_NVDAObject_init em GlobalPlugin (skill: nvda-addon-dev §5)
-	# event_NVDAObject_init so e chamado para AppModule, nunca para GlobalPlugin.
-	# Colocar em GlobalPlugin resulta em handler silenciosamente ignorado — zero erro, zero efeito.
-	# O desenvolvedor assume que funciona, mas o addon nao faz nada.
-	("NVDA-033", "Serio",    "event_NVDAObject_init definido em GlobalPlugin — este evento so e chamado para AppModule (skill: nvda-addon-dev §5). Em GlobalPlugin e silenciosamente ignorado pelo NVDA. Para customizar propriedades de NVDAObject globalmente, use chooseNVDAObjectOverlayClasses em GlobalPlugin; para um app especifico, mova para AppModule"),
-	# NVDA-034: adicionado em v3.14.0 — AppModule para app self-voicing sem sleepMode (skill: nvda-addon-dev §3.3)
-	# Apps self-voicing (ex: NVDA, JAWS, outros leitores) falam por conta propria.
-	# Sem sleepMode=True, o NVDA vai anunciar todos os eventos de foco/caret da app sobre a voz dela
-	# — dupla narracacao, confusao total para o usuario.
-	# A skill §3.3 e explicita: sleepMode = True e o unico padrao correto para self-voicing apps.
-	("NVDA-034", "Serio",    "AppModule para aplicacao self-voicing (leitores de tela, apps de narracacao, NVDA, JAWS, etc.) sem sleepMode = True — o NVDA vai tentar anunciar eventos de foco e caret sobre a voz propria da app, causando dupla narracao (skill: nvda-addon-dev §3.3). Correto: class AppModule(appModuleHandler.AppModule): sleepMode = True"),
-	# NVDA-035: adicionado em v3.15.0 -- SynthDriver sem metodo pause() (skill: nvda-addon-dev §25)
-	# pause() consta no "minimum viable driver" da skill §25, listado junto com cancel().
-	# Sem pause(), NVDA lanca AttributeError ao pressionar Ctrl para pausar/retomar a fala --
-	# o sintetizador crasha e o usuario perde controle de audio sem aviso.
-	("NVDA-035", "Serio",    "SynthDriver sem metodo pause(self, switch: bool) -- obrigatorio no minimum viable driver (skill: nvda-addon-dev §25). Sem pause(), NVDA lanca AttributeError ao pressionar Ctrl para pausar/retomar a fala; o sintetizador crasha. Correto: def pause(self, switch: bool) -> None: self._tts_pause(switch)"),
-	# NVDA-036: adicionado em v3.16.0 -- speak() como metodo principal do SynthDriver (skill: nvda-addon-dev §25)
-	# O NVDA chama speak() para cada trecho de fala; sem speak() o driver e completamente nao funcional.
-	("NVDA-036", "Critico",  "SynthDriver sem metodo speak(self, speechSequence) -- metodo principal do driver; sem speak() o sintetizador nao produz nenhuma fala (skill: nvda-addon-dev §25). speak() deve iterar speechSequence, notificar synthIndexReached por IndexCommand e synthDoneSpeaking ao final."),
-	# NVDA-049: adicionado em v3.17.0 -- wx.MessageDialog proibido; use gui.message.MessageDialog (skill: nvda-addon-dev §12)
-	# gui.message.MessageDialog e a API moderna do NVDA para dialogs modais -- integra corretamente com o screen reader.
-	# wx.MessageDialog nao e anunciado corretamente pelo NVDA e o foco pode nao funcionar como esperado pelo usuario de leitor de tela.
-	("NVDA-049", "Serio",    "wx.MessageDialog OU wx.MessageBox usado em vez de gui.message.MessageDialog -- nenhum dos dois integra corretamente com o NVDA screen reader (skill: nvda-addon-dev §12). Use MessageDialog.alert(), .confirm(), .ask() ou instancia de gui.message.MessageDialog. wx.MessageDialog/wx.MessageBox nao anunciam corretamente via NVDA e podem travar o foco"),
-	# NVDA-050: adicionado em v3.17.0 -- NVDAObject overlay class herda de NVDAObject (base) em vez de classe especifica (skill: nvda-addon-dev §6)
-	# A skill §6 e explicita: "Always inherit from the most specific class you need to match the object."
-	# Herdar de NVDAObject (base) em overlay classes usadas em chooseNVDAObjectOverlayClasses perde
-	# metodos e propriedades especificos da API alvo (IAccessible2, UIA, Win32 Window, JAB).
-	("NVDA-050", "Moderado", "NVDAObject overlay class herda de NVDAObject (classe base) em vez de classe mais especifica -- use NVDAObjects.IAccessible.IAccessible, NVDAObjects.UIA.UIA, NVDAObjects.window.Window ou NVDAObjects.JAB.JABObject conforme a API do objeto alvo (skill: nvda-addon-dev §6). Herdar da base generica perde metodos e propriedades especificos da API"),
-	# NVDA-051: adicionado em v2.1.0 -- Menu Ferramentas (NVDA > Tools > Addon Name)
-	# Bug encontrado: MediaTranscriber nao registrava item em menu Ferramentas
-	# Fallback: se addon pode ter menu, deve implementar _ensure_menu_item() + _get_tools_menu()
-	# com wx.CallAfter para thread safety
-	("NVDA-051", "Menor",    "Sugestao de usabilidade, nao exigencia do NVDA: addon com interface propria costuma ser mais facil de achar com um item no menu Ferramentas do NVDA, alem do atalho. O Developer Guide do NVDA nao exige isso."),
-	# NVDA 2026.1+ Compatibility rules
-	("NVDA-052", "Moderado", "Uso de simbolo de winUser/winKernel/winGDI/wincon removido, descontinuado ou movido para winBindings.* (NVDA 2026.1+; user_docs/en/changes.md: API Breaking Changes e Deprecations). So os simbolos listados la; o resto dos modulos continua valido."),
-	("NVDA-053", "Critico",  "Uso de sapi5/sapi4 para vozes de 32 bits sem portabilidade ARM64EC ou sem suporte a sapi5_32/sapi4_32 (NVDA 2026.1+)."),
-	("NVDA-054", "Moderado", "Uso de typing_extensions - NVDA 2026.1+ com Python 3.13 fornece suporte nativo; remova a dependencia typing_extensions."),
-	# oficial (github.com/nvdaaddons/DevGuide, download.nvaccess.org/documentation/developerGuide.html,
-	# github.com/nvaccess/AddonTemplate, guia de submissao da Add-on Store). Diferente de
-	# NVDA-019..054 (nascidas de bugs reais de producao), estas sao PREVENTIVAS -- praticas
-	# que a documentacao oficial exige mas nunca tinham causado um bug real no nvdastudio ainda.
-	("NVDA-055", "Serio",    "Import de pacote pip empacotado junto com o NVDA (ex: comtypes, wx, requests da instalacao do NVDA) em vez de bundlar a propria dependencia em lib/ -- pacotes empacotados com o NVDA podem ser atualizados, rebaixados ou removidos a qualquer momento sem aviso; NAO sao API estavel do addon"),
-	("NVDA-056", "Critico",  "wx.MessageDialog instanciado, inicializado ou exibido (ShowModal ou Show) fora da thread GUI -- a maioria dos metodos de MessageDialog NAO e thread-safe; chamar de thread nao-GUI pode causar crash ou comportamento imprevisivel, nao so travamento"),
-	("NVDA-057", "Moderado", "@script sem usar as constantes SCRCAT_* para o parametro category (usa string livre em vez disso), ou ignora os flags canPropagate/bypassInputHelp/allowInSleepMode/speakOnDemand/resumeSayAllMode quando o script deveria funcionar durante Input Help, modo de sono, modo de fala sob demanda do NVDA, ou precisa retomar o Say All apos ser executado"),
-	("NVDA-058", "Moderado", "installTasks.py ou uninstallTasks.py importa modulos alem do estritamente necessario -- onInstall()/onUninstall() rodam num estado restrito (pre-reinicio do NVDA, pasta .pendingInstall); imports desnecessarios aumentam risco de falha nesse estado"),
-	("NVDA-059", "Serio",    "manifest.ini com addonId/name contendo caracteres fora de letras, numeros, underscore e hifen (ex: espaco, ponto, unicode) -- a Add-on Store valida o nome com uma regex restrita; caracteres fora desse conjunto rejeitam a submissao"),
-		# Fonte: source/controlTypes/deprecatedAliases.py do NVDA 2026.3.1 -- os aliases ROLE_*/STATE_*
-	# continuam existindo "for backwards compatibility with add-ons only": funcionam, mas sao legado.
-	("NVDA-060", "Moderado", "Uso de controlTypes.ROLE_*/controlTypes.STATE_* em vez de controlTypes.Role.*/controlTypes.State.* -- o NVDA mantem esses aliases so por compatibilidade com addons antigos (controlTypes/deprecatedAliases.py, 'do not extend'); funcionam hoje, mas sao legado e podem sair numa proxima mudanca de API. Use o enum (mapeamento 1:1)"),
-	("NVDA-061", "Moderado", "Character Descriptions ausente ou mal formatado: addon com necessidade de descrever caracteres individualmente (ex: driver de fala, dicionario fonetico) sem locale/<lang>/characterDescriptions.dic em UTF-8 com pares caractere/descricao separados por TAB, linhas em branco e comentarios '#' ignorados (skill: nvda-addon-dev, Developer Guide secao 'Character Descriptions')"),
-	# regras nao tinha NENHUMA cobertura de secure mode (tela de login/UAC/tela
-	# segura), uma exigencia real e atual de revisao da Add-on Store. Fonte:
-	# comunidade de addons (globalVars.appArgs.secure confirmado como o flag
-	# padrao verificado por addons reais no __init__ de GlobalPlugin/AppModule
-	# pra desativar cedo em secure mode) + codigo-fonte do proprio NVDA
-	# (nvaccess/nvda: secure mode desativa criacao/edicao/exclusao de perfis
-	# de configuracao, o console Python, e logging de dados sensiveis --
-	# PRs #13056/#13059 corrigiram exploits reais de dialogo de arquivo
-	# acessivel em tela segura).
-	("NVDA-062", "Critico", "Addon com script/dialogo/persistencia de config sem checar globalVars.appArgs.secure -- em secure mode (tela de login, UAC, tela segura), scripts continuam executaveis (definidos a nivel de classe) mesmo se o __init__ verificar o flag e sair cedo; qualquer wx.Dialog que abre arquivo/pasta, salva config, ou loga dado sensivel deve checar o flag em CADA ponto de entrada perigoso, nao so no __init__; NUNCA logar senha/token/API key incondicionalmente (o proprio NVDA trata logging em secure mode como risco de seguranca)"),
-	# ate agora nao mora dentro de arquivo nenhum: mora na costura. O addon
-	# entregue tinha __init__.py chamando proofread(text, model, api_key,
-	# on_done, on_error) -- assinatura que ele MESMO declarava num
-	# comentario de contrato -- e openai_service.py definindo
-	# proofread(self, text, callback). Carregou, registrou os atalhos,
-	# passou nos nove portoes, e morria de TypeError na primeira tecla.
-	("NVDA-063", "Critico", "Chamada entre arquivos do addon com assinatura "
-	 "divergente da definicao -- arquivo A chama metodo/funcao de B com argumento "
-	 "que B nao aceita, ou sem argumento obrigatorio que B exige. Cada arquivo e "
-	 "valido sozinho e o addon carrega normalmente; o TypeError so nasce quando o "
-	 "usuario aciona o comando, e o `except Exception` correto do addon (que existe "
-	 "para nunca derrubar o leitor de tela) transforma o defeito numa mensagem "
-	 "generica. Quando um arquivo DECLARA o contrato que outro implementa, os dois "
-	 "lados tem que casar literalmente"),
-	# Fonte: gui/message.py do NVDA (MessageDialog._executeCommand chama callback(payload)).
-	("NVDA-064", "Serio", "Callback de botao de gui.message.MessageDialog que nao aceita o "
-	 "argumento que o NVDA passa. O NVDA chama callback(payload) com exatamente um argumento "
-	 "posicional (um Payload); `callback=lambda: ...` ou um metodo so com `self` levanta "
-	 "TypeError quando o botao e acionado e o botao nao faz nada. Use `lambda payload: ...` ou "
-	 "`def metodo(self, payload)`"),
+	# (rule_id, severity, description)
+	("NVDA-001", "Critical", "Missing nextHandler() in event handler"),
+	("NVDA-002", "Critical", "Main thread blocked (sleep, synchronous I/O, blocking HTTP)"),
+	("NVDA-003", "Serious",  "Module uses gettext without calling addonHandler.initTranslation()"),
+	("NVDA-004", "Serious",  "Missing terminate() to clean up persistent resources"),
+	("NVDA-005", "Serious",  "Wrong version format in the manifest, or lastTestedNVDAVersion < BACK_COMPAT_TO of the target NVDA -- the Add-on Store validates minimumNVDAVersion/lastTestedNVDAVersion against the real catalog of released versions (nvdaAPIVersions.json), not only against the numeric YYYY.N.P format"),
+	("NVDA-006", "Moderate", "Monkey-patching of NVDA core modules"),
+	("NVDA-007", "Moderate", "Script without the @script decorator"),
+	("NVDA-008", "Moderate", "Script without a description in the decorator"),
+	("NVDA-009", "Moderate", "Hardcoded gesture conflicts with the NVDA core"),
+	("NVDA-010", "Serious",  "UI update from a background thread without wx.CallAfter() -- the 3 sanctioned ways back to the GUI thread are wx.CallAfter() (asynchronous), wx.CallLater(ms, func) (asynchronous with delay) and gui.guiHelper.wxCallOnMain() (synchronous, waits for the result); never touch wx controls directly from a non-GUI thread"),
+	("NVDA-011", "Moderate", "Driver without a check() classmethod"),
+	("NVDA-012", "Minor",    "Bare except: clause (catches everything without logging)"),
+	("NVDA-013", "Serious",  "Incompatible API version range in the manifest"),
+	("NVDA-014", "Minor",    "SHA256 missing for Add-on Store submission"),
+	("NVDA-015", "Moderate", "Settings do not use config.conf.spec"),
+	("NVDA-016", "Serious",  "Secure mode vulnerability (no shouldWriteToDisk() check)"),
+	("NVDA-017", "Critical", "32-bit DLL on 64-bit NVDA (2026.1+): incompatible"),
+	("NVDA-018", "Serious",  "minimumNVDAVersion below 2019.3.0 (requires Python 2)"),
+	# NVDA-019..021: added in v3.2.0 (skill: nvda-addon-dev)
+	("NVDA-019", "Serious",  "# Translators: comment missing immediately before a _() call"),
+	("NVDA-020", "Moderate", "Import of a transitive re-export: use from NVDAObjects.IAccessible import IAccessible, not from NVDAObjects import IAccessible"),
+	("NVDA-021", "Moderate", "Indentation with spaces instead of TABs (NVDA uses TABs as its coding standard)"),
+	# NVDA-022: added in v3.4.0 — root cause of GmailSummarizer (settings panel never appeared)
+	("NVDA-022", "Critical", "Module-level third-party import in a service file — prevents the whole add-on from loading (including the settings panel) if the dependency is not bundled in lib/"),
+	# NVDA-023: added in v3.5.0 — annotation with a lazy type causes NameError when the module loads
+	("NVDA-023", "Critical", "Type annotation that references a type imported lazily (inside the method) — NameError when the module loads: use a string literal '->\"Type\"' as a forward reference"),
+	# NVDA-024: added in v3.6.0 — categoryClasses.append without a guard causes a duplicated panel in the Tab order
+	("NVDA-024", "Serious",  "NVDASettingsDialog.categoryClasses.append() without an 'if Panel not in categoryClasses' guard — if the add-on is reloaded without a successful terminate(), the panel appears duplicated and Tab moves between two overlapping panels"),
+	# NVDA-025: added in v3.7.0 — generic config.conf section causes collisions between add-ons
+	("NVDA-025", "Critical", "config.conf uses a generic section (e.g. 'myAddon') instead of the unique addonId — several add-ons with the same section name overwrite each other's settings; always use the real addonId from manifest.ini"),
+	# NVDA-037: added in v3.9.0 — BrailleDisplayDriver (renumbered from NVDA-044 in v3.8.0)
+	("NVDA-037", "Moderate", "BrailleDisplayDriver without numCols, display() or isThreadSafe — required fields so that NVDA knows the display size and sends cells correctly"),
+	# NVDA-038: added in v3.10.0 — SynthDriver without the required supportedNotifications (skill: nvda-addon-dev §25)
+	# synthIndexReached and synthDoneSpeaking are REQUIRED in supportedNotifications and must be notified
+	# in speak(). Without them, "say all", paragraph reading and index callbacks (braille) stop working.
+	("NVDA-038", "Critical", "SynthDriver without supportedNotifications declaring synthIndexReached and synthDoneSpeaking — both are required (skill: nvda-addon-dev §25); without them 'say all', paragraph reading and braille on-index stop working"),
+	# NVDA-039: added in v3.18.0 -- AppModule mapping several executables without registerExecutableWithAppModule (skill: nvda-addon-dev par.3.2)
+	# registerExecutableWithAppModule() is the official mechanism for one AppModule to cover several executables.
+	("NVDA-039", "Moderate", "AppModule with several identical appModules/*.py files for executables of the same suite -- use appModuleHandler.registerExecutableWithAppModule(executableName, appModuleName) to map extra executables to the same AppModule and unregisterExecutable() in terminate() (skill: nvda-addon-dev par.3.2)"),
+	# NVDA-042..048: added/fixed in v3.8.0-v3.9.0
+	("NVDA-042", "Moderate", "Uses _() for plural strings instead of ngettext() — produces wrong text: '1 items found'. Use ngettext(singular, plural, count).format(n=count)"),
+	("NVDA-043", "Moderate", "Braille Translation Table missing or badly declared: missing .utb file in brailleTables/ or [brailleTables] section in manifest.ini with displayName, contracted, output, input"),
+	("NVDA-044", "Moderate", "Symbol Dictionary missing or badly formatted: missing locale/<lang>/symbols-*.dic with a 'symbols:' section and TAB-separated entries, or [symbolDictionaries] section in manifest.ini"),
+	("NVDA-045", "Minor",    "Locale Gesture Remapping missing or badly formatted: missing locale/<lang>/gestures.ini with [module.ClassName] sections and 'scriptName = gesture' bindings"),
+	("NVDA-046", "Moderate", "Speech Dictionary with the wrong format — each line must have 4 TAB-separated fields: pattern, replacement, case_sensitive, type. Declare it in manifest.ini [speechDictionaries]"),
+	("NVDA-047", "Serious",  "manifest.ini: url does not start with https:// — the Add-on Store rejects URLs without HTTPS"),
+	("NVDA-048", "Critical", "wxPython bundled in lib/ (wx* entries) — NVDA already provides wxPython; bundling it causes a version conflict and needlessly enlarges the package"),
+	# NVDA-040: added in v3.9.2 — AppModule for special hosts (UWP/wwahost)
+	("NVDA-040", "Serious",  "AppModule for wwahost.exe does not inherit from nvdaBuiltin.appModules.wwahost.AppModule — inheriting only from appModuleHandler.AppModule ignores the special handling for UWP apps"),
+	# NVDA-026: added in v3.11.0 — import of a private NVDA symbol (skill: nvda-addon-dev §22)
+	# Symbols prefixed with _ are private and may change in any NVDA release, including patches.
+	# There is no deprecation warning for private API — the add-on breaks silently after an NVDA update.
+	("NVDA-026", "Moderate", "Import of a private NVDA symbol (_ prefix) — e.g. from someModule import _internalFunction. _ symbols are private and may change in any NVDA release without notice (skill: nvda-addon-dev §22); use only the documented public API"),
+	# Source: NVDA Developer Guide, "App modules for hosted apps" and Example 3: apps using Edge WebView2
+	# appear as a web page by default; disableBrowseModeByDefault is OPTIONAL (design).
+	("NVDA-027", "Minor",    "Design decision, not a defect: in an app module for an app that uses Edge WebView2 (the module name is the app's, such as olk.py, not msedgewebview2.py), `disableBrowseModeByDefault = True` turns off automatic browse mode; the Developer Guide says the line can be removed if the add-on wants browse mode"),
+	# NVDA-028: added in v3.12.0 — type hints with Optional[]/Union[] instead of X | None / X | Y (skill: nvda-addon-dev §18)
+	# Python 3.13 (NVDA 2026.1+) fully supports the native union syntax. X | None and X | Y
+	# replace the legacy forms that the skill explicitly forbids in new code.
+	("NVDA-028", "Minor",    "Type hint using Optional/Union from typing instead of the modern X | None / X | Y syntax. NVDA 2026.1+ uses Python 3.13 — use int | None, str | None, etc."),
+	# NVDA-029: added in v3.12.0 — CRLF line endings instead of LF (skill: nvda-addon-dev §18)
+	# The skill is explicit: UTF-8 + LF. CRLF in Python files causes problems in the NVDA scons build
+	("NVDA-029", "Minor",    "CRLF line endings (\\r\\n) in an add-on Python file — NVDA requires LF (\\n) per its coding standards (skill: nvda-addon-dev §18). CRLF causes problems in the scons build and in version control"),
+	# NVDA-030: added in v3.13.0 — GlobalPlugin/AppModule __init__ without super().__init__(*args, **kwargs) (skill: nvda-addon-dev §3.1, §3.2)
+	# The skill shows the pattern explicitly: super().__init__(*args, **kwargs) is required.
+	# Without the call, globalPluginHandler does not complete the plugin initialization — gestures may
+	# not be registered and the plugin may fail silently when NVDA starts.
+	# *args, **kwargs is needed because NVDA may pass arguments to the constructor in future versions.
+	("NVDA-030", "Serious",  "GlobalPlugin or AppModule with an __init__ that does not call super().__init__(*args, **kwargs) — the plugin initialization by globalPluginHandler/appModuleHandler is not completed correctly; gestures may not be registered and the plugin fails silently (skill: nvda-addon-dev §3.1, §3.2)"),
+	# NVDA-031: added in v3.13.0 — SynthDriver without a cancel() method (skill: nvda-addon-dev §25)
+	# cancel() is part of the skill's §25 "minimum viable driver".
+	# Without cancel(), pressing Escape does not stop speech — completely broken behavior for the user.
+	# NVDA calls cancel() whenever the user presses Ctrl or Escape to interrupt reading.
+	("NVDA-031", "Critical", "SynthDriver without a cancel() method — required in the minimum viable driver (skill: nvda-addon-dev §25). Without cancel(), pressing Ctrl/Escape does not stop speech; the user is stuck listening to audio they cannot interrupt"),
+	# NVDA-032: added in v3.14.0 — extension point registered in __init__ without unregister in terminate() (skill: nvda-addon-dev §7)
+	# register() without a matching unregister() in terminate() is a guaranteed memory leak.
+	# Worse: if the add-on is reloaded (NVDA+Ctrl+F3), the handler stays registered several times
+	# — each NVDA event fires the handler N times (N = number of reloads).
+	# NVDA gives no warning — the bug only shows up as duplicated behavior or sporadic crashes.
+	("NVDA-032", "Serious",  "Extension point registered in __init__ (speech.filter_speechSequence.register, extensionPoints Action/Filter/Decider.register, etc.) without a matching unregister in terminate() — memory leak and a duplicated handler on every plugin reload (skill: nvda-addon-dev §7). Pattern: always call .unregister() in terminate() BEFORE super().terminate()"),
+	# NVDA-033: added in v3.14.0 — event_NVDAObject_init in GlobalPlugin (skill: nvda-addon-dev §5)
+	# event_NVDAObject_init is only called for AppModule, never for GlobalPlugin.
+	# Putting it in a GlobalPlugin results in a silently ignored handler — zero errors, zero effect.
+	# The developer assumes it works, but the add-on does nothing.
+	("NVDA-033", "Serious",  "event_NVDAObject_init defined in GlobalPlugin — this event is only called for AppModule (skill: nvda-addon-dev §5). In GlobalPlugin it is silently ignored by NVDA. To customize NVDAObject properties globally, use chooseNVDAObjectOverlayClasses in GlobalPlugin; for one specific app, move it to an AppModule"),
+	# NVDA-034: added in v3.14.0 — AppModule for a self-voicing app without sleepMode (skill: nvda-addon-dev §3.3)
+	# Self-voicing apps (e.g. other screen readers) speak on their own.
+	# Without sleepMode=True, NVDA announces every focus/caret event of the app over the app's own voice
+	# — double narration, total confusion for the user.
+	# Skill §3.3 is explicit: sleepMode = True is the only correct pattern for self-voicing apps.
+	("NVDA-034", "Serious",  "AppModule for a self-voicing application (screen readers, narration apps, NVDA, JAWS, etc.) without sleepMode = True — NVDA will try to announce focus and caret events over the app's own voice, causing double narration (skill: nvda-addon-dev §3.3). Correct: class AppModule(appModuleHandler.AppModule): sleepMode = True"),
+	# NVDA-035: added in v3.15.0 -- SynthDriver without a pause() method (skill: nvda-addon-dev §25)
+	# pause() is in the skill's §25 "minimum viable driver", listed together with cancel().
+	# Without pause(), NVDA raises AttributeError when Ctrl is pressed to pause/resume speech --
+	# the synthesizer crashes and the user loses audio control without warning.
+	("NVDA-035", "Serious",  "SynthDriver without a pause(self, switch: bool) method -- required in the minimum viable driver (skill: nvda-addon-dev §25). Without pause(), NVDA raises AttributeError when Ctrl is pressed to pause/resume speech; the synthesizer crashes. Correct: def pause(self, switch: bool) -> None: self._tts_pause(switch)"),
+	# NVDA-036: added in v3.16.0 -- speak() as the main method of the SynthDriver (skill: nvda-addon-dev §25)
+	# NVDA calls speak() for each piece of speech; without speak() the driver is completely non-functional.
+	("NVDA-036", "Critical", "SynthDriver without a speak(self, speechSequence) method -- the driver's main method; without speak() the synthesizer produces no speech at all (skill: nvda-addon-dev §25). speak() must iterate over speechSequence, notify synthIndexReached for each IndexCommand and synthDoneSpeaking at the end."),
+	# NVDA-049: added in v3.17.0 -- wx.MessageDialog is forbidden; use gui.message.MessageDialog (skill: nvda-addon-dev §12)
+	# gui.message.MessageDialog is NVDA's modern API for modal dialogs -- it integrates correctly with the screen reader.
+	# wx.MessageDialog is not announced correctly by NVDA and focus may not behave as a screen reader user expects.
+	("NVDA-049", "Serious",  "wx.MessageDialog OR wx.MessageBox used instead of gui.message.MessageDialog -- neither integrates correctly with the NVDA screen reader (skill: nvda-addon-dev §12). Use MessageDialog.alert(), .confirm(), .ask() or an instance of gui.message.MessageDialog. wx.MessageDialog/wx.MessageBox are not announced correctly by NVDA and can trap focus"),
+	# NVDA-050: added in v3.17.0 -- NVDAObject overlay class inherits from NVDAObject (base) instead of a specific class (skill: nvda-addon-dev §6)
+	# Skill §6 is explicit: "Always inherit from the most specific class you need to match the object."
+	# Inheriting from NVDAObject (base) in overlay classes used in chooseNVDAObjectOverlayClasses loses
+	# the methods and properties specific to the target API (IAccessible2, UIA, Win32 Window, JAB).
+	("NVDA-050", "Moderate", "NVDAObject overlay class inherits from NVDAObject (base class) instead of a more specific class -- use NVDAObjects.IAccessible.IAccessible, NVDAObjects.UIA.UIA, NVDAObjects.window.Window or NVDAObjects.JAB.JABObject according to the target object's API (skill: nvda-addon-dev §6). Inheriting from the generic base loses the methods and properties specific to the API"),
+	# NVDA-051: added in v2.1.0 -- Tools menu (NVDA > Tools > Addon Name)
+	# Bug found: MediaTranscriber did not register an item in the Tools menu
+	# Fallback: if the add-on can have a menu, it should implement _ensure_menu_item() + _get_tools_menu()
+	# with wx.CallAfter for thread safety
+	("NVDA-051", "Minor",    "Usability suggestion, not an NVDA requirement: an add-on with its own interface is usually easier to find with an item in NVDA's Tools menu, besides the gesture. The NVDA Developer Guide does not require this."),
+	# NVDA 2026.1+ compatibility rules
+	("NVDA-052", "Moderate", "Use of a winUser/winKernel/winGDI/wincon symbol that was removed, deprecated or moved to winBindings.* (NVDA 2026.1+; user_docs/en/changes.md: API Breaking Changes and Deprecations). Only the symbols listed there; the rest of those modules remains valid."),
+	("NVDA-053", "Critical", "Use of sapi5/sapi4 for 32-bit voices without ARM64EC portability or without sapi5_32/sapi4_32 support (NVDA 2026.1+)."),
+	("NVDA-054", "Moderate", "Use of typing_extensions - NVDA 2026.1+ with Python 3.13 provides native support; remove the typing_extensions dependency."),
+	# official sources (github.com/nvdaaddons/DevGuide, download.nvaccess.org/documentation/developerGuide.html,
+	# github.com/nvaccess/AddonTemplate, Add-on Store submission guide). Unlike
+	# NVDA-019..054 (born from real production bugs), these are PREVENTIVE -- practices
+	# the official documentation requires but that had never caused a real bug in nvdastudio yet.
+	("NVDA-055", "Serious",  "Import of a pip package shipped with NVDA itself (e.g. comtypes, wx, requests from the NVDA installation) instead of bundling the add-on's own dependency in lib/ -- packages shipped with NVDA can be updated, downgraded or removed at any time without notice; they are NOT a stable add-on API"),
+	("NVDA-056", "Critical", "wx.MessageDialog instantiated, initialized or shown (ShowModal or Show) outside the GUI thread -- most MessageDialog methods are NOT thread-safe; calling from a non-GUI thread can cause a crash or unpredictable behavior, not only a freeze"),
+	("NVDA-057", "Moderate", "@script without the SCRCAT_* constants for the category parameter (uses a free-form string instead), or ignores the canPropagate/bypassInputHelp/allowInSleepMode/speakOnDemand/resumeSayAllMode flags when the script should work during Input Help, sleep mode, NVDA's speak-on-demand mode, or needs to resume Say All after running"),
+	("NVDA-058", "Moderate", "installTasks.py or uninstallTasks.py imports more modules than strictly necessary -- onInstall()/onUninstall() run in a restricted state (before the NVDA restart, .pendingInstall folder); unnecessary imports increase the risk of failure in that state"),
+	("NVDA-059", "Serious",  "manifest.ini with an addonId/name containing characters other than letters, digits, underscore and hyphen (e.g. space, dot, unicode) -- the Add-on Store validates the name with a restricted regex; characters outside that set make the submission fail"),
+	# Source: source/controlTypes/deprecatedAliases.py of NVDA 2026.3.1 -- the ROLE_*/STATE_* aliases
+	# still exist "for backwards compatibility with add-ons only": they work, but are legacy.
+	("NVDA-060", "Moderate", "Use of controlTypes.ROLE_*/controlTypes.STATE_* instead of controlTypes.Role.*/controlTypes.State.* -- NVDA keeps those aliases only for compatibility with old add-ons (controlTypes/deprecatedAliases.py, 'do not extend'); they work today, but are legacy and may go away in a future API change. Use the enum (1:1 mapping)"),
+	("NVDA-061", "Moderate", "Character Descriptions missing or badly formatted: add-on that needs to describe individual characters (e.g. speech driver, phonetic dictionary) without locale/<lang>/characterDescriptions.dic in UTF-8 with character/description pairs separated by TAB, blank lines and '#' comments ignored (skill: nvda-addon-dev, Developer Guide section 'Character Descriptions')"),
+	# the rule set had NO coverage of secure mode (login screen/UAC/secure
+	# desktop), a real and current Add-on Store review requirement. Source:
+	# add-on community (globalVars.appArgs.secure confirmed as the standard flag
+	# checked by real add-ons in the __init__ of GlobalPlugin/AppModule
+	# to disable early in secure mode) + NVDA's own source code
+	# (nvaccess/nvda: secure mode disables creating/editing/deleting configuration
+	# profiles, the Python console, and logging of sensitive data --
+	# PRs #13056/#13059 fixed real exploits of file dialogs
+	# reachable on the secure screen).
+	("NVDA-062", "Critical", "Add-on with a script/dialog/config persistence that does not check globalVars.appArgs.secure -- in secure mode (login screen, UAC, secure desktop), scripts remain executable (defined at class level) even if __init__ checks the flag and returns early; any wx.Dialog that opens a file/folder, saves config, or logs sensitive data must check the flag at EVERY dangerous entry point, not only in __init__; NEVER log a password/token/API key unconditionally (NVDA itself treats logging in secure mode as a security risk)"),
+	# until now it does not live inside any single file: it lives in the seam. The
+	# delivered add-on had __init__.py calling proofread(text, model, api_key,
+	# on_done, on_error) -- a signature it ITSELF declared in a
+	# contract comment -- and openai_service.py defining
+	# proofread(self, text, callback). It loaded, registered the gestures,
+	# passed all nine gates, and died with a TypeError on the first key press.
+	("NVDA-063", "Critical", "Cross-file call inside the add-on with a signature "
+	 "that differs from the definition -- file A calls a method/function of B with an "
+	 "argument that B does not accept, or without a required argument that B demands. Each file is "
+	 "valid on its own and the add-on loads normally; the TypeError is only raised when the "
+	 "user triggers the command, and the add-on's correct `except Exception` (which exists "
+	 "so that it never takes the screen reader down) turns the defect into a "
+	 "generic message. When one file DECLARES the contract that another implements, both "
+	 "sides must match literally"),
+	# Source: gui/message.py of NVDA (MessageDialog._executeCommand calls callback(payload)).
+	("NVDA-064", "Serious", "gui.message.MessageDialog button callback that does not accept the "
+	 "argument NVDA passes. NVDA calls callback(payload) with exactly one positional "
+	 "argument (a Payload); `callback=lambda: ...` or a method with only `self` raises "
+	 "TypeError when the button is activated and the button does nothing. Use `lambda payload: ...` or "
+	 "`def method(self, payload)`"),
 ]
 
 # ------------------------------------------------------------------
-# WX-A11Y Rules — 14 regras (001..014)
-# Fonte OFICIAL: github.com/Community-Access/accessibility-agents .github/agents/wxpython-specialist.agent.md
-# Secao "Detection Rules" — copiado literalmente, traduzido para PT-BR conciso.
-# ATENCAO: IDs 005-011 foram corrigidos em v2.1.0 (estavam errados).
-#          IDs 013-014 foram adicionados em v2.1.0 (estavam ausentes).
+# WX-A11Y Rules — 14 rules (001..014)
+# OFFICIAL source: github.com/Community-Access/accessibility-agents .github/agents/wxpython-specialist.agent.md
+# Section "Detection Rules" — copied literally, translated into concise English.
+# NOTE: IDs 005-011 were corrected in v2.1.0 (they were wrong).
+#       IDs 013-014 were added in v2.1.0 (they were missing).
 # ------------------------------------------------------------------
 
 WX_A11Y_RULES: list[tuple[str, str, str]] = [
-	# (rule_id, severity, descricao)
-	# Fonte: wxpython-specialist.agent.md tabela "Detection Rules"
-	("WX-A11Y-001", "Critico",  "wx.StaticText ausente imediatamente antes de controle de entrada/selecao, ou label= ausente em wx.Button (fix primario da fonte oficial); SetName() e complemento aceitavel, nao substituto"),
-	("WX-A11Y-002", "Critico",  "wx.Panel ou wx.Frame sem wx.AcceleratorTable definida"),
-	("WX-A11Y-003", "Critico",  "EVT_LEFT_DOWN/EVT_LEFT_DCLICK sem evento de teclado equivalente"),
-	("WX-A11Y-004", "Serio",    "wx.Dialog sem CreateStdDialogButtonSizer() ou tratamento de Escape"),
-	("WX-A11Y-005", "Serio",    "wx.Dialog.ShowModal() sem SetFocus() em controle significativo"),
-	("WX-A11Y-006", "Serio",    "wx.StaticBitmap ou wx.BitmapButton sem SetToolTip() ou subclasse wx.Accessible"),
-	("WX-A11Y-007", "Moderado", "wx.Colour como unico indicador de estado (sem texto/icone)"),
-	("WX-A11Y-008", "Moderado", "wx.Timer ou status bar sem wx.Bell() ou anuncio acessivel"),
-	("WX-A11Y-009", "Moderado", "wx.Panel customizado com EVT_PAINT sem subclasse wx.Accessible"),
-	("WX-A11Y-010", "Menor",    "Ordem de tabulacao nao definida explicitamente e nao segue sizer"),
-	("WX-A11Y-011", "Serio",    "wx.ListCtrl ou wx.TreeCtrl em modo virtual sem override GetItemText"),
-	("WX-A11Y-012", "Moderado", "Item de menu sem tecla aceleradora (sufixo \\tCtrl+X ausente)"),
-	# WX-A11Y-013/014: adicionados em v2.1.0 — criticos para usuarios de NVDA/JAWS
-	# Fonte: wxpython-specialist.agent.md secao "Screen Reader Key Event Pitfalls"
-	("WX-A11Y-013", "Critico",  "EVT_KEY_DOWN/EVT_CHAR em ListBox/ListCtrl/TreeCtrl/DataViewCtrl — falha silenciosa com NVDA/JAWS; usar EVT_CHAR_HOOK ou evento semantico"),
-	("WX-A11Y-014", "Serio",    "wx.ListCtrl com EVT_KEY_DOWN para Enter em vez de EVT_LIST_ITEM_ACTIVATED"),
+	# (rule_id, severity, description)
+	# Source: wxpython-specialist.agent.md "Detection Rules" table
+	("WX-A11Y-001", "Critical", "wx.StaticText missing immediately before an input/selection control, or label= missing on wx.Button (primary fix from the official source); SetName() is an acceptable complement, not a substitute"),
+	("WX-A11Y-002", "Critical", "wx.Panel or wx.Frame without a wx.AcceleratorTable defined"),
+	("WX-A11Y-003", "Critical", "EVT_LEFT_DOWN/EVT_LEFT_DCLICK without an equivalent keyboard event"),
+	("WX-A11Y-004", "Serious",  "wx.Dialog without CreateStdDialogButtonSizer() or Escape handling"),
+	("WX-A11Y-005", "Serious",  "wx.Dialog.ShowModal() without SetFocus() on a meaningful control"),
+	("WX-A11Y-006", "Serious",  "wx.StaticBitmap or wx.BitmapButton without SetToolTip() or a wx.Accessible subclass"),
+	("WX-A11Y-007", "Moderate", "wx.Colour as the only state indicator (no text/icon)"),
+	("WX-A11Y-008", "Moderate", "wx.Timer or status bar without wx.Bell() or an accessible announcement"),
+	("WX-A11Y-009", "Moderate", "Custom wx.Panel with EVT_PAINT without a wx.Accessible subclass"),
+	("WX-A11Y-010", "Minor",    "Tab order not set explicitly and does not follow the sizer"),
+	("WX-A11Y-011", "Serious",  "wx.ListCtrl or wx.TreeCtrl in virtual mode without a GetItemText override"),
+	("WX-A11Y-012", "Moderate", "Menu item without an accelerator key (\\tCtrl+X suffix missing)"),
+	# WX-A11Y-013/014: added in v2.1.0 — critical for NVDA/JAWS users
+	# Source: wxpython-specialist.agent.md section "Screen Reader Key Event Pitfalls"
+	("WX-A11Y-013", "Critical", "EVT_KEY_DOWN/EVT_CHAR on ListBox/ListCtrl/TreeCtrl/DataViewCtrl — silent failure with NVDA/JAWS; use EVT_CHAR_HOOK or a semantic event"),
+	("WX-A11Y-014", "Serious",  "wx.ListCtrl with EVT_KEY_DOWN for Enter instead of EVT_LIST_ITEM_ACTIVATED"),
 ]
 
 # ------------------------------------------------------------------
-# DTK-A11Y Rules — 12 regras (001..012)
-# Fonte OFICIAL: github.com/Community-Access/accessibility-agents .github/agents/desktop-a11y-specialist.agent.md
-# Secao "Detection Rules" — copiado literalmente, traduzido para PT-BR conciso.
-# Camada DIFERENTE de WX-A11Y: enquanto WX-A11Y cobre padroes especificos de
-# widgets wx (label antes de controle, AcceleratorTable, etc.), DTK-A11Y cobre
-# conceitos de API de plataforma (UIA/MSAA Name/Role/State/Value, focus trap
-# em modal, High Contrast, deteccao de mudanca dinamica) que se aplicam a
-# qualquer toolkit desktop e sao a fundamentacao conceitual que wx.Accessible
-# implementa por baixo. Nao ha sobreposicao de ID nem de orientacao de fix
-# (pedido do Felipe: "quero que o nvda studio fique cada vez mais atualizado").
+# DTK-A11Y Rules — 12 rules (001..012)
+# OFFICIAL source: github.com/Community-Access/accessibility-agents .github/agents/desktop-a11y-specialist.agent.md
+# Section "Detection Rules" — copied literally, translated into concise English.
+# DIFFERENT layer from WX-A11Y: while WX-A11Y covers patterns specific to
+# wx widgets (label before a control, AcceleratorTable, etc.), DTK-A11Y covers
+# platform API concepts (UIA/MSAA Name/Role/State/Value, focus trap
+# in modals, High Contrast, dynamic change detection) that apply to
+# any desktop toolkit and are the conceptual foundation that wx.Accessible
+# implements underneath. There is no overlap in IDs or in fix guidance
+# (the maintainer asked for NVDA Studio to stay more and more up to date).
 # ------------------------------------------------------------------
 
 DTK_A11Y_RULES: list[tuple[str, str, str]] = [
-	# (rule_id, severity, descricao)
-	# Fonte: desktop-a11y-specialist.agent.md tabela "Detection Rules"
-	("DTK-A11Y-001", "Critico",  "Controle interativo sem Name exposto via UIA/MSAA/accessibilityLabel -- leitor de tela nao anuncia nada ou so um tipo generico"),
-	("DTK-A11Y-002", "Critico",  "Role/ControlType do controle nao bate com seu comportamento real (ex: painel clicavel sem role de botao)"),
-	("DTK-A11Y-003", "Serio",    "Mudanca de estado (checked/expanded/disabled/selected) nao refletida na API de acessibilidade -- leitor de tela mostra estado desatualizado"),
-	("DTK-A11Y-004", "Serio",    "Controle com valor (slider/progress bar/spinner/campo de texto) nao expoe o valor atual via ValuePattern/accValue/accessibilityValue"),
-	("DTK-A11Y-005", "Critico",  "Elemento interativo nao alcancavel via teclado (nao focavel, sem tab stop) -- usuario de teclado nao consegue chegar nele"),
-	("DTK-A11Y-006", "Serio",    "Foco perdido apos mudanca de UI (deletar item, fechar dialogo, colapsar painel) -- cai na raiz da janela ou local inesperado em vez de destino logico"),
-	("DTK-A11Y-007", "Moderado", "Controle recebe foco de teclado mas sem indicador visual (contorno/destaque) visivel em tema padrao E alto contraste"),
-	("DTK-A11Y-008", "Moderado", "Cores hardcoded em vez de ler do tema do sistema (wx.SystemSettings.GetColour() no wx) -- quebra em modo Alto Contraste do Windows"),
-	("DTK-A11Y-009", "Serio",    "Atualizacao de conteudo (status bar, progresso, erro de validacao) acontece silenciosamente, sem evento UIA/notificacao de acessibilidade"),
-	("DTK-A11Y-010", "Serio",    "Dialogo nao prende o foco -- Tab consegue sair do dialogo modal e alcancar controles da janela pai enquanto ele esta aberto"),
-	("DTK-A11Y-011", "Menor",    "Atalho de teclado customizado definido no codigo sem documentacao descobrivel pelo usuario (item de menu, tooltip, texto de ajuda)"),
-	("DTK-A11Y-012", "Moderado", "Uso de API de plataforma depreciada ou incorreta (ex: padrao MSAA-only no Windows moderno em vez de UIA)"),
+	# (rule_id, severity, description)
+	# Source: desktop-a11y-specialist.agent.md "Detection Rules" table
+	("DTK-A11Y-001", "Critical", "Interactive control without a Name exposed via UIA/MSAA/accessibilityLabel -- the screen reader announces nothing or only a generic type"),
+	("DTK-A11Y-002", "Critical", "The control's Role/ControlType does not match its real behavior (e.g. clickable panel without a button role)"),
+	("DTK-A11Y-003", "Serious",  "State change (checked/expanded/disabled/selected) not reflected in the accessibility API -- the screen reader shows an outdated state"),
+	("DTK-A11Y-004", "Serious",  "Control with a value (slider/progress bar/spinner/text field) does not expose the current value via ValuePattern/accValue/accessibilityValue"),
+	("DTK-A11Y-005", "Critical", "Interactive element not reachable by keyboard (not focusable, no tab stop) -- a keyboard user cannot get to it"),
+	("DTK-A11Y-006", "Serious",  "Focus lost after a UI change (deleting an item, closing a dialog, collapsing a panel) -- it falls to the window root or an unexpected place instead of a logical destination"),
+	("DTK-A11Y-007", "Moderate", "Control receives keyboard focus but has no visible focus indicator (outline/highlight) in the default theme AND in high contrast"),
+	("DTK-A11Y-008", "Moderate", "Hardcoded colors instead of reading from the system theme (wx.SystemSettings.GetColour() in wx) -- breaks in Windows High Contrast mode"),
+	("DTK-A11Y-009", "Serious",  "Content update (status bar, progress, validation error) happens silently, without a UIA event/accessibility notification"),
+	("DTK-A11Y-010", "Serious",  "Dialog does not trap focus -- Tab can leave the modal dialog and reach controls of the parent window while it is open"),
+	("DTK-A11Y-011", "Minor",    "Custom keyboard shortcut defined in code without documentation the user can discover (menu item, tooltip, help text)"),
+	("DTK-A11Y-012", "Moderate", "Use of a deprecated or incorrect platform API (e.g. MSAA-only pattern on modern Windows instead of UIA)"),
 ]
 
 # ------------------------------------------------------------------
-# Matriz de fallback por regra (NVDA + WX + ARCH)
+# Fallback matrix per rule (NVDA + WX + ARCH)
 # ------------------------------------------------------------------
 
 ARCH_RULE_IDS: list[str] = [
@@ -252,54 +252,54 @@ ARCH_RULE_IDS: list[str] = [
 ]
 
 FALLBACK_MODE_DOC: dict[str, str] = {
-	"STRICT_ONLY": "Sem alternativa: a regra deve ser cumprida exatamente.",
-	"IMPLEMENTATION_ALTERNATIVES": "Alternativas tecnicas aceitas para cumprir a mesma regra.",
-	"CONTEXTUAL_CHOICE": "Escolha conforme objetivo do usuario; se ambiguo, perguntar antes de gerar.",
+	"STRICT_ONLY": "No alternative: the rule must be met exactly.",
+	"IMPLEMENTATION_ALTERNATIVES": "Accepted technical alternatives for meeting the same rule.",
+	"CONTEXTUAL_CHOICE": "Choose according to the user's goal; if ambiguous, ask before generating.",
 }
 
-# Overrides somente para regras com alternativa real/contextual.
-# Todas as demais regras ficam como STRICT_ONLY por default.
+# Overrides only for rules with a real/contextual alternative.
+# All other rules default to STRICT_ONLY.
 _RULE_FALLBACK_OVERRIDES: dict[str, tuple[str, str]] = {
-	"NVDA-005": ("IMPLEMENTATION_ALTERNATIVES", "Aceita corrigir formato de versao e/ou ajustar lastTestedNVDAVersion para BACK_COMPAT_TO."),
-	"NVDA-014": ("CONTEXTUAL_CHOICE", "Opcional em desenvolvimento local; exigir apenas quando alvo for Add-on Store."),
-	"NVDA-020": ("IMPLEMENTATION_ALTERNATIVES", "Usar import direto da API publica especifica em vez de re-export transitivo."),
-	"NVDA-023": ("IMPLEMENTATION_ALTERNATIVES", "Usar forward reference em string ou remover annotation quando tipo e lazy import."),
-	"NVDA-037": ("IMPLEMENTATION_ALTERNATIVES", "Implementar os campos obrigatorios (numCols/display/isThreadSafe) na estrategia do driver."),
-	"NVDA-039": ("IMPLEMENTATION_ALTERNATIVES", "Usar registerExecutableWithAppModule e unregisterExecutable em terminate()."),
-	"NVDA-042": ("IMPLEMENTATION_ALTERNATIVES", "Usar ngettext/npgettext para plural e pgettext para desambiguacao de contexto."),
-	"NVDA-043": ("IMPLEMENTATION_ALTERNATIVES", "Cumprir com arquivo .utb valido e/ou declaracao correta em [brailleTables] no manifest."),
-	"NVDA-044": ("IMPLEMENTATION_ALTERNATIVES", "Cumprir com symbols-*.dic valido e/ou declaracao correta em [symbolDictionaries]."),
-	"NVDA-045": ("IMPLEMENTATION_ALTERNATIVES", "Cumprir com gestures.ini valido por locale/modulo conforme padrao NVDA."),
-	"NVDA-049": ("IMPLEMENTATION_ALTERNATIVES", "Usar MessageDialog.alert/confirm/ask ou instancia de gui.message.MessageDialog -- nunca wx.MessageDialog nem wx.MessageBox."),
-	"NVDA-050": ("IMPLEMENTATION_ALTERNATIVES", "Herdar de IAccessible/UIA/Window/JABObject conforme API alvo; nunca da base generica."),
-	"NVDA-060": ("IMPLEMENTATION_ALTERNATIVES", "Trocar toda referencia controlTypes.ROLE_X/STATE_X por controlTypes.Role.X/State.X (mapeamento 1:1 documentado pelo NVDA)."),
-	"NVDA-061": ("CONTEXTUAL_CHOICE", "So exigir characterDescriptions.dic quando o addon realmente descreve caracteres individualmente (driver de fala, dicionario fonetico); nao aplicavel a addons sem essa necessidade."),
-	"WX-A11Y-002": ("IMPLEMENTATION_ALTERNATIVES", "Aplicar AcceleratorTable em wx.Panel ou wx.Frame quando houver foco/interacao de teclado."),
-	"WX-A11Y-004": ("IMPLEMENTATION_ALTERNATIVES", "Dialog deve ter CreateStdDialogButtonSizer e/ou tratamento explicito de Escape."),
-	"WX-A11Y-006": ("IMPLEMENTATION_ALTERNATIVES", "Controle de imagem deve ter SetToolTip() e/ou subclasse wx.Accessible (SetName() nao conta)."),
-	"WX-A11Y-008": ("IMPLEMENTATION_ALTERNATIVES", "Anuncio de timer/status via wx.Bell e/ou mensagem acessivel equivalente."),
-	"WX-A11Y-011": ("IMPLEMENTATION_ALTERNATIVES", "List/Tree virtual deve expor texto via override apropriado (ex: GetItemText)."),
-	"WX-A11Y-013": ("IMPLEMENTATION_ALTERNATIVES", "Preferir EVT_CHAR_HOOK ou evento semantico no lugar de EVT_KEY_DOWN/EVT_CHAR bruto."),
-	"WX-A11Y-014": ("IMPLEMENTATION_ALTERNATIVES", "Para ativacao de item use EVT_LIST_ITEM_ACTIVATED em vez de key handling ad hoc."),
-	"ARCH-001": ("CONTEXTUAL_CHOICE", "Para configuracao de API key: SettingsPanel, menu Ferramentas, ou ambos conforme UX e pedido."),
-	"ARCH-007": ("IMPLEMENTATION_ALTERNATIVES", "Promover arquivos soltos existentes para subpacotes nomeados pela funcionalidade (ex: services/spotify_client.py -> spotify/client.py)."),
-	"ARCH-008": ("CONTEXTUAL_CHOICE", "Escolher entre menu Ferramentas, SettingsPanel ou ambos; se ambiguo, perguntar ao usuario."),
-	"ARCH-009": ("CONTEXTUAL_CHOICE", "Dialog/frame pode usar menu, settings ou ambos conforme intencao do pedido e fluxo principal."),
-	"DTK-A11Y-004": ("IMPLEMENTATION_ALTERNATIVES", "Expor valor via ValuePattern (UIA) ou accValue/accessibilityValue conforme a API alvo do controle."),
-	"DTK-A11Y-008": ("IMPLEMENTATION_ALTERNATIVES", "No wx: wx.SystemSettings.GetColour() em vez de cor hardcoded; equivalente em outros toolkits (SystemColors/NSColor)."),
-	"DTK-A11Y-011": ("IMPLEMENTATION_ALTERNATIVES", "Documentar atalho via item de menu com aceleador, tooltip, ou texto de ajuda -- qualquer um torna o atalho descobrivel."),
-	"DTK-A11Y-012": ("CONTEXTUAL_CHOICE", "Migrar para UIA quando a plataforma-alvo suportar; manter MSAA apenas se houver requisito explicito de compatibilidade com versao antiga do Windows."),
+	"NVDA-005": ("IMPLEMENTATION_ALTERNATIVES", "Accepts fixing the version format and/or adjusting lastTestedNVDAVersion to BACK_COMPAT_TO."),
+	"NVDA-014": ("CONTEXTUAL_CHOICE", "Optional in local development; require only when the target is the Add-on Store."),
+	"NVDA-020": ("IMPLEMENTATION_ALTERNATIVES", "Use a direct import of the specific public API instead of a transitive re-export."),
+	"NVDA-023": ("IMPLEMENTATION_ALTERNATIVES", "Use a string forward reference or remove the annotation when the type is a lazy import."),
+	"NVDA-037": ("IMPLEMENTATION_ALTERNATIVES", "Implement the required fields (numCols/display/isThreadSafe) in the driver's own strategy."),
+	"NVDA-039": ("IMPLEMENTATION_ALTERNATIVES", "Use registerExecutableWithAppModule and unregisterExecutable in terminate()."),
+	"NVDA-042": ("IMPLEMENTATION_ALTERNATIVES", "Use ngettext/npgettext for plurals and pgettext to disambiguate context."),
+	"NVDA-043": ("IMPLEMENTATION_ALTERNATIVES", "Comply with a valid .utb file and/or a correct declaration in [brailleTables] in the manifest."),
+	"NVDA-044": ("IMPLEMENTATION_ALTERNATIVES", "Comply with a valid symbols-*.dic and/or a correct declaration in [symbolDictionaries]."),
+	"NVDA-045": ("IMPLEMENTATION_ALTERNATIVES", "Comply with a valid gestures.ini per locale/module following the NVDA standard."),
+	"NVDA-049": ("IMPLEMENTATION_ALTERNATIVES", "Use MessageDialog.alert/confirm/ask or an instance of gui.message.MessageDialog -- never wx.MessageDialog or wx.MessageBox."),
+	"NVDA-050": ("IMPLEMENTATION_ALTERNATIVES", "Inherit from IAccessible/UIA/Window/JABObject according to the target API; never from the generic base."),
+	"NVDA-060": ("IMPLEMENTATION_ALTERNATIVES", "Replace every controlTypes.ROLE_X/STATE_X reference with controlTypes.Role.X/State.X (1:1 mapping documented by NVDA)."),
+	"NVDA-061": ("CONTEXTUAL_CHOICE", "Require characterDescriptions.dic only when the add-on really describes individual characters (speech driver, phonetic dictionary); not applicable to add-ons without that need."),
+	"WX-A11Y-002": ("IMPLEMENTATION_ALTERNATIVES", "Apply an AcceleratorTable to the wx.Panel or wx.Frame when there is keyboard focus/interaction."),
+	"WX-A11Y-004": ("IMPLEMENTATION_ALTERNATIVES", "The dialog must have CreateStdDialogButtonSizer and/or explicit Escape handling."),
+	"WX-A11Y-006": ("IMPLEMENTATION_ALTERNATIVES", "An image control must have SetToolTip() and/or a wx.Accessible subclass (SetName() does not count)."),
+	"WX-A11Y-008": ("IMPLEMENTATION_ALTERNATIVES", "Announce timer/status via wx.Bell and/or an equivalent accessible message."),
+	"WX-A11Y-011": ("IMPLEMENTATION_ALTERNATIVES", "A virtual List/Tree must expose text via an appropriate override (e.g. GetItemText)."),
+	"WX-A11Y-013": ("IMPLEMENTATION_ALTERNATIVES", "Prefer EVT_CHAR_HOOK or a semantic event instead of raw EVT_KEY_DOWN/EVT_CHAR."),
+	"WX-A11Y-014": ("IMPLEMENTATION_ALTERNATIVES", "For item activation use EVT_LIST_ITEM_ACTIVATED instead of ad hoc key handling."),
+	"ARCH-001": ("CONTEXTUAL_CHOICE", "For API key configuration: SettingsPanel, Tools menu, or both depending on UX and the request."),
+	"ARCH-007": ("IMPLEMENTATION_ALTERNATIVES", "Promote existing loose files to subpackages named after the feature (e.g. services/spotify_client.py -> spotify/client.py)."),
+	"ARCH-008": ("CONTEXTUAL_CHOICE", "Choose between the Tools menu, SettingsPanel or both; if ambiguous, ask the user."),
+	"ARCH-009": ("CONTEXTUAL_CHOICE", "A dialog/frame may use the menu, settings or both depending on the intent of the request and the main flow."),
+	"DTK-A11Y-004": ("IMPLEMENTATION_ALTERNATIVES", "Expose the value via ValuePattern (UIA) or accValue/accessibilityValue according to the control's target API."),
+	"DTK-A11Y-008": ("IMPLEMENTATION_ALTERNATIVES", "In wx: wx.SystemSettings.GetColour() instead of a hardcoded color; equivalent in other toolkits (SystemColors/NSColor)."),
+	"DTK-A11Y-011": ("IMPLEMENTATION_ALTERNATIVES", "Document the shortcut via a menu item with an accelerator, a tooltip, or help text -- any of them makes the shortcut discoverable."),
+	"DTK-A11Y-012": ("CONTEXTUAL_CHOICE", "Migrate to UIA when the target platform supports it; keep MSAA only if there is an explicit requirement for compatibility with an older Windows version."),
 }
 
 
 def _build_rule_fallback_matrix() -> dict[str, tuple[str, str]]:
-	"""Gera matriz completa de fallback para 100% das regras conhecidas."""
+	"""Builds the complete fallback matrix for 100% of the known rules."""
 	all_ids = [r[0] for r in NVDA_DETECTION_RULES] + [r[0] for r in WX_A11Y_RULES] + ARCH_RULE_IDS
 	matrix: dict[str, tuple[str, str]] = {}
 	for rid in all_ids:
 		matrix[rid] = _RULE_FALLBACK_OVERRIDES.get(
 			rid,
-			("STRICT_ONLY", "Sem fallback: corrigir exatamente a violacao da regra."),
+			("STRICT_ONLY", "No fallback: fix the rule violation exactly."),
 		)
 	return matrix
 
@@ -308,16 +308,16 @@ RULE_FALLBACK_MATRIX: dict[str, tuple[str, str]] = _build_rule_fallback_matrix()
 
 
 def _format_rule_fallback_matrix() -> str:
-	"""Formata a matriz de fallback por regra para o guia."""
+	"""Formats the per-rule fallback matrix for the guide."""
 	ordered_ids = [r[0] for r in NVDA_DETECTION_RULES] + [r[0] for r in WX_A11Y_RULES] + ARCH_RULE_IDS
 	lines = [
-		"MATRIZ DE FALLBACK POR REGRA (COBERTURA 100%):",
-		"Modos validos:",
+		"PER-RULE FALLBACK MATRIX (100% COVERAGE):",
+		"Valid modes:",
 		f"- STRICT_ONLY: {FALLBACK_MODE_DOC['STRICT_ONLY']}",
 		f"- IMPLEMENTATION_ALTERNATIVES: {FALLBACK_MODE_DOC['IMPLEMENTATION_ALTERNATIVES']}",
 		f"- CONTEXTUAL_CHOICE: {FALLBACK_MODE_DOC['CONTEXTUAL_CHOICE']}",
 		"",
-		"Regras:",
+		"Rules:",
 	]
 	for rid in ordered_ids:
 		mode, note = RULE_FALLBACK_MATRIX[rid]
@@ -330,238 +330,239 @@ RULE_FALLBACK_MATRIX_TEXT: str = _format_rule_fallback_matrix()
 _EXPECTED_RULE_IDS = [r[0] for r in NVDA_DETECTION_RULES] + [r[0] for r in WX_A11Y_RULES] + ARCH_RULE_IDS
 _MISSING_FALLBACK_RULES = [rid for rid in _EXPECTED_RULE_IDS if rid not in RULE_FALLBACK_MATRIX]
 if _MISSING_FALLBACK_RULES:
-	raise RuntimeError(f"Matriz de fallback incompleta: {_MISSING_FALLBACK_RULES}")
+	raise RuntimeError(f"Incomplete fallback matrix: {_MISSING_FALLBACK_RULES}")
 
 # ------------------------------------------------------------------
 # ------------------------------------------------------------------
 
-NVDA_GUIDE = f"""TEXTO HUMANO DO ADDON (summary, description e changelog do manifest.ini, userGuide.html,
-mensagens de UI): em portugues do Brasil correto, com todos os acentos e cedilhas.
-Isso NAO se aplica a identificadores tecnicos (nomes de campo do manifest, de variavel).
+NVDA_GUIDE = f"""HUMAN-FACING TEXT OF THE ADDON (summary, description and changelog in manifest.ini, userGuide.html,
+UI messages): write it in the language of the person who asked for the addon (for example correct
+Brazilian Portuguese, with every accent and cedilla), not in English by default.
+This does NOT apply to technical identifiers (manifest field names, variable names).
 
-VERSAO DO NVDA E COMPATIBILIDADE:
-Baseline oficial do projeto: {PROJECT_SUPPORTED_RANGE}.
-Para addons novos gerados pelo NVDAStudio:
+NVDA VERSION AND COMPATIBILITY:
+Official project baseline: {PROJECT_SUPPORTED_RANGE}.
+For new addons generated by NVDAStudio:
 - minimumNVDAVersion = {PROJECT_MIN_NVDA}
 - lastTestedNVDAVersion = {PROJECT_LAST_TESTED_NVDA}
-REGRA ANTI-LEGADO: nao gere compatibilidade ativa para versoes anteriores a {PROJECT_MIN_NVDA}.
-ATENCAO: minimumNVDAVersion NUNCA abaixo de {ABSOLUTE_MIN_NVDA} (antes era Python 2). Regra NVDA-018.
-ATENCAO CRITICA: lastTestedNVDAVersion DEVE ser >= BACK_COMPAT_TO da versao do NVDA onde o addon vai instalar.
-Para NVDA 2025.x, BACK_COMPAT_TO = 2025.1.0, portanto lastTestedNVDAVersion >= 2025.1 e obrigatorio.
-Se o addon precisar continuar preparado para NVDA 2026.1+, evite DLLs 32-bit, binarios compilados sem validacao de ABI e APIs removidas.
+ANTI-LEGACY RULE: do not generate active compatibility for versions earlier than {PROJECT_MIN_NVDA}.
+WARNING: minimumNVDAVersion NEVER below {ABSOLUTE_MIN_NVDA} (before that it was Python 2). Rule NVDA-018.
+CRITICAL WARNING: lastTestedNVDAVersion MUST be >= BACK_COMPAT_TO of the NVDA version where the addon will be installed.
+For NVDA 2025.x, BACK_COMPAT_TO = 2025.1.0, so lastTestedNVDAVersion >= 2025.1 is mandatory.
+If the addon must stay ready for NVDA 2026.1+, avoid 32-bit DLLs, compiled binaries without ABI validation, and removed APIs.
 NVDA 2026.1 — BREAKING CHANGES (skill: nvda-addon-specialist §NVDA 2026.1):
-  - Python 3.13 64-bit: NVDA e suas extensoes sao 64-bit. Nao gere .dll/.pyd 32-bit.
-  - Alguns simbolos de winUser, winKernel, winGDI e wincon foram removidos, descontinuados ou movidos para winBindings.* (veja changes.md do NVDA: API Breaking Changes e Deprecations); os modulos em si continuam existindo. Use addon_validar (NVDA-052) para achar os simbolos afetados.
-  - versionInfo: copyrightYears e url movidos para buildVersion — use from buildVersion import copyrightYears, url.
-  - NVDAHelper.localLib mudou de ctypes.CDLL para modulo — use NVDAHelper.localLib.dll para o objeto CDLL.
-  - sapi5 agora e 64-bit; use sapi5_32 para vozes SAPI 32-bit (sem audio ducking). sapi4 removido — use sapi4_32.
-  - Screen Curtain movido de visionEnhancementProviders.screenCurtain para screenCurtain subpackage.
-  - ARM64: Windows 10 on ARM nao e mais suportado; ARM64EC somente no Windows 11.
+  - Python 3.13 64-bit: NVDA and its extensions are 64-bit. Do not generate 32-bit .dll/.pyd files.
+  - Some symbols of winUser, winKernel, winGDI and wincon were removed, deprecated or moved to winBindings.* (see NVDA's changes.md: API Breaking Changes and Deprecations); the modules themselves still exist. Use addon_validate (NVDA-052) to find the affected symbols.
+  - versionInfo: copyrightYears and url moved to buildVersion — use from buildVersion import copyrightYears, url.
+  - NVDAHelper.localLib changed from ctypes.CDLL to a module — use NVDAHelper.localLib.dll for the CDLL object.
+  - sapi5 is now 64-bit; use sapi5_32 for 32-bit SAPI voices (no audio ducking). sapi4 was removed — use sapi4_32.
+  - Screen Curtain moved from visionEnhancementProviders.screenCurtain to the screenCurtain subpackage.
+  - ARM64: Windows 10 on ARM is no longer supported; ARM64EC only on Windows 11.
 
-REGRAS DE DETECCAO DE PROBLEMAS (NVDA-001..040, NVDA-042..050):
-NVDA-001 Critico: Falta nextHandler() em event handler.
-NVDA-002 Critico: Bloqueio da thread principal (sleep, I/O sincrono, HTTP bloqueante).
-NVDA-003 Serio: Modulo chama _(), ngettext(), pgettext() ou npgettext() sem
-  addonHandler.initTranslation(). Nao exija a inicializacao em modulos
-  auxiliares que nao usam gettext.
-NVDA-004 Serio: Falta terminate() para cleanup de recursos persistentes.
-NVDA-005 Serio: Formato incorreto de versao no manifest.
-NVDA-006 Moderado: Monkey-patching de modulos do core NVDA.
-NVDA-007 Moderado: Script sem decorator @script.
-NVDA-008 Moderado: Script sem description no decorator.
-NVDA-009 Moderado: Atalho hardcoded conflita com NVDA core.
-NVDA-010 Serio: Atualizacao de UI de thread background sem wx.CallAfter().
-NVDA-011 Moderado: Driver sem classmethod check().
-NVDA-012 Menor: Clausula except: bare.
-NVDA-013 Serio: Range de versao de API incompativel no manifest.
-NVDA-014 Menor: SHA256 ausente para submissao ao Add-on Store.
-NVDA-015 Moderado: Configuracoes nao usam config.conf.spec.
-NVDA-016 Serio: Vulnerabilidade em secure mode (sem check shouldWriteToDisk()).
-NVDA-017 Critico: DLL 32-bit em NVDA 64-bit (2026.1+).
-NVDA-018 Serio: minimumNVDAVersion abaixo de {ABSOLUTE_MIN_NVDA}.
-NVDA-019 Serio: # Translators: comment ausente imediatamente antes de chamada _().
-  REGRA ABSOLUTA: TODA linha com _() DEVE ter '# Translators: ...' na linha IMEDIATAMENTE anterior.
-  Nao ha excecoes — vale para @script(description=_()), ui.message(), title=_(), SetName(), etc.
-  Para @script, o comentario vai na linha ANTES do decorator:
-    # Translators: Descricao do script no dialogo de gestos de entrada
-    @script(gesture="kb:NVDA+shift+x", description=_("Abre o painel"))
-  Evite _() dentro de lambdas — extraia para metodo dedicado onde pode colocar o comentario.
-  Correto: # Translators: Mensagem quando area de transferencia esta vazia
-           ui.message(_("Area de transferencia vazia"))
-  Errado:  ui.message(_("Area de transferencia vazia"))  # sem comment
-NVDA-020 Moderado: Import de re-export transitivo (API instavel entre versoes).
-  Correto: from NVDAObjects.IAccessible import IAccessible
-  Errado:  from NVDAObjects import IAccessible
-NVDA-062 Critico: SECURE MODE em CADA ponto de entrada perigoso.
-  Em secure mode (tela de login, UAC, tela segura) os scripts do addon CONTINUAM
-  executaveis: eles sao definidos a nivel de classe, entao checar o flag so no
-  __init__ e sair cedo NAO impede o script de rodar. Cada entrada que le
-  credencial, abre arquivo, salva config ou faz requisicao externa precisa da
-  propria checagem, ANTES de tocar no dado sensivel.
-  Errado (checa so no __init__ -- o script roda mesmo assim):
+PROBLEM DETECTION RULES (NVDA-001..040, NVDA-042..050):
+NVDA-001 Critical: Missing nextHandler() in event handler.
+NVDA-002 Critical: Main thread blocked (sleep, synchronous I/O, blocking HTTP).
+NVDA-003 Serious: Module calls _(), ngettext(), pgettext() or npgettext() without
+  addonHandler.initTranslation(). Do not require the initialization in helper
+  modules that do not use gettext.
+NVDA-004 Serious: Missing terminate() to clean up persistent resources.
+NVDA-005 Serious: Wrong version format in the manifest.
+NVDA-006 Moderate: Monkey-patching of NVDA core modules.
+NVDA-007 Moderate: Script without the @script decorator.
+NVDA-008 Moderate: Script without a description in the decorator.
+NVDA-009 Moderate: Hardcoded gesture conflicts with the NVDA core.
+NVDA-010 Serious: UI update from a background thread without wx.CallAfter().
+NVDA-011 Moderate: Driver without a check() classmethod.
+NVDA-012 Minor: Bare except: clause.
+NVDA-013 Serious: Incompatible API version range in the manifest.
+NVDA-014 Minor: SHA256 missing for Add-on Store submission.
+NVDA-015 Moderate: Settings do not use config.conf.spec.
+NVDA-016 Serious: Secure mode vulnerability (no shouldWriteToDisk() check).
+NVDA-017 Critical: 32-bit DLL on 64-bit NVDA (2026.1+).
+NVDA-018 Serious: minimumNVDAVersion below {ABSOLUTE_MIN_NVDA}.
+NVDA-019 Serious: # Translators: comment missing immediately before a _() call.
+  ABSOLUTE RULE: EVERY line with _() MUST have '# Translators: ...' on the IMMEDIATELY preceding line.
+  There are no exceptions — it applies to @script(description=_()), ui.message(), title=_(), SetName(), etc.
+  For @script, the comment goes on the line BEFORE the decorator:
+    # Translators: Description of the script in the input gestures dialog
+    @script(gesture="kb:NVDA+shift+x", description=_("Opens the panel"))
+  Avoid _() inside lambdas — extract it to a dedicated method where you can put the comment.
+  Correct: # Translators: Message when the clipboard is empty
+           ui.message(_("Clipboard is empty"))
+  Wrong:   ui.message(_("Clipboard is empty"))  # no comment
+NVDA-020 Moderate: Import of a transitive re-export (API unstable between versions).
+  Correct: from NVDAObjects.IAccessible import IAccessible
+  Wrong:   from NVDAObjects import IAccessible
+NVDA-062 Critical: SECURE MODE at EVERY dangerous entry point.
+  In secure mode (login screen, UAC, secure desktop) the addon's scripts REMAIN
+  executable: they are defined at class level, so checking the flag only in
+  __init__ and returning early does NOT stop the script from running. Every entry that reads a
+  credential, opens a file, saves config or makes an external request needs its
+  own check, BEFORE touching the sensitive data.
+  Wrong (checks only in __init__ -- the script runs anyway):
     class GlobalPlugin(globalPluginHandler.GlobalPlugin):
       def __init__(self):
         super().__init__()
         if globalVars.appArgs.secure:
           return
       @script(gesture="kb:NVDA+shift+r")
-      def script_resumir(self, gesture):
-        chave = config.conf["MeuAddon"]["apiKey"]   # roda em secure mode!
-  Correto (cada ponto de entrada se protege, e AVISA o usuario):
+      def script_summarize(self, gesture):
+        key = config.conf["MyAddon"]["apiKey"]   # runs in secure mode!
+  Correct (each entry point protects itself, and WARNS the user):
     import globalVars
     import ui
 
-    def _bloqueado_em_modo_seguro():
+    def _blocked_in_secure_mode():
       if globalVars.appArgs.secure:
-        # Translators: mensagem quando a funcao esta indisponivel na tela segura
-        ui.message(_("Indisponivel no modo seguro do NVDA."))
+        # Translators: message when the feature is unavailable on the secure screen
+        ui.message(_("Unavailable in NVDA secure mode."))
         return True
       return False
 
     @script(gesture="kb:NVDA+shift+r")
-    def script_resumir(self, gesture):
-      if _bloqueado_em_modo_seguro():
+    def script_summarize(self, gesture):
+      if _blocked_in_secure_mode():
         return
-      chave = config.conf["MeuAddon"]["apiKey"]
-  O MESMO vale para makeSettings()/onSave() de um SettingsPanel: NAO leia a
-  chave de API para depois desabilitar o controle -- desabilitar depois nao
-  desfaz a leitura. Cheque antes de ler.
-  E NUNCA logue senha, token ou chave de API, em modo nenhum.
+      key = config.conf["MyAddon"]["apiKey"]
+  The SAME applies to makeSettings()/onSave() of a SettingsPanel: do NOT read the
+  API key and then disable the control -- disabling afterwards does not
+  undo the read. Check before reading.
+  And NEVER log a password, token or API key, in any mode.
 
-NVDA-UX-002 / NVDA-016: falha bloqueada tem que ser FALADA.
-  Quando a gravacao e barrada por modo seguro ou por
-  NVDAState.shouldWriteToDisk(), registrar um warning no log nao basta: o
-  usuario de leitor de tela apertou salvar e nao ouviu nada, entao para ele a acao funcionou.
-  Sempre ui.message() explicando que a alteracao nao foi salva.
+NVDA-UX-002 / NVDA-016: a blocked failure has to be SPOKEN.
+  When saving is blocked by secure mode or by
+  NVDAState.shouldWriteToDisk(), writing a warning to the log is not enough: the
+  screen reader user pressed save and heard nothing, so for them the action worked.
+  Always call ui.message() explaining that the change was not saved.
 
-WX-A11Y-004 Serio: dialogo precisa de botoes padrao e de Escape.
-  Errado (sem sizer padrao -- Escape nao fecha, e a ordem de foco fica errada):
+WX-A11Y-004 Serious: a dialog needs standard buttons and Escape handling.
+  Wrong (no standard sizer -- Escape does not close it, and the focus order is wrong):
     sizer.Add(wx.Button(self, label=_("OK")))
-  Correto:
-    botoes = self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
-    sizer.Add(botoes, flag=wx.EXPAND | wx.ALL, border=5)
-  wx.OK/wx.CANCEL dao rotulo traduzido pelo sistema, ordem de tabulacao correta
-  e fechamento por Escape sem codigo extra.
+  Correct:
+    buttons = self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+    sizer.Add(buttons, flag=wx.EXPAND | wx.ALL, border=5)
+  wx.OK/wx.CANCEL give a label translated by the system, correct tab order
+  and closing with Escape without extra code.
 
-NVDA-021 Moderado: Indentacao com espacos em vez de TABS. E o padrao do NVDA e do
-  AddonTemplate: use TAB na indentacao de todo arquivo .py do addon.
-  NVDA usa TABS como padrao de codificacao. Gere sempre com TABS.
-NVDA-022 Critico: Import 3rd party em nivel de modulo em arquivo de servico.
-  Se a dependencia nao estiver em lib/, toda a cadeia de imports falha e o NVDA
-  nao carrega o addon — settings panel nunca aparece, atalhos nao funcionam.
-  REGRA: em QUALQUER arquivo de servico (nao __init__.py), imports de pacotes
-  externos a stdlib/NVDA DEVEM ser lazy, dentro do metodo que os usa:
-  Errado (nivel de modulo — causa crash silencioso do addon):
-    from googleapiclient.discovery import build  # topo do arquivo
-  Correto (lazy — addon carrega mesmo sem o pacote):
-    def meu_metodo(self):
-        from googleapiclient.discovery import build  # dentro do metodo
+NVDA-021 Moderate: Indentation with spaces instead of TABs. It is the NVDA and
+  AddonTemplate standard: use a TAB for indentation in every .py file of the addon.
+  NVDA uses TABs as its coding standard. Always generate with TABs.
+NVDA-022 Critical: Module-level third-party import in a service file.
+  If the dependency is not in lib/, the whole import chain fails and NVDA does
+  not load the addon — the settings panel never appears, gestures do not work.
+  RULE: in ANY service file (not __init__.py), imports of packages
+  external to the stdlib/NVDA MUST be lazy, inside the method that uses them:
+  Wrong (module level — causes a silent crash of the addon):
+    from googleapiclient.discovery import build  # top of the file
+  Correct (lazy — the addon loads even without the package):
+    def my_method(self):
+        from googleapiclient.discovery import build  # inside the method
 
-NVDA-023 Critico: Type annotation referencia tipo de import lazy — NameError no carregamento do modulo.
-  Quando um import e lazy (dentro de um metodo, NVDA-022), o tipo nao esta no namespace
-  do modulo. Usar o tipo diretamente na assinatura da funcao causa NameError imediato.
-  Em Python 3.x sem 'from __future__ import annotations', annotations sao avaliadas
-  eagerly no momento da definicao da funcao.
-  REGRA: use string literal (forward reference) para qualquer tipo lazily importado:
-  Errado (NameError ao carregar o modulo — addon nao carrega, settings panel some):
-    def get_credentials() -> Credentials:   # Credentials so importado lazy, dentro
-        from google.oauth2.credentials import Credentials  # do corpo — nunca no escopo
-  Correto (string literal — avaliado apenas quando inspecionado):
+NVDA-023 Critical: Type annotation references a lazily imported type — NameError when the module loads.
+  When an import is lazy (inside a method, NVDA-022), the type is not in the module
+  namespace. Using the type directly in the function signature causes an immediate NameError.
+  In Python 3.x without 'from __future__ import annotations', annotations are evaluated
+  eagerly when the function is defined.
+  RULE: use a string literal (forward reference) for any lazily imported type:
+  Wrong (NameError when loading the module — the addon does not load, the settings panel vanishes):
+    def get_credentials() -> Credentials:   # Credentials is only imported lazily, inside
+        from google.oauth2.credentials import Credentials  # the body — never in scope
+  Correct (string literal — evaluated only when inspected):
     def get_credentials() -> "Credentials":
         from google.oauth2.credentials import Credentials
-  ALTERNATIVA: remover a annotation de retorno quando o tipo e externo:
-    def get_credentials():  # sem annotation — igualmente valido para NVDA
+  ALTERNATIVE: remove the return annotation when the type is external:
+    def get_credentials():  # no annotation — equally valid for NVDA
 
-NVDA-024 Serio: NVDASettingsDialog.categoryClasses.append() sem guard — painel duplicado no Tab.
-  Se o addon for recarregado (ex: NVDA+Ctrl+F3) ou terminate() falhar, o painel pode
-  ser adicionado duas vezes. Com dois paineis iguais na lista, o Tab navega entre
-  controles dos dois paineis sobrepostos — parece que as configuracoes se misturam
-  com as de outros addons.
-  REGRA: sempre usar guard antes de append:
-  Errado (append incondicional — duplica o painel se o addon recarregar):
-    NVDASettingsDialog.categoryClasses.append(MeuAddonSettingsPanel)
-  Correto (guard contra duplicata):
-    if MeuAddonSettingsPanel not in NVDASettingsDialog.categoryClasses:
-        NVDASettingsDialog.categoryClasses.append(MeuAddonSettingsPanel)
+NVDA-024 Serious: NVDASettingsDialog.categoryClasses.append() without a guard — duplicated panel in the Tab order.
+  If the addon is reloaded (e.g. NVDA+Ctrl+F3) or terminate() fails, the panel may
+  be added twice. With two identical panels in the list, Tab moves between
+  the controls of the two overlapping panels — it looks like the settings get mixed up
+  with those of other addons.
+  RULE: always use a guard before append:
+  Wrong (unconditional append — duplicates the panel if the addon reloads):
+    NVDASettingsDialog.categoryClasses.append(MyAddonSettingsPanel)
+  Correct (guard against duplicates):
+    if MyAddonSettingsPanel not in NVDASettingsDialog.categoryClasses:
+        NVDASettingsDialog.categoryClasses.append(MyAddonSettingsPanel)
 
-NVDA-025 Critico: config.conf com secao generica — colisao entre addons.
-  NOTA DE TERMINOLOGIA: "addonId" abaixo e
-  convencao INTERNA do NVDAStudio pro identificador unico do addon -- o
-  manifest.ini real do NVDA (addonHandler/__init__.py, AddonManifest) NAO
-  tem um campo literal chamado "addonId". O identificador unico e o campo
-  name= do manifest.ini. Onde este arquivo diz "addonId", leia "o valor do
-  campo name= do manifest.ini".
-  Cada addon DEVE usar uma secao unica em config.conf, igual ao name do manifest.ini.
-  Se dois addons usarem a mesma secao (ex: ambos usam "meuAddon"), as configuracoes
-  de um sobrepoem as do outro — usuario nao consegue usar os dois addons ao mesmo tempo.
-  REGRA: O nome da secao config.conf DEVE ser o valor exato do campo name= do manifest.ini.
-  Errado (placeholder generico — colidem se dois addons forem gerados):
-    config.conf["meuAddon"]["apiKey"]   # "meuAddon" e placeholder, nao o id real
-  Correto (name unico do manifest — ex: "GmailSummarizer", "LeitorRSS", etc.):
-    config.conf["GmailSummarizer"]["apiKey"]   # igual ao name= no manifest.ini
-  REGRA DE NOMEACAO: use o name em CamelCase tal como declarado no manifest.ini.
-  Exemplos:
+NVDA-025 Critical: config.conf with a generic section — collision between addons.
+  TERMINOLOGY NOTE: "addonId" below is an
+  INTERNAL NVDAStudio convention for the addon's unique identifier -- the real NVDA
+  manifest.ini (addonHandler/__init__.py, AddonManifest) does NOT
+  have a field literally called "addonId". The unique identifier is the
+  name= field of manifest.ini. Wherever this file says "addonId", read "the value of the
+  name= field of manifest.ini".
+  Each addon MUST use a unique section in config.conf, equal to the name in manifest.ini.
+  If two addons use the same section (e.g. both use "myAddon"), the settings
+  of one overwrite those of the other — the user cannot use both addons at the same time.
+  RULE: The config.conf section name MUST be the exact value of the name= field of manifest.ini.
+  Wrong (generic placeholder — they collide if two addons are generated):
+    config.conf["myAddon"]["apiKey"]   # "myAddon" is a placeholder, not the real id
+  Correct (unique name from the manifest — e.g. "GmailSummarizer", "RssReader", etc.):
+    config.conf["GmailSummarizer"]["apiKey"]   # same as name= in manifest.ini
+  NAMING RULE: use the name in CamelCase exactly as declared in manifest.ini.
+  Examples:
     manifest.ini: name=GmailSummarizer  ->  config.conf["GmailSummarizer"]
-    manifest.ini: name=LeitorRSS        ->  config.conf["LeitorRSS"]
-    manifest.ini: name=TraducaoRapida   ->  config.conf["TraducaoRapida"]
+    manifest.ini: name=RssReader        ->  config.conf["RssReader"]
+    manifest.ini: name=QuickTranslation ->  config.conf["QuickTranslation"]
 
-NVDA-042 Moderado: Use ngettext() para strings no plural e pgettext() para strings com contexto.
-  Usar _() para strings que variam no plural produz texto gramaticalmente errado: "1 itens encontrados".
-  ngettext() — escolhe singular ou plural automaticamente:
-    # Translators: Mensagem com contagem de itens (singular/plural)
-    ui.message(ngettext("{{n}} item encontrado", "{{n}} itens encontrados", count).format(n=count))
-  pgettext() — desambigua strings identicas em contextos diferentes:
-    label = pgettext("column header", "Name")   # "Nome" quando e cabecalho de coluna
-    label = pgettext("person name", "Name")     # "Nome" quando e campo de formulario
-  npgettext() — plural com contexto:
+NVDA-042 Moderate: Use ngettext() for plural strings and pgettext() for strings with context.
+  Using _() for strings that vary with the plural produces grammatically wrong text: "1 items found".
+  ngettext() — picks singular or plural automatically:
+    # Translators: Message with an item count (singular/plural)
+    ui.message(ngettext("{{n}} item found", "{{n}} items found", count).format(n=count))
+  pgettext() — disambiguates identical strings in different contexts:
+    label = pgettext("column header", "Name")   # translated as the column header
+    label = pgettext("person name", "Name")     # translated as the form field
+  npgettext() — plural with context:
     msg = npgettext("list item", "{{n}} result", "{{n}} results", count).format(n=count)
-  Regra: sempre que o numero importa gramaticalmente, use ngettext(). Sempre que a mesma
-  string inglesa tem traducoes diferentes por contexto, use pgettext().
+  Rule: whenever the number matters grammatically, use ngettext(). Whenever the same
+  English string has different translations depending on context, use pgettext().
 
-NVDA-043 Moderado: Braille Translation Table — arquivo .utb em brailleTables/ + manifest.ini.
-  Crie brailleTables/<nome>.utb com conteudo liblouis (plain text).
-  CRITICO: o manifest.ini DEVE ser UM UNICO arquivo com os campos base E as secoes adicionais.
-  Manifest.ini completo (base + brailleTables):
-    Arquivo: manifest.ini
+NVDA-043 Moderate: Braille Translation Table — .utb file in brailleTables/ + manifest.ini.
+  Create brailleTables/<name>.utb with liblouis content (plain text).
+  CRITICAL: manifest.ini MUST be ONE SINGLE file with the base fields AND the additional sections.
+  Complete manifest.ini (base + brailleTables):
+    File: manifest.ini
 ```ini
-    name = NomeDoAddon
-    summary = Descricao
-    description = Descricao completa
-    author = Autor <email@exemplo.com>
-    url = https://github.com/usuario/addon
+    name = AddonName
+    summary = Short description
+    description = Full description
+    author = Author <email@example.com>
+    url = https://github.com/user/addon
     version = 1.0.0
     minimumNVDAVersion = {PROJECT_MIN_NVDA}
     lastTestedNVDAVersion = {PROJECT_LAST_TESTED_NVDA}
 
     [brailleTables]
     [[pt-br-grade2.utb]]
-    displayName = Portugues Brasileiro Grau 2
+    displayName = Brazilian Portuguese Grade 2
     contracted = True
     output = True
     input = False
     ```
-  Template minimo brailleTables/pt-br-grade2.utb:
-    Arquivo: brailleTables/pt-br-grade2.utb
+  Minimal template brailleTables/pt-br-grade2.utb:
+    File: brailleTables/pt-br-grade2.utb
 ```ini
-    # Tabela Braille Portugues Brasileiro Grau 2
-    # Formato liblouis — substitua por regras reais de contracao
+    # Brazilian Portuguese Grade 2 Braille table
+    # liblouis format — replace with real contraction rules
     include pt-br.utb
     ```
 
-NVDA-044 Moderado: Symbol Dictionaries — locale/<lang>/symbols-<nome>.dic com secao symbols:.
-  Arquivo: locale/<lang>/symbols-<nome>.dic (ex: locale/en/symbols-greek.dic)
-  Declare no manifest.ini:
+NVDA-044 Moderate: Symbol Dictionaries — locale/<lang>/symbols-<name>.dic with a symbols: section.
+  File: locale/<lang>/symbols-<name>.dic (e.g. locale/en/symbols-greek.dic)
+  Declare it in manifest.ini:
     [symbolDictionaries]
-    [[<nome>]]
-    displayName = Nome Legivel
-    mandatory = false    # true = sempre ativo; false = usuario ativa em NVDA Settings
-  Formato do arquivo .dic — separadores sao TABs reais (representados abaixo como [TAB]):
+    [[<name>]]
+    displayName = Readable Name
+    mandatory = false    # true = always active; false = the user enables it in NVDA Settings
+  .dic file format — the separators are real TABs (shown below as [TAB]):
     symbols:
-    <simbolo>[TAB]<pronuncia>[TAB]<nivel>[TAB]<preserve>
-  nivel: none | some | most | all | char | unchanged
-  preserve: vazio | norep | char | always
+    <symbol>[TAB]<pronunciation>[TAB]<level>[TAB]<preserve>
+  level: none | some | most | all | char | unchanged
+  preserve: empty | norep | char | always
   Template locale/en/symbols-greek.dic:
-    Arquivo: locale/en/symbols-greek.dic
+    File: locale/en/symbols-greek.dic
 ```ini
     symbols:
     alpha[TAB]alpha[TAB]all[TAB]
@@ -569,9 +570,9 @@ NVDA-044 Moderado: Symbol Dictionaries — locale/<lang>/symbols-<nome>.dic com 
     gamma[TAB]gamma[TAB]all[TAB]
     pi[TAB]pi[TAB]all[TAB]
     ```
-  Importante: [TAB] representa um caractere TAB real (0x09) no arquivo gerado.
-  Manifest.ini exemplo:
-    Arquivo: manifest.ini
+  Important: [TAB] stands for a real TAB character (0x09) in the generated file.
+  Example manifest.ini:
+    File: manifest.ini
 ```ini
     [symbolDictionaries]
     [[greek]]
@@ -579,235 +580,235 @@ NVDA-044 Moderado: Symbol Dictionaries — locale/<lang>/symbols-<nome>.dic com 
     mandatory = false
     ```
 
-NVDA-045 Menor: Locale Gesture Remapping — locale/<lang>/gestures.ini para layout especifico.
-  Arquivo: locale/<lang>/gestures.ini (ex: locale/it/gestures.ini para layout italiano)
-  Sobrescreve gestos padrao do NVDA para usuarios de um locale especifico.
-  OBRIGATORIO quando a query pedir gestos especificos de locale — crie o arquivo fisico.
-  Formato:
+NVDA-045 Minor: Locale Gesture Remapping — locale/<lang>/gestures.ini for a specific layout.
+  File: locale/<lang>/gestures.ini (e.g. locale/it/gestures.ini for the Italian layout)
+  Overrides NVDA's default gestures for users of a specific locale.
+  REQUIRED when the request asks for locale-specific gestures — create the physical file.
+  Format:
     [module.ClassName]
     scriptName = gesture
-  Cada [secao] e modulo.NomeDaClasse (ex: globalCommands.GlobalCommands).
+  Each [section] is module.ClassName (e.g. globalCommands.GlobalCommands).
   Template locale/it/gestures.ini:
-    Arquivo: locale/it/gestures.ini
+    File: locale/it/gestures.ini
 ```ini
     [globalCommands.GlobalCommands]
     leftMouseClick = kb(laptop):NVDA+e
     rightMouseClick = kb(laptop):NVDA+plus
     ```
-  Use kb(laptop): para gestos especificos do layout laptop.
+  Use kb(laptop): for gestures specific to the laptop layout.
 
-NVDA-046 Moderado: Speech Dictionaries — corrija pronuncia via speechDicts/.
-  OBRIGATORIO: crie o arquivo speechDicts/<nome>.dic. Sem o arquivo fisico nenhuma pronuncia e corrigida.
-  O addon DEVE incluir esse arquivo — a ausencia do .dic e um erro fatal.
-  CRITICO: cada linha tem EXATAMENTE 4 campos separados por TAB real (U+0009, \t).
-  NAO use espacos como separadores. O NVDA rejeita linhas com numero errado de campos.
-  Estrutura: padrao\treposicao\tcase_sensitive\ttipo
-  Tipos: 0=em qualquer lugar, 1=regex Python, 2=palavra inteira, 3=parte de palavra, 6=wildcards.
-  case_sensitive: 0=ignorar maiusculas, 1=sensivel.
-  Exemplo speechDicts/pronuncia.dic (cada | representa um TAB real U+0009):
-    Arquivo: speechDicts/pronuncia.dic
+NVDA-046 Moderate: Speech Dictionaries — fix pronunciation via speechDicts/.
+  REQUIRED: create the file speechDicts/<name>.dic. Without the physical file no pronunciation is fixed.
+  The addon MUST include this file — a missing .dic is a fatal error.
+  CRITICAL: each line has EXACTLY 4 fields separated by a real TAB (U+0009, \t).
+  Do NOT use spaces as separators. NVDA rejects lines with the wrong number of fields.
+  Structure: pattern\treplacement\tcase_sensitive\ttype
+  Types: 0=anywhere, 1=Python regex, 2=whole word, 3=part of word, 6=wildcards.
+  case_sensitive: 0=ignore case, 1=case sensitive.
+  Example speechDicts/pronunciation.dic (each | represents a real TAB U+0009):
+    File: speechDicts/pronunciation.dic
 ```ini
     NVDA	NonVisual Desktop Access	1	2
     API	A-P-I	1	2
     HTTP	H-T-T-P	0	2
     ```
-  Declare no manifest.ini:
+  Declare it in manifest.ini:
     [speechDictionaries]
-    [[pronuncia]]
-    displayName = Correcoes de Pronuncia
+    [[pronunciation]]
+    displayName = Pronunciation Fixes
     mandatory = false
-  mandatory=true -> sempre ativo. mandatory=false -> usuario ativa em NVDA Settings > Fala.
-  NOTA: os inteiros 0/1/2/3/6 acima sao o FORMATO DO ARQUIVO .dic
-  (coluna "tipo", separada por TAB) -- continuam sendo a forma correta e
-  estavel de escrever o arquivo .dic em si, nao mudam. O que foi depreciado
-  em NVDA 2026.2 e so a API Python interna equivalente (speechDictHandler.
-  ENTRY_TYPE_* -> speechDictHandler.types.EntryType) para addons que
-  constroem entradas de dicionario PROGRAMATICAMENTE em codigo (raro --
-  a grande maioria dos addons so declara o .dic estatico, como acima). Se o
-  o codigo algum dia precisar criar entradas via Python em vez do
-  arquivo .dic estatico, usar speechDictHandler.types.EntryType, nunca os
-  inteiros brutos direto no codigo Python.
+  mandatory=true -> always active. mandatory=false -> the user enables it in NVDA Settings > Speech.
+  NOTE: the integers 0/1/2/3/6 above are the FORMAT OF THE .dic FILE
+  ("type" column, separated by TAB) -- they remain the correct and
+  stable way to write the .dic file itself, they do not change. What was deprecated
+  in NVDA 2026.2 is only the equivalent internal Python API (speechDictHandler.
+  ENTRY_TYPE_* -> speechDictHandler.types.EntryType) for addons that
+  build dictionary entries PROGRAMMATICALLY in code (rare --
+  the vast majority of addons only declare the static .dic, as above). If
+  the code ever needs to create entries via Python instead of the
+  static .dic file, use speechDictHandler.types.EntryType, never the raw
+  integers directly in Python code.
 
-NVDA-047 Serio: manifest.ini com url sem HTTPS e rejeitado no Add-on Store.
-	O campo url nao pode ficar vazio e DEVE comecar com https://.
-	Errado:
-		url = http://meusite.com/addon
+NVDA-047 Serious: manifest.ini with a url without HTTPS is rejected by the Add-on Store.
+	The url field cannot be empty and MUST start with https://.
+	Wrong:
+		url = http://mysite.com/addon
 		url =
-	Correto:
-		url = https://github.com/usuario/meu-addon
+	Correct:
+		url = https://github.com/user/my-addon
 
-NVDA-048 Critico: Nunca bundle wxPython em lib/.
-	O NVDA ja fornece wxPython. Bundlar entradas wx* em lib/ causa conflito de versao,
-	aumento desnecessario do pacote e falhas imprevisiveis de UI.
-	Regra: dependencies[] nunca inclui wxPython e a pasta lib/ nao pode conter wx*.
-	NOTA: "dependencies[]" e uma estrutura
-	INTERNA do NVDAStudio (a lista de pacotes pip declarada pro
-	builder.py saber o que baixar/empacotar em lib/) -- nao e um campo do
-	manifest.ini real do NVDA (addonHandler/__init__.py, AddonManifest, nao
-	define "dependencies"). Nao confundir com nada que o NVDA core valide.
+NVDA-048 Critical: Never bundle wxPython in lib/.
+	NVDA already provides wxPython. Bundling wx* entries in lib/ causes a version conflict,
+	needlessly enlarges the package and causes unpredictable UI failures.
+	Rule: dependencies[] never includes wxPython and the lib/ folder must not contain wx*.
+	NOTE: "dependencies[]" is an
+	INTERNAL NVDAStudio structure (the list of pip packages declared so that
+	builder.py knows what to download/package into lib/) -- it is not a field of the
+	real NVDA manifest.ini (addonHandler/__init__.py, AddonManifest, does not
+	define "dependencies"). Do not confuse it with anything the NVDA core validates.
 
-NVDA-040 Serio: AppModule para wwahost.exe (apps UWP) DEVE herdar de nvdaBuiltin.appModules.wwahost.AppModule.
-  wwahost.exe hospeda apps UWP (Microsoft Store). O NVDA built-in ja trata IA2 e ativacao especial.
-  Herdar APENAS de appModuleHandler.AppModule para wwahost.exe ignora esse comportamento — BUG CRITICO.
-  Arquivo obrigatorio: appModules/wwahost.py
+NVDA-040 Serious: AppModule for wwahost.exe (UWP apps) MUST inherit from nvdaBuiltin.appModules.wwahost.AppModule.
+  wwahost.exe hosts UWP apps (Microsoft Store). The built-in NVDA already handles IA2 and special activation.
+  Inheriting ONLY from appModuleHandler.AppModule for wwahost.exe ignores that behavior — CRITICAL BUG.
+  Required file: appModules/wwahost.py
   Template:
-    Arquivo: appModules/wwahost.py
+    File: appModules/wwahost.py
 ```python
     import nvdaBuiltin.appModules.wwahost
 
     class AppModule(nvdaBuiltin.appModules.wwahost.AppModule):
-        # AppModule para apps UWP hospedados em wwahost.exe
+        # AppModule for UWP apps hosted in wwahost.exe
         pass
     ```
-  Se precisar sobrescrever event_gainFocus ou scripts, adicione-os na mesma classe.
-  NUNCA use: class AppModule(appModuleHandler.AppModule) — para wwahost.exe.
+  If you need to override event_gainFocus or scripts, add them to the same class.
+  NEVER use: class AppModule(appModuleHandler.AppModule) — for wwahost.exe.
 
-NVDA-026 Moderado: Import de simbolo privado do NVDA (prefixo _) — API instavel (skill: nvda-addon-dev §22).
-  Simbolos com _ em modulos do NVDA (ex: _internalHelper, _cache, _privateFunc) sao privados.
-  Nao ha aviso de deprecacao — o simbolo pode desaparecer ou mudar assinatura em qualquer release.
-  Errado (quebra silenciosamente apos update do NVDA):
+NVDA-026 Moderate: Import of a private NVDA symbol (_ prefix) — unstable API (skill: nvda-addon-dev §22).
+  Symbols with _ in NVDA modules (e.g. _internalHelper, _cache, _privateFunc) are private.
+  There is no deprecation warning — the symbol may disappear or change signature in any release.
+  Wrong (breaks silently after an NVDA update):
     from someModule import _internalFunction
     from NVDAObjects.IAccessible import _specialOverride
-  Correto (use apenas API publica documentada):
+  Correct (use only the documented public API):
     from scriptHandler import script
     from NVDAObjects.IAccessible import IAccessible
-  Se precisar de comportamento interno, use extension points (§7) em vez de acessar simbolos privados.
+  If you need internal behavior, use extension points (§7) instead of accessing private symbols.
 
-NVDA-027 Menor: AppModule de app com Edge WebView2 (Developer Guide, Example 3).
-  O app module leva o nome do APP (por exemplo olk.py para o Outlook novo), nao msedgewebview2.py.
-  Apps WebView2 aparecem como pagina web e o NVDA usa o modo de navegacao nelas por padrao.
-  `disableBrowseModeByDefault: bool = True` na classe AppModule desliga isso; e opcional, uma
-  decisao de design: remova a linha se quiser que a pessoa navegue com os comandos do modo de navegacao.
+NVDA-027 Minor: AppModule for an app with Edge WebView2 (Developer Guide, Example 3).
+  The app module takes the name of the APP (for example olk.py for the new Outlook), not msedgewebview2.py.
+  WebView2 apps appear as a web page and NVDA uses browse mode in them by default.
+  `disableBrowseModeByDefault: bool = True` in the AppModule class turns that off; it is optional, a
+  design decision: remove the line if you want the person to navigate with the browse mode commands.
 
-NVDA-028 Menor: Type hint usando X | None ou X | Y em vez da sintaxe moderna (skill: nvda-addon-dev §18).
-  NVDA 2026.1+ usa Python 3.13. Use sempre a sintaxe nativa de uniao:
-  Errado (legado — proibido pela skill):
+NVDA-028 Minor: Type hint using Optional/Union instead of the modern X | None or X | Y syntax (skill: nvda-addon-dev §18).
+  NVDA 2026.1+ uses Python 3.13. Always use the native union syntax:
+  Wrong (legacy — forbidden by the skill):
     from typing import Optional, Union
+    def process(text: str, count: Optional[int] = None) -> bool: ...
+    def get(value: Union[str, int]) -> None: ...
+  Correct (native Python 3.10+ — required):
     def process(text: str, count: int | None = None) -> bool: ...
     def get(value: str | int) -> None: ...
-  Correto (Python 3.10+ nativo — obrigatorio):
-    def process(text: str, count: int | None = None) -> bool: ...
-    def get(value: str | int) -> None: ...
-  Remova todos os imports de Optional e Union da typing — use X | None e X | Y diretamente.
+  Remove all imports of Optional and Union from typing — use X | None and X | Y directly.
 
-NVDA-029 Menor: Line endings CRLF (\\r\\n) em arquivo Python — NVDA exige LF (\\n) (skill: nvda-addon-dev §18).
-  NVDA coding standards: UTF-8 + LF. CRLF causa problemas no scons build e no git diff.
-  Ao gerar codigo Python, use SEMPRE quebras de linha Unix (\\n), nunca CRLF (\\r\\n).
-  Arquivos .py, .ini, .dic, .utb: todos devem ter LF.
+NVDA-029 Minor: CRLF line endings (\\r\\n) in a Python file — NVDA requires LF (\\n) (skill: nvda-addon-dev §18).
+  NVDA coding standards: UTF-8 + LF. CRLF causes problems in the scons build and in git diff.
+  When generating Python code, ALWAYS use Unix line breaks (\\n), never CRLF (\\r\\n).
+  .py, .ini, .dic, .utb files: all must have LF.
 
-NVDA-030 Serio: GlobalPlugin ou AppModule com __init__ que nao chama super().__init__(*args, **kwargs) (skill: nvda-addon-dev §3.1, §3.2).
-  Sem a chamada, o globalPluginHandler/appModuleHandler nao completa a inicializacao do plugin —
-  atalhos podem nao ser registrados e o plugin falha silenciosamente ao carregar.
-  JUSTIFICATIVA REAL:
-  globalPluginHandler.py instancia GlobalPlugin() SEM argumentos, e appModuleHandler.py
-  instancia AppModule(processID, appName) com assinatura fixa -- NAO existe garantia
-  documentada de que o NVDA passe argumentos extras "em versoes futuras". O motivo real
-  pra exigir (*args, **kwargs) e mais simples: e a forma generica que funciona
-  corretamente para AMBOS os construtores reais (zero args do GlobalPlugin E os dois
-  args posicionais do AppModule) sem precisar hardcodar uma assinatura especifica que
-  poderia divergir entre os dois tipos -- nao uma previsao de mudanca futura da API.
-  Errado:
+NVDA-030 Serious: GlobalPlugin or AppModule with an __init__ that does not call super().__init__(*args, **kwargs) (skill: nvda-addon-dev §3.1, §3.2).
+  Without the call, globalPluginHandler/appModuleHandler does not complete the plugin initialization —
+  gestures may not be registered and the plugin fails silently when loading.
+  REAL JUSTIFICATION:
+  globalPluginHandler.py instantiates GlobalPlugin() WITHOUT arguments, and appModuleHandler.py
+  instantiates AppModule(processID, appName) with a fixed signature -- there is NO documented
+  guarantee that NVDA will pass extra arguments "in future versions". The real reason
+  to require (*args, **kwargs) is simpler: it is the generic form that works
+  correctly for BOTH real constructors (zero args of GlobalPlugin AND the two
+  positional args of AppModule) without having to hardcode a specific signature that
+  could diverge between the two types -- not a prediction of a future API change.
+  Wrong:
     def __init__(self):
-        super().__init__()    # nao encaminha processID/appName se for AppModule
-  Correto:
+        super().__init__()    # does not forward processID/appName if it is an AppModule
+  Correct:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-  REGRA ABSOLUTA: todo __init__ de GlobalPlugin ou AppModule DEVE ter (*args, **kwargs) e
-  DEVE chamar super().__init__(*args, **kwargs) como primeira instrucao.
+  ABSOLUTE RULE: every __init__ of a GlobalPlugin or AppModule MUST take (*args, **kwargs) and
+  MUST call super().__init__(*args, **kwargs) as its first statement.
 
-NVDA-031 Critico: SynthDriver sem metodo cancel() — obrigatorio no minimum viable driver (skill: nvda-addon-dev §25).
-  O NVDA chama cancel() quando o usuario pressiona Ctrl ou Escape para parar a fala.
-  Sem cancel(), o usuario fica preso ouvindo audio que nao consegue interromper.
-  E parte do "minimum viable driver" definido pela skill — nao e opcional.
-  Obrigatorio:
+NVDA-031 Critical: SynthDriver without a cancel() method — required in the minimum viable driver (skill: nvda-addon-dev §25).
+  NVDA calls cancel() when the user presses Ctrl or Escape to stop speech.
+  Without cancel(), the user is stuck listening to audio they cannot interrupt.
+  It is part of the "minimum viable driver" defined by the skill — it is not optional.
+  Required:
     def cancel(self) -> None:
-        '''Para a fala imediatamente.'''
-        self._tts_stop()   # pare o engine TTS aqui
-  Tambem obrigatorio: pause(self, switch: bool) para Ctrl toggle -- ver NVDA-035.
+        '''Stops speech immediately.'''
+        self._tts_stop()   # stop the TTS engine here
+  Also required: pause(self, switch: bool) for the Ctrl toggle -- see NVDA-035.
 
-NVDA-032 Serio: Extension point registrado em __init__ sem unregister em terminate() (skill: nvda-addon-dev §7).
-  Todo .register() em __init__ DEVE ter .unregister() correspondente em terminate().
-  Sem unregister: memory leak. Se o plugin for recarregado (NVDA+Ctrl+F3), o handler
-  fica duplicado — cada evento NVDA dispara N vezes (N = recargas). Sem aviso, sem erro.
-  Errado:
+NVDA-032 Serious: Extension point registered in __init__ without unregister in terminate() (skill: nvda-addon-dev §7).
+  Every .register() in __init__ MUST have a matching .unregister() in terminate().
+  Without unregister: memory leak. If the plugin is reloaded (NVDA+Ctrl+F3), the handler
+  is duplicated — each NVDA event fires N times (N = reloads). No warning, no error.
+  Wrong:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        speech.filter_speechSequence.register(self._filtro)
+        speech.filter_speechSequence.register(self._filter)
     def terminate(self):
-        super().terminate()   # handler ainda registrado — memory leak
-  Correto:
+        super().terminate()   # handler still registered — memory leak
+  Correct:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        speech.filter_speechSequence.register(self._filtro)
+        speech.filter_speechSequence.register(self._filter)
     def terminate(self):
-        speech.filter_speechSequence.unregister(self._filtro)  # ANTES do super()
+        speech.filter_speechSequence.unregister(self._filter)  # BEFORE super()
         super().terminate()
-  Regra geral: para cada .register() em __init__, um .unregister() em terminate().
+  General rule: for each .register() in __init__, one .unregister() in terminate().
 
-NVDA-033 Serio: event_NVDAObject_init definido em GlobalPlugin — silenciosamente ignorado (skill: nvda-addon-dev §5).
-  event_NVDAObject_init so e chamado para AppModule, NUNCA para GlobalPlugin.
-  Colocar em GlobalPlugin resulta em handler que nunca executa — zero erro, zero efeito.
-  Para customizar propriedades de NVDAObject em QUALQUER app: use chooseNVDAObjectOverlayClasses.
-  Para customizar em UM app especifico: mova para AppModule.
-  Errado (GlobalPlugin — silenciosamente ignorado):
+NVDA-033 Serious: event_NVDAObject_init defined in GlobalPlugin — silently ignored (skill: nvda-addon-dev §5).
+  event_NVDAObject_init is only called for AppModule, NEVER for GlobalPlugin.
+  Putting it in a GlobalPlugin results in a handler that never runs — zero errors, zero effect.
+  To customize NVDAObject properties in ANY app: use chooseNVDAObjectOverlayClasses.
+  To customize in ONE specific app: move it to an AppModule.
+  Wrong (GlobalPlugin — silently ignored):
     class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-        def event_NVDAObject_init(self, obj):  # nunca chamado aqui
-            obj.name = "corrigido"
-  Correto (AppModule — funciona):
+        def event_NVDAObject_init(self, obj):  # never called here
+            obj.name = "fixed"
+  Correct (AppModule — works):
     class AppModule(appModuleHandler.AppModule):
-        def event_NVDAObject_init(self, obj):  # chamado corretamente
-            obj.name = "corrigido"
+        def event_NVDAObject_init(self, obj):  # called correctly
+            obj.name = "fixed"
 
-NVDA-034 Serio: AppModule para app self-voicing sem sleepMode = True (skill: nvda-addon-dev §3.3).
-  Apps self-voicing (outros leitores de tela, narradoras, apps com TTS proprio) falam por conta
-  propria. Sem sleepMode=True, o NVDA anuncia foco/caret SOBRE a voz da app — dupla narracao.
-  Correto:
+NVDA-034 Serious: AppModule for a self-voicing app without sleepMode = True (skill: nvda-addon-dev §3.3).
+  Self-voicing apps (other screen readers, narrators, apps with their own TTS) speak on their
+  own. Without sleepMode=True, NVDA announces focus/caret OVER the app's voice — double narration.
+  Correct:
     class AppModule(appModuleHandler.AppModule):
-        sleepMode = True   # desativa o NVDA para esta app self-voicing
+        sleepMode = True   # turns NVDA off for this self-voicing app
 
-NVDA-035 Serio: SynthDriver sem metodo pause(self, switch: bool) -- obrigatorio no minimum viable driver (skill: nvda-addon-dev §25).
-  O NVDA chama pause(True) para pausar e pause(False) para retomar a fala (usuario pressiona Ctrl).
-  Sem pause(), NVDA lanca AttributeError ao pausar -- o sintetizador crasha e precisa ser reiniciado.
-  E parte do minimum viable driver da skill, listado junto com cancel() -- nao e opcional.
-  Obrigatorio:
+NVDA-035 Serious: SynthDriver without a pause(self, switch: bool) method -- required in the minimum viable driver (skill: nvda-addon-dev §25).
+  NVDA calls pause(True) to pause and pause(False) to resume speech (the user presses Ctrl).
+  Without pause(), NVDA raises AttributeError when pausing -- the synthesizer crashes and must be restarted.
+  It is part of the skill's minimum viable driver, listed together with cancel() -- it is not optional.
+  Required:
     def pause(self, switch: bool) -> None:
-        '''Pausa (True) ou retoma (False) a fala.'''
+        '''Pauses (True) or resumes (False) speech.'''
         self._tts_pause(switch)
 
-NVDA-036 Critico: SynthDriver sem metodo speak(self, speechSequence) -- metodo principal do driver (skill: nvda-addon-dev §25).
-  O NVDA chama speak() com lista de str e SynthCommand para cada trecho de fala a produzir.
-  Sem speak(), o sintetizador nao produz nenhuma fala -- driver completamente nao funcional.
-  speak() DEVE iterar speechSequence, notificar synthIndexReached por IndexCommand e synthDoneSpeaking ao final.
-  Obrigatorio:
+NVDA-036 Critical: SynthDriver without a speak(self, speechSequence) method -- the driver's main method (skill: nvda-addon-dev §25).
+  NVDA calls speak() with a list of str and SynthCommand for each piece of speech to produce.
+  Without speak(), the synthesizer produces no speech at all -- completely non-functional driver.
+  speak() MUST iterate over speechSequence, notify synthIndexReached for each IndexCommand and synthDoneSpeaking at the end.
+  Required:
     def speak(self, speechSequence: list) -> None:
         for item in speechSequence:
             if isinstance(item, IndexCommand):
                 synthDriverHandler.synthIndexReached.notify(synth=self, index=item.index)
             elif isinstance(item, str):
-                self._tts_speak(item)   # sua chamada TTS aqui
+                self._tts_speak(item)   # your TTS call here
         synthDriverHandler.synthDoneSpeaking.notify(synth=self)
 
 
-  Arquivo: brailleDisplayDrivers/<nome>.py
-  Campos obrigatorios: name (str), description (str), numCols (int), display(cells).
-  isThreadSafe=True necessario para auto-deteccao USB/Bluetooth.
+  File: brailleDisplayDrivers/<name>.py
+  Required fields: name (str), description (str), numCols (int), display(cells).
+  isThreadSafe=True is needed for USB/Bluetooth auto-detection.
 
-NVDA-038 Critico: SynthDriver sem supportedNotifications obrigatorias.
-  synthIndexReached e synthDoneSpeaking DEVEM estar em supportedNotifications E devem ser
-  notificados dentro de speak(). Sem eles, 'say all', leitura por paragrafo e braille on-index param.
-  Obrigatorio: supportedNotifications = frozenset({{synthDriverHandler.synthIndexReached,
+NVDA-038 Critical: SynthDriver without the required supportedNotifications.
+  synthIndexReached and synthDoneSpeaking MUST be in supportedNotifications AND must be
+  notified inside speak(). Without them, 'say all', paragraph reading and braille on-index stop working.
+  Required: supportedNotifications = frozenset({{synthDriverHandler.synthIndexReached,
                                                     synthDriverHandler.synthDoneSpeaking}})
-  Dentro de speak(): notifique apos cada IndexCommand e ao final da sequencia:
+  Inside speak(): notify after each IndexCommand and at the end of the sequence:
     synthDriverHandler.synthIndexReached.notify(synth=self, index=item.index)
     synthDriverHandler.synthDoneSpeaking.notify(synth=self)
 
-NVDA-039 Moderado: AppModule para multiplos executaveis sem registerExecutableWithAppModule().
-	Quando varios executaveis da mesma suite compartilham comportamento, nao duplique
-	appModules/*.py com codigo identico. Use o mapeamento oficial do NVDA:
-		appModuleHandler.registerExecutableWithAppModule("executavelExtra", "nomeDoAppModule")
-	E remova no terminate():
-		appModuleHandler.unregisterExecutable("executavelExtra")
-	Exemplo:
+NVDA-039 Moderate: AppModule for several executables without registerExecutableWithAppModule().
+	When several executables of the same suite share behavior, do not duplicate
+	appModules/*.py with identical code. Use NVDA's official mapping:
+		appModuleHandler.registerExecutableWithAppModule("extraExecutable", "appModuleName")
+	And remove it in terminate():
+		appModuleHandler.unregisterExecutable("extraExecutable")
+	Example:
 		def __init__(self, *args, **kwargs):
 				super().__init__(*args, **kwargs)
 				appModuleHandler.registerExecutableWithAppModule("time", "time_app_mod")
@@ -816,67 +817,67 @@ NVDA-039 Moderado: AppModule para multiplos executaveis sem registerExecutableWi
 				super().terminate()
 
   Template:
-    Arquivo: brailleDisplayDrivers/NOME.py
+    File: brailleDisplayDrivers/NAME.py
 ```python
     import braille
 
     class BrailleDisplayDriver(braille.BrailleDisplayDriver):
-        name = "meuDisplay"
-        description = "Meu Display Braille"
-        numCols: int = 40        # celulas do display
+        name = "myDisplay"
+        description = "My Braille Display"
+        numCols: int = 40        # display cells
         isThreadSafe: bool = True
 
         @classmethod
         def check(cls) -> bool:
-            return True  # True se hardware disponivel
+            return True  # True if the hardware is available
 
         def __init__(self, port=None):
             super().__init__(port=port)
-            # abre conexao serial/USB/HID aqui
+            # open the serial/USB/HID connection here
 
         def terminate(self) -> None:
-            # fecha conexao
-            super().terminate()  # SEMPRE ultima linha
+            # close the connection
+            super().terminate()  # ALWAYS the last line
 
         def display(self, cells: list[int]) -> None:
-            # cells = lista de ints (padrao de pontos 8-bit por celula)
-            # ex: self._serial.write(bytes(cells))
+            # cells = list of ints (8-bit dot pattern per cell)
+            # e.g. self._serial.write(bytes(cells))
             pass
     ```
 
-NVDA-049 Serio: wx.MessageDialog E wx.MessageBox proibidos -- use gui.message.MessageDialog (skill: nvda-addon-dev §12).
-  gui.message.MessageDialog e a API moderna do NVDA para dialogs modais -- integra corretamente com o screen reader.
-  wx.MessageDialog/wx.MessageBox nao sao anunciados corretamente pelo NVDA; o foco pode nao funcionar como esperado pelo usuario de leitor de tela.
-  Metodos de conveniencia thread-safe: MessageDialog.alert(), .confirm(), .ask().
-  Dialog modal completo no GUI thread:
+NVDA-049 Serious: wx.MessageDialog AND wx.MessageBox are forbidden -- use gui.message.MessageDialog (skill: nvda-addon-dev §12).
+  gui.message.MessageDialog is NVDA's modern API for modal dialogs -- it integrates correctly with the screen reader.
+  wx.MessageDialog/wx.MessageBox are not announced correctly by NVDA; focus may not behave as a screen reader user expects.
+  Thread-safe convenience methods: MessageDialog.alert(), .confirm(), .ask().
+  Full modal dialog on the GUI thread:
     from gui.message import MessageDialog, DefaultButtonSet, ReturnCode
     from gui import mainFrame
-    def mostrar():
-        dlg = MessageDialog(mainFrame, _("Tem certeza?"), _("Confirmar"), buttons=DefaultButtonSet.YES_NO)
+    def show():
+        dlg = MessageDialog(mainFrame, _("Are you sure?"), _("Confirm"), buttons=DefaultButtonSet.YES_NO)
         match dlg.ShowModal():
-            case ReturnCode.YES: executar()
-    wx.CallAfter(mostrar)  # SEMPRE no GUI thread
-  Errado: wx.MessageDialog(None, _("Ok"), _("Info"), wx.OK).ShowModal()
+            case ReturnCode.YES: execute()
+    wx.CallAfter(show)  # ALWAYS on the GUI thread
+  Wrong: wx.MessageDialog(None, _("Ok"), _("Info"), wx.OK).ShowModal()
 
-NVDA-050 Moderado: NVDAObject overlay class herda de NVDAObject (base) em vez de classe mais especifica (skill: nvda-addon-dev §6).
-  A skill §6 e explicita: "Always inherit from the most specific class you need to match the object."
-  Hierarquia disponivel:
-    NVDAObjects.IAccessible.IAccessible -- para objetos MSAA/IAccessible2 (maioria dos apps Win32)
-    NVDAObjects.UIA.UIA                  -- para objetos UI Automation (apps modernos, UWP)
-    NVDAObjects.window.Window            -- para janelas Win32 genericas
-    NVDAObjects.JAB.JABObject            -- para objetos Java Access Bridge
-  Errado (base generica -- perde metodos IAccessible2 e UIA):
-    class MinhaOverlay(NVDAObject): ...
-  Correto (classe especifica para o contexto):
+NVDA-050 Moderate: NVDAObject overlay class inherits from NVDAObject (base) instead of a more specific class (skill: nvda-addon-dev §6).
+  Skill §6 is explicit: "Always inherit from the most specific class you need to match the object."
+  Available hierarchy:
+    NVDAObjects.IAccessible.IAccessible -- for MSAA/IAccessible2 objects (most Win32 apps)
+    NVDAObjects.UIA.UIA                  -- for UI Automation objects (modern apps, UWP)
+    NVDAObjects.window.Window            -- for generic Win32 windows
+    NVDAObjects.JAB.JABObject            -- for Java Access Bridge objects
+  Wrong (generic base -- loses the IAccessible2 and UIA methods):
+    class MyOverlay(NVDAObject): ...
+  Correct (specific class for the context):
     from NVDAObjects.IAccessible import IAccessible
-    class MinhaOverlay(IAccessible): ...
+    class MyOverlay(IAccessible): ...
 
-NVDA-051 Menor: sugestao de usabilidade (o Developer Guide do NVDA nao exige): addon com interface
-  propria pode registrar um item no menu Ferramentas do NVDA, alem do atalho de teclado.
-  Menu: NVDA > Menu > Ferramentas > [Nome do Addon]
-  Implementacao: _ensure_menu_item() + _get_tools_menu() + wx.CallAfter para thread-safety.
-  Remocao: cleanup completo em terminate() com Unbind().
-  Exemplo opcional:
+NVDA-051 Minor: usability suggestion (the NVDA Developer Guide does not require it): an addon with its own
+  interface can register an item in NVDA's Tools menu, besides the keyboard gesture.
+  Menu: NVDA > Menu > Tools > [Addon Name]
+  Implementation: _ensure_menu_item() + _get_tools_menu() + wx.CallAfter for thread safety.
+  Removal: full cleanup in terminate() with Unbind().
+  Optional example:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._menu_item = None
@@ -910,10 +911,10 @@ NVDA-051 Menor: sugestao de usabilidade (o Developer Guide do NVDA nao exige): a
             wx.CallLater(250, self._ensure_menu_item)
             return
         self._menu_item = tools_menu.Append(wx.ID_ANY,
-            # Translators: Item do menu Ferramentas
-            _("Meu Addon\\tNVDA+Shift+M"),
-            # Translators: Descricao da opcao
-            _("Abre dialog do addon"))
+            # Translators: Tools menu item
+            _("My Addon\\tNVDA+Shift+M"),
+            # Translators: Description of the option
+            _("Opens the addon dialog"))
         self._bind_owner = self._get_bind_owner(tools_menu)
         if self._bind_owner is not None:
             self._bind_owner.Bind(wx.EVT_MENU, self._on_menu, self._menu_item)
@@ -928,83 +929,83 @@ NVDA-051 Menor: sugestao de usabilidade (o Developer Guide do NVDA nao exige): a
         super().terminate()
 
     def _on_menu(self, event):
-        wx.CallAfter(self._abrir_dialog)
+        wx.CallAfter(self._open_dialog)
 
-Fonte: github.com/Community-Access/accessibility-agents .github/agents/wxpython-specialist.agent.md
-WX-A11Y-001 Critico: wx.StaticText ausente imediatamente antes de controle de entrada/selecao, ou label= ausente em wx.Button (fix primario). SetName() e complemento, nao substituto.
-WX-A11Y-002 Critico: wx.Panel ou wx.Frame sem wx.AcceleratorTable definida.
-WX-A11Y-003 Critico: EVT_LEFT_DOWN/EVT_LEFT_DCLICK sem evento de teclado equivalente.
-WX-A11Y-004 Serio: wx.Dialog sem CreateStdDialogButtonSizer() ou tratamento de Escape.
-WX-A11Y-005 Serio: wx.Dialog.ShowModal() sem SetFocus() em controle significativo.
-WX-A11Y-006 Serio: wx.StaticBitmap ou wx.BitmapButton sem SetToolTip() ou subclasse wx.Accessible (SetName() nao afeta leitores de tela).
-WX-A11Y-007 Moderado: wx.Colour como unico indicador de estado (sem texto/icone).
-WX-A11Y-008 Moderado: wx.Timer ou status bar sem wx.Bell() ou anuncio acessivel.
-WX-A11Y-009 Moderado: wx.Panel customizado com EVT_PAINT sem subclasse wx.Accessible.
-WX-A11Y-010 Menor: Ordem de tabulacao nao definida e nao segue sizer.
-WX-A11Y-011 Serio: wx.ListCtrl ou wx.TreeCtrl em modo virtual sem override GetItemText.
-WX-A11Y-012 Moderado: Item de menu sem tecla aceleradora (sufixo \tCtrl+X ausente).
-WX-A11Y-013 Critico: EVT_KEY_DOWN/EVT_CHAR em ListBox/ListCtrl/TreeCtrl falha com NVDA/JAWS; usar EVT_CHAR_HOOK.
-WX-A11Y-014 Serio: wx.ListCtrl com EVT_KEY_DOWN para Enter em vez de EVT_LIST_ITEM_ACTIVATED.
+Source: github.com/Community-Access/accessibility-agents .github/agents/wxpython-specialist.agent.md
+WX-A11Y-001 Critical: wx.StaticText missing immediately before an input/selection control, or label= missing on wx.Button (primary fix). SetName() is a complement, not a substitute.
+WX-A11Y-002 Critical: wx.Panel or wx.Frame without a wx.AcceleratorTable defined.
+WX-A11Y-003 Critical: EVT_LEFT_DOWN/EVT_LEFT_DCLICK without an equivalent keyboard event.
+WX-A11Y-004 Serious: wx.Dialog without CreateStdDialogButtonSizer() or Escape handling.
+WX-A11Y-005 Serious: wx.Dialog.ShowModal() without SetFocus() on a meaningful control.
+WX-A11Y-006 Serious: wx.StaticBitmap or wx.BitmapButton without SetToolTip() or a wx.Accessible subclass (SetName() does not affect screen readers).
+WX-A11Y-007 Moderate: wx.Colour as the only state indicator (no text/icon).
+WX-A11Y-008 Moderate: wx.Timer or status bar without wx.Bell() or an accessible announcement.
+WX-A11Y-009 Moderate: Custom wx.Panel with EVT_PAINT without a wx.Accessible subclass.
+WX-A11Y-010 Minor: Tab order not set and does not follow the sizer.
+WX-A11Y-011 Serious: wx.ListCtrl or wx.TreeCtrl in virtual mode without a GetItemText override.
+WX-A11Y-012 Moderate: Menu item without an accelerator key (\tCtrl+X suffix missing).
+WX-A11Y-013 Critical: EVT_KEY_DOWN/EVT_CHAR on ListBox/ListCtrl/TreeCtrl fails with NVDA/JAWS; use EVT_CHAR_HOOK.
+WX-A11Y-014 Serious: wx.ListCtrl with EVT_KEY_DOWN for Enter instead of EVT_LIST_ITEM_ACTIVATED.
 
-Fonte: github.com/Community-Access/accessibility-agents .github/agents/desktop-a11y-specialist.agent.md
-Camada de API de plataforma (UIA/MSAA) -- complementar as regras WX-A11Y acima, nao duplica.
-DTK-A11Y-001 Critico: Controle interativo sem Name exposto via UIA/MSAA -- leitor de tela nao anuncia nada.
-DTK-A11Y-002 Critico: Role/ControlType nao bate com o comportamento real do controle.
-DTK-A11Y-003 Serio: Mudanca de estado (checked/expanded/disabled/selected) nao refletida na API de acessibilidade.
-DTK-A11Y-004 Serio: Controle com valor (slider/progress/spinner/campo) nao expoe o valor atual via ValuePattern/accValue.
-DTK-A11Y-005 Critico: Elemento interativo nao alcancavel via teclado (sem tab stop).
-DTK-A11Y-006 Serio: Foco perdido apos mudanca de UI (deletar item, fechar dialogo) -- cai fora do destino logico.
-DTK-A11Y-007 Moderado: Foco de teclado sem indicador visual em tema padrao E alto contraste.
-DTK-A11Y-008 Moderado: Cores hardcoded em vez de ler do tema do sistema -- quebra em Alto Contraste.
-DTK-A11Y-009 Serio: Atualizacao de conteudo silenciosa, sem evento UIA/notificacao de acessibilidade.
-DTK-A11Y-010 Serio: Dialogo modal nao prende o foco -- Tab alcanca a janela pai.
-DTK-A11Y-011 Menor: Atalho de teclado customizado sem documentacao descobrivel pelo usuario.
-DTK-A11Y-012 Moderado: API de plataforma depreciada ou incorreta (ex: so MSAA em vez de UIA no Windows moderno).
+Source: github.com/Community-Access/accessibility-agents .github/agents/desktop-a11y-specialist.agent.md
+Platform API layer (UIA/MSAA) -- complements the WX-A11Y rules above, does not duplicate them.
+DTK-A11Y-001 Critical: Interactive control without a Name exposed via UIA/MSAA -- the screen reader announces nothing.
+DTK-A11Y-002 Critical: Role/ControlType does not match the control's real behavior.
+DTK-A11Y-003 Serious: State change (checked/expanded/disabled/selected) not reflected in the accessibility API.
+DTK-A11Y-004 Serious: Control with a value (slider/progress/spinner/field) does not expose the current value via ValuePattern/accValue.
+DTK-A11Y-005 Critical: Interactive element not reachable by keyboard (no tab stop).
+DTK-A11Y-006 Serious: Focus lost after a UI change (deleting an item, closing a dialog) -- it falls outside the logical destination.
+DTK-A11Y-007 Moderate: Keyboard focus without a visual indicator in the default theme AND in high contrast.
+DTK-A11Y-008 Moderate: Hardcoded colors instead of reading from the system theme -- breaks in High Contrast.
+DTK-A11Y-009 Serious: Silent content update, without a UIA event/accessibility notification.
+DTK-A11Y-010 Serious: Modal dialog does not trap focus -- Tab reaches the parent window.
+DTK-A11Y-011 Minor: Custom keyboard shortcut without documentation the user can discover.
+DTK-A11Y-012 Moderate: Deprecated or incorrect platform API (e.g. MSAA only instead of UIA on modern Windows).
 
 {RULE_FALLBACK_MATRIX_TEXT}
 
-TIPOS DE ADDON:
-globalPlugins: Funcionam em qualquer contexto. Pasta: globalPlugins/nomeAddon/__init__.py.
-appModules: Especificos para um .exe. Pasta: appModules/nomeDoExe.py.
-synthDrivers: Drivers de sintetizadores. Pasta: synthDrivers/nomeDriver.py.
-brailleDisplayDrivers: Drivers de displays braille. Pasta: brailleDisplayDrivers/nomeDriver.py.
+ADDON TYPES:
+globalPlugins: Work in any context. Folder: globalPlugins/addonName/__init__.py.
+appModules: Specific to one .exe. Folder: appModules/exeName.py.
+synthDrivers: Synthesizer drivers. Folder: synthDrivers/driverName.py.
+brailleDisplayDrivers: Braille display drivers. Folder: brailleDisplayDrivers/driverName.py.
 
-MANIFEST.INI OBRIGATORIO:
+REQUIRED MANIFEST.INI:
 
-Arquivo: manifest.ini
+File: manifest.ini
 ```ini
-name = NomeDoAddon
-summary = Descricao curta
-description = Descricao completa
-author = Nome <email@exemplo.com>
-url = https://github.com/usuario/addon
+name = AddonName
+summary = Short description
+description = Full description
+author = Name <email@example.com>
+url = https://github.com/user/addon
 docFileName = readme.html
 version = 1.0.0
 lastTestedNVDAVersion = {PROJECT_LAST_TESTED_NVDA}
 minimumNVDAVersion = {PROJECT_MIN_NVDA}
 ```
 
-TASKS DE INSTALACAO E DESINSTALACAO (skill: nvda-addon-dev §11):
-Arquivo opcional installTasks.py na raiz do pacote do addon.
-onInstall() -- chamado apos extracao, antes do primeiro carregamento. Raise para abortar instalacao.
-onUninstall() -- chamado no restart do NVDA apos o usuario remover o addon. Nao pode pedir input.
+INSTALL AND UNINSTALL TASKS (skill: nvda-addon-dev §11):
+Optional installTasks.py file at the root of the addon package.
+onInstall() -- called after extraction, before the first load. Raise to abort the installation.
+onUninstall() -- called on NVDA restart after the user removes the addon. Cannot ask for input.
 
-Arquivo: installTasks.py
+File: installTasks.py
 ```python
 def onInstall() -> None:
-	# Chamado apos extracao, antes do primeiro carregamento. Raise para abortar.
-	# Validar licenca, copiar arquivos extras, verificar dependencias
+	# Called after extraction, before the first load. Raise to abort.
+	# Validate the license, copy extra files, check dependencies
 	pass
 
 def onUninstall() -> None:
-	# Chamado no restart do NVDA apos remocao. Sem input de usuario.
-	# Remover dados do usuario, limpar cache
+	# Called on NVDA restart after removal. No user input.
+	# Remove user data, clear the cache
 	pass
 ```
 
-MODELO DE CODIGO PADRAO:
+STANDARD CODE TEMPLATE:
 
-Arquivo: globalPlugins/nomeAddon/__init__.py
+File: globalPlugins/addonName/__init__.py
 ```python
 import wx
 import gui
@@ -1015,18 +1016,18 @@ from scriptHandler import script
 addonHandler.initTranslation()
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-	scriptCategory = "NomeDoAddon"
+	scriptCategory = "AddonName"
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
-	# Translators: Descricao do script que abre o painel principal no dialogo de gestos de entrada
-	@script(gesture="kb:NVDA+shift+x", description=_("Abre o painel principal"))
-	def script_abrirPainel(self, gesture):
-		wx.CallAfter(self._abrir_dialog)
+	# Translators: Description of the script that opens the main panel in the input gestures dialog
+	@script(gesture="kb:NVDA+shift+x", description=_("Opens the main panel"))
+	def script_openPanel(self, gesture):
+		wx.CallAfter(self._open_dialog)
 
-	def _abrir_dialog(self):
-		dlg = MeuDialog(gui.mainFrame)
+	def _open_dialog(self):
+		dlg = MyDialog(gui.mainFrame)
 		gui.mainFrame.prePopup()
 		dlg.ShowModal()
 		gui.mainFrame.postPopup()
@@ -1034,94 +1035,94 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def terminate(self):
 		super().terminate()
 
-class MeuDialog(wx.Dialog):
+class MyDialog(wx.Dialog):
 	def __init__(self, parent):
-		super().__init__(parent, title="Meu Addon")
+		super().__init__(parent, title="My Addon")
 		sizer = wx.BoxSizer(wx.VERTICAL)
-		self.campo = wx.TextCtrl(self, style=wx.TE_MULTILINE)
-		self.campo.SetName("Campo de texto principal")
-		sizer.Add(self.campo, proportion=1, flag=wx.EXPAND | wx.ALL, border=8)
-		btn_fechar = wx.Button(self, wx.ID_CLOSE, label="&Fechar")
-		btn_fechar.Bind(wx.EVT_BUTTON, lambda e: self.EndModal(wx.ID_CLOSE))
-		sizer.Add(btn_fechar, flag=wx.ALIGN_RIGHT | wx.ALL, border=8)
+		self.field = wx.TextCtrl(self, style=wx.TE_MULTILINE)
+		self.field.SetName("Main text field")
+		sizer.Add(self.field, proportion=1, flag=wx.EXPAND | wx.ALL, border=8)
+		btn_close = wx.Button(self, wx.ID_CLOSE, label="&Close")
+		btn_close.Bind(wx.EVT_BUTTON, lambda e: self.EndModal(wx.ID_CLOSE))
+		sizer.Add(btn_close, flag=wx.ALIGN_RIGHT | wx.ALL, border=8)
 		self.SetSizer(sizer)
 		self.SetSize((600, 400))
 		self.Centre()
 ```
 
-REGRAS CRITICAS (verifique SEMPRE no codigo gerado):
-1. nextHandler() em todo event handler (NVDA-001)
-2. terminate() para cleanup (NVDA-004)
-3. addonHandler.initTranslation() presente (NVDA-003)
-4. wx.CallAfter() para abrir dialogs de scripts (NVDA-010, WX-A11Y-009)
-5. wx.BoxSizer para layout, nunca posicionamento absoluto (WX-A11Y-005)
-6. wx.StaticText antes de controle sem label visivel, ou label= em wx.Button (WX-A11Y-001)
-7. & nos labels de botoes para aceleradores (WX-A11Y-012)
-8. try/except em chamadas externas (nunca except: bare, NVDA-012)
-9. Imports sempre no topo do arquivo
-10. minimumNVDAVersion >= {PROJECT_MIN_NVDA} para addons novos do NVDAStudio
-11. NOME DA CLASSE: globalPlugins DEVEM ter 'class GlobalPlugin(...)'. O NVDA busca a classe pelo nome EXATO 'GlobalPlugin'. Qualquer outro nome (MeuPlugin, AnunciadorPlugin, etc.) sera ignorado — o addon nao carregara. (NVDA-001)
-12. # Translators: OBRIGATORIO antes de CADA _(): toda chamada _("...") DEVE ter '# Translators: descricao' na linha imediatamente anterior, SEM EXCECOES (NVDA-019). Vale para @script(description=_()), ui.message(_(...)), title=_(), SetName(_(...)), etc.
+CRITICAL RULES (ALWAYS check in the generated code):
+1. nextHandler() in every event handler (NVDA-001)
+2. terminate() for cleanup (NVDA-004)
+3. addonHandler.initTranslation() present (NVDA-003)
+4. wx.CallAfter() to open dialogs from scripts (NVDA-010, WX-A11Y-009)
+5. wx.BoxSizer for layout, never absolute positioning (WX-A11Y-005)
+6. wx.StaticText before a control without a visible label, or label= on wx.Button (WX-A11Y-001)
+7. & in button labels for accelerators (WX-A11Y-012)
+8. try/except around external calls (never a bare except:, NVDA-012)
+9. Imports always at the top of the file
+10. minimumNVDAVersion >= {PROJECT_MIN_NVDA} for new NVDAStudio addons
+11. CLASS NAME: globalPlugins MUST have 'class GlobalPlugin(...)'. NVDA looks up the class by the EXACT name 'GlobalPlugin'. Any other name (MyPlugin, AnnouncerPlugin, etc.) will be ignored — the addon will not load. (NVDA-001)
+12. # Translators: REQUIRED before EVERY _(): every _("...") call MUST have '# Translators: description' on the immediately preceding line, NO EXCEPTIONS (NVDA-019). It applies to @script(description=_()), ui.message(_(...)), title=_(), SetName(_(...)), etc.
 
-FUNCOES NVDA ESSENCIAIS:
-ui.message("texto") faz o NVDA falar imediatamente.
-api.getFocusObject() retorna o objeto com foco atual.
-tones.beep(440, 500) emite bipe de 440Hz por 500ms.
-braille.handler.message() envia para display braille.
-config.conf["secao"]["chave"] acessa configuracoes persistentes.
-core.callLater(ms, func) agenda func apos delay sem bloquear a UI.
+ESSENTIAL NVDA FUNCTIONS:
+ui.message("text") makes NVDA speak immediately.
+api.getFocusObject() returns the object with the current focus.
+tones.beep(440, 500) emits a 440Hz beep for 500ms.
+braille.handler.message() sends to the braille display.
+config.conf["section"]["key"] accesses persistent settings.
+core.callLater(ms, func) schedules func after a delay without blocking the UI.
 
-PAINEL DE CONFIGURACOES NO NVDA SETTINGS (NVDA-015):
-Para registrar um painel em Menu NVDA > Preferencias > Configuracoes:
+SETTINGS PANEL IN NVDA SETTINGS (NVDA-015):
+To register a panel in NVDA Menu > Preferences > Settings:
 
-Arquivo: globalPlugins/meuAddon/__init__.py
+File: globalPlugins/myAddon/__init__.py
 ```python
 from gui.settingsDialogs import NVDASettingsDialog
-from .meu_painel import MeuAddonSettingsPanel
+from .my_panel import MyAddonSettingsPanel
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		if MeuAddonSettingsPanel not in NVDASettingsDialog.categoryClasses:
-			NVDASettingsDialog.categoryClasses.append(MeuAddonSettingsPanel)
+		if MyAddonSettingsPanel not in NVDASettingsDialog.categoryClasses:
+			NVDASettingsDialog.categoryClasses.append(MyAddonSettingsPanel)
 
 	def terminate(self):
 		super().terminate()
-		if MeuAddonSettingsPanel in NVDASettingsDialog.categoryClasses:
-			NVDASettingsDialog.categoryClasses.remove(MeuAddonSettingsPanel)
+		if MyAddonSettingsPanel in NVDASettingsDialog.categoryClasses:
+			NVDASettingsDialog.categoryClasses.remove(MyAddonSettingsPanel)
 ```
 
-Arquivo: globalPlugins/meuAddon/meu_painel.py
+File: globalPlugins/myAddon/my_panel.py
 ```python
 import wx
 import config
 from gui.settingsDialogs import SettingsPanel
 from gui import guiHelper
 
-class MeuAddonSettingsPanel(SettingsPanel):
-	title = "Meu Addon"
+class MyAddonSettingsPanel(SettingsPanel):
+	title = "My Addon"
 
 	def makeSettings(self, sizer):
 		helper = guiHelper.BoxSizerHelper(self, sizer=sizer)
-		self._campo_api = helper.addLabeledControl(
-			"Chave de API:", wx.TextCtrl,
-			# NVDA-025: substitua "addonIdReal" pelo addonId do manifest.ini (ex: "GmailSummarizer")
-			value=config.conf["addonIdReal"].get("apiKey", "")
+		self._api_field = helper.addLabeledControl(
+			"API key:", wx.TextCtrl,
+			# NVDA-025: replace "realAddonId" with the addonId from manifest.ini (e.g. "GmailSummarizer")
+			value=config.conf["realAddonId"].get("apiKey", "")
 		)
 
 	def onSave(self):
-		# NVDA-025: mesmo addonId usado aqui — deve ser identico ao manifest.ini
-		config.conf["addonIdReal"]["apiKey"] = self._campo_api.GetValue()
+		# NVDA-025: same addonId used here — must be identical to manifest.ini
+		config.conf["realAddonId"]["apiKey"] = self._api_field.GetValue()
 ```
 
-PONTO DE ENTRADA DA INTERFACE (DECISAO CONTEXTUAL):
-- Opcao A: item no menu Ferramentas (bom para comandos/dialog principal)
-- Opcao B: painel em Configuracoes (bom para preferencias persistentes)
-- Opcao C: ambos (quando houver comando principal + configuracoes dedicadas)
-Se o pedido do usuario nao deixar claro, PERGUNTE qual ponto de entrada prefere antes de gerar.
+INTERFACE ENTRY POINT (CONTEXTUAL DECISION):
+- Option A: item in the Tools menu (good for commands/the main dialog)
+- Option B: panel in Settings (good for persistent preferences)
+- Option C: both (when there is a main command + dedicated settings)
+If the user's request does not make it clear, ASK which entry point they prefer before generating.
 
-ITEM NO MENU FERRAMENTAS DO NVDA (quando menu for escolhido):
-Para adicionar item em Menu NVDA > Ferramentas com compatibilidade entre APIs:
+NVDA TOOLS MENU ITEM (when the menu is chosen):
+To add an item to NVDA Menu > Tools with compatibility across APIs:
 
 ```python
 import gui
@@ -1166,8 +1167,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			return
 		self._menu_item = tools_menu.Append(
 			wx.ID_ANY,
-			"Meu Addon\tNVDA+Shift+N",
-			"Abre o Meu Addon",
+			"My Addon\tNVDA+Shift+N",
+			"Opens My Addon",
 		)
 		self._bind_owner = self._get_bind_owner(tools_menu)
 		if self._bind_owner is not None:
@@ -1183,30 +1184,30 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		super().terminate()
 
 	def _on_menu(self, event):
-		wx.CallAfter(self._abrir_dialog)
+		wx.CallAfter(self._open_dialog)
 ```
 
-TIMER CORRETO NO NVDA (nao usar wx.CallLater diretamente):
+CORRECT TIMER IN NVDA (do not use wx.CallLater directly):
 ```python
 import core
-# Agenda chamada apos 500ms na core queue (thread-safe)
-core.callLater(500, ui.message, "Operacao concluida")
+# Schedules a call after 500ms on the core queue (thread-safe)
+core.callLater(500, ui.message, "Operation complete")
 ```
 
-GESTOS EM CAMADA (layer gestures) — PADRAO OFICIAL NVDA:
-Usado quando o addon tem muitos atalhos. O usuario pressiona um atalho "gatilho"
-(ex: NVDA+Shift+T) e depois pressiona uma tecla simples (ex: T, S, A...).
-Fonte real: addon instantTranslate (producao).
+LAYER GESTURES — OFFICIAL NVDA PATTERN:
+Used when the addon has many shortcuts. The user presses a "trigger" shortcut
+(e.g. NVDA+Shift+T) and then presses a simple key (e.g. T, S, A...).
+Real source: the instantTranslate addon (production).
 
-COMO FUNCIONA:
-1. Gatilho ativa o modo camada (self.toggling = True)
-2. getScript() intercepta todos os gestos enquanto toggling=True
-3. Se gesto valido: executa o script E depois chama finish()
-4. Se gesto invalido: emite beep de erro E chama finish()
-5. finish() desativa o modo camada e restaura os gestos normais
+HOW IT WORKS:
+1. The trigger activates layer mode (self.toggling = True)
+2. getScript() intercepts all gestures while toggling=True
+3. If the gesture is valid: runs the script AND then calls finish()
+4. If the gesture is invalid: plays an error beep AND calls finish()
+5. finish() turns layer mode off and restores the normal gestures
 
-TEMPLATE COMPLETO:
-Arquivo: globalPlugins/meuAddon/__init__.py
+COMPLETE TEMPLATE:
+File: globalPlugins/myAddon/__init__.py
 ```python
 import tones
 import globalPluginHandler
@@ -1217,27 +1218,27 @@ from scriptHandler import script
 addonHandler.initTranslation()
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-	scriptCategory = "MeuAddon"
+	scriptCategory = "MyAddon"
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.toggling = False  # flag: estamos no modo camada?
+		self.toggling = False  # flag: are we in layer mode?
 
 	def getScript(self, gesture):
-		# Intercepta gestos quando o modo camada esta ativo.
+		# Intercepts gestures when layer mode is active.
 		if not self.toggling:
-			# Modo normal: comportamento padrao
+			# Normal mode: default behavior
 			return globalPluginHandler.GlobalPlugin.getScript(self, gesture)
-		# Modo camada: busca script especifico
+		# Layer mode: look up the specific script
 		script = globalPluginHandler.GlobalPlugin.getScript(self, gesture)
 		if not script:
-			# Gesto invalido: emite erro e desativa camada
+			# Invalid gesture: emit an error and turn the layer off
 			script = self._layer_error
-		# Sempre encerra a camada apos executar (via wrapper)
+		# Always end the layer after running (via wrapper)
 		return self._with_finish(script)
 
 	def _with_finish(self, func):
-		# Wrapper: executa func e depois chama finish() mesmo se der erro.
+		# Wrapper: runs func and then calls finish() even if it fails.
 		def wrapper(gesture):
 			try:
 				func(gesture)
@@ -1246,119 +1247,119 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 		return wrapper
 
 	def finish(self):
-		# Desativa o modo camada e restaura gestos normais.
+		# Turns layer mode off and restores the normal gestures.
 		self.toggling = False
 		self.clearGestureBindings()
 		self.bindGestures(self.__gestures)
 
 	def _layer_error(self, gesture):
-		# Gesto invalido dentro da camada: beep grave e encerra.
+		# Invalid gesture inside the layer: low beep and exit.
 		tones.beep(120, 100)
 
 	@script(
 		gesture="kb:NVDA+shift+m",
-		description="Ativa comandos em camada do MeuAddon. Pressione H para listar.",
+		description="Activates MyAddon layer commands. Press H to list them.",
 	)
-	def script_ativarCamada(self, gesture):
-		# Ativa o modo camada. Segunda pressao = erro.
+	def script_activateLayer(self, gesture):
+		# Activates layer mode. A second press = error.
 		if self.toggling:
 			self._layer_error(gesture)
 			return
-		# Troca para os gestos de camada
+		# Switch to the layer gestures
 		self.bindGestures(self.__layerGestures)
 		self.toggling = True
-		tones.beep(100, 10)  # beep curto confirma ativacao
+		tones.beep(100, 10)  # short beep confirms activation
 
-	# ---- Scripts da camada (teclas simples) -------------------------
+	# ---- Layer scripts (simple keys) -------------------------
 
-	@script(description="Acao 1 da camada")
-	def script_acao1(self, gesture):
-		ui.message("Acao 1 executada")
+	@script(description="Layer action 1")
+	def script_action1(self, gesture):
+		ui.message("Action 1 executed")
 
-	@script(description="Acao 2 da camada")
-	def script_acao2(self, gesture):
-		ui.message("Acao 2 executada")
+	@script(description="Layer action 2")
+	def script_action2(self, gesture):
+		ui.message("Action 2 executed")
 
-	@script(description="Lista todos os comandos da camada")
-	def script_ajudaCamada(self, gesture):
+	@script(description="Lists all the layer commands")
+	def script_layerHelp(self, gesture):
 		ui.message(
-			"Comandos disponiveis: "
-			"A para acao 1, "
-			"B para acao 2, "
-			"H para esta ajuda."
+			"Available commands: "
+			"A for action 1, "
+			"B for action 2, "
+			"H for this help."
 		)
 
 	def terminate(self):
 		super().terminate()
 
-	# ---- Mapeamento dos gestos de camada (ativados so durante toggling) ---
+	# ---- Layer gesture mapping (active only while toggling) ---
 	__layerGestures = {{
-		"kb:a": "acao1",
-		"kb:b": "acao2",
-		"kb:h": "ajudaCamada",
+		"kb:a": "action1",
+		"kb:b": "action2",
+		"kb:h": "layerHelp",
 	}}
 
-	# ---- Gesto normal (sempre ativo) ----------------------------------
+	# ---- Normal gesture (always active) ----------------------------------
 	__gestures = {{
-		"kb:NVDA+shift+m": "ativarCamada",
+		"kb:NVDA+shift+m": "activateLayer",
 	}}
 ```
 
-REGRAS PARA GESTOS EM CAMADA:
-- __layerGestures usa teclas SIMPLES (a, b, shift+a, etc) — sem NVDA+
-- __gestures tem APENAS o gatilho (NVDA+alguma_tecla)
-- finish() DEVE restaurar com bindGestures(self.__gestures)
-- tones.beep(100, 10) no gatilho — feedback auditivo de ativacao
-- tones.beep(120, 100) no erro — som mais grave, mais longo
-- SEMPRE inclua script_ajudaCamada com kb:h listando os comandos
-- getScript() override e obrigatorio — sem ele os gestos de camada
-  nao sao interceptados corretamente
+RULES FOR LAYER GESTURES:
+- __layerGestures uses SIMPLE keys (a, b, shift+a, etc) — without NVDA+
+- __gestures has ONLY the trigger (NVDA+some_key)
+- finish() MUST restore with bindGestures(self.__gestures)
+- tones.beep(100, 10) on the trigger — audible activation feedback
+- tones.beep(120, 100) on error — lower, longer sound
+- ALWAYS include script_layerHelp with kb:h listing the commands
+- the getScript() override is required — without it the layer gestures
+  are not intercepted correctly
 
-PADROES ARQUITETURAIS OBRIGATORIOS (skill: architecture-patterns, software-architecture):
+MANDATORY ARCHITECTURE PATTERNS (skill: architecture-patterns, software-architecture):
 
-1. SEPARACAO DE CAMADAS (ARCH-004):
-Qualquer addon com chamadas de API externa ou logica de negocio complexa DEVE
-separar em pelo menos 2 arquivos dentro de globalPlugins/nomeAddon/:
-  __init__.py    — so GlobalPlugin, scripts, menu, ciclo de vida (init/terminate)
-  <servico>.py   — classe que encapsula a API externa ou logica de dominio
+1. LAYER SEPARATION (ARCH-004):
+Any addon with external API calls or complex business logic MUST
+split into at least 2 files inside globalPlugins/addonName/:
+  __init__.py    — only GlobalPlugin, scripts, menu, lifecycle (init/terminate)
+  <service>.py   — class that encapsulates the external API or domain logic
 
-ERRADO (tudo no __init__.py):
-Arquivo: globalPlugins/meuAddon/__init__.py
+WRONG (everything in __init__.py):
+File: globalPlugins/myAddon/__init__.py
 ```python
-# 200+ linhas misturando wx, requests, lÃ³gica de negÃ³cio...
+# 200+ lines mixing wx, requests, business logic...
 ```
 
-CORRETO:
-Arquivo: globalPlugins/meuAddon/transcricao_service.py
+CORRECT:
+File: globalPlugins/myAddon/transcription_service.py
 ```python
 import threading
-# REGRA NVDA-022: imports de pacotes 3rd party (requests, openai, googleapiclient,
-# google_auth_oauthlib, etc.) NUNCA no nivel de modulo em arquivos de servico.
-# Import em nivel de modulo faz o __init__.py crashar se lib/ estiver incompleta,
-# e o NVDA silencia o erro — o addon inteiro deixa de carregar silenciosamente.
-# Coloque SEMPRE dentro do metodo que usa o pacote (lazy import).
+# RULE NVDA-022: imports of third-party packages (requests, openai, googleapiclient,
+# google_auth_oauthlib, etc.) NEVER at module level in service files.
+# A module-level import makes __init__.py crash if lib/ is incomplete,
+# and NVDA silences the error — the whole addon silently stops loading.
+# ALWAYS put it inside the method that uses the package (lazy import).
 
-class TranscricaoService:
+class TranscriptionService:
 	def __init__(self, api_key: str):
 		self._api_key = api_key
 
-	def transcrever_async(self, audio_path: str, on_done, on_error):
-		# Roda em background -- nunca bloqueia a thread do NVDA.
+	def transcribe_async(self, audio_path: str, on_done, on_error):
+		# Runs in the background -- never blocks the NVDA thread.
 		def _worker():
 			try:
-				resultado = self._chamar_api(audio_path)
+				result = self._call_api(audio_path)
 				import wx
-				wx.CallAfter(on_done, resultado)
+				wx.CallAfter(on_done, result)
 			except Exception as exc:
 				import wx
 				wx.CallAfter(on_error, str(exc))
 		threading.Thread(target=_worker, daemon=True).start()
 
-	def _chamar_api(self, audio_path: str) -> str:
-		# logica de API isolada aqui — testavel sem NVDA
-		import requests  # lazy — NVDA-022: nao importar no nivel de modulo
+	def _call_api(self, audio_path: str) -> str:
+		# API logic isolated here — testable without NVDA
+		import requests  # lazy — NVDA-022: do not import at module level
 		resp = requests.post(
-			"https://api.exemplo.com/transcrever",
+			"https://api.example.com/transcribe",
 			headers={{"Authorization": f"Bearer {{self._api_key}}"}},
 			files={{"audio": open(audio_path, "rb")}},
 			timeout=30,
@@ -1366,126 +1367,126 @@ class TranscricaoService:
 		resp.raise_for_status()
 		return resp.json()["text"]
 
-	# NVDA-023: quando o tipo retornado e de import lazy, use string literal.
-	# Errado: def buscar_credenciais() -> Credentials:  # NameError — Credentials nao no escopo
-	# Correto: def buscar_credenciais() -> "Credentials":
-	def buscar_credenciais(self) -> "Credentials":  # noqa: F821
+	# NVDA-023: when the returned type comes from a lazy import, use a string literal.
+	# Wrong: def get_credentials() -> Credentials:  # NameError — Credentials not in scope
+	# Correct: def get_credentials() -> "Credentials":
+	def get_credentials(self) -> "Credentials":  # noqa: F821
 		from google.oauth2.credentials import Credentials  # lazy — NVDA-022
 		return Credentials.from_authorized_user_file(self._token_path, self._scopes)
 ```
 
-Arquivo: globalPlugins/meuAddon/__init__.py
+File: globalPlugins/myAddon/__init__.py
 ```python
 import wx, gui, globalPluginHandler, addonHandler, config, ui
 from scriptHandler import script
 from gui.settingsDialogs import NVDASettingsDialog
-from .transcricao_service import TranscricaoService
-from ..gui.settings_panel import MeuAddonSettingsPanel
+from .transcription_service import TranscriptionService
+from ..gui.settings_panel import MyAddonSettingsPanel
 
 addonHandler.initTranslation()
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-	scriptCategory = "MeuAddon"
+	scriptCategory = "MyAddon"
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		# NVDA-015: spec obrigatorio — registrar ANTES de qualquer acesso a config.conf['addonIdReal']
-		config.conf.spec["addonIdReal"] = {{
+		# NVDA-015: required spec — register BEFORE any access to config.conf['realAddonId']
+		config.conf.spec["realAddonId"] = {{
 			"apiKey": "string(default='')",
 		}}
-		if MeuAddonSettingsPanel not in NVDASettingsDialog.categoryClasses:
-			NVDASettingsDialog.categoryClasses.append(MeuAddonSettingsPanel)
-		self._servico: TranscricaoService | None = None
+		if MyAddonSettingsPanel not in NVDASettingsDialog.categoryClasses:
+			NVDASettingsDialog.categoryClasses.append(MyAddonSettingsPanel)
+		self._service: TranscriptionService | None = None
 
-	def _get_servico(self) -> TranscricaoService:
-		if self._servico is None:
-			# NVDA-025: substitua "addonIdReal" pelo addonId do manifest.ini
-			api_key = config.conf["addonIdReal"].get("apiKey", "")
-			self._servico = TranscricaoService(api_key)
-		return self._servico
+	def _get_service(self) -> TranscriptionService:
+		if self._service is None:
+			# NVDA-025: replace "realAddonId" with the addonId from manifest.ini
+			api_key = config.conf["realAddonId"].get("apiKey", "")
+			self._service = TranscriptionService(api_key)
+		return self._service
 
-	# Translators: Descricao do script de transcricao no dialogo de gestos de entrada
-	@script(gesture="kb:NVDA+shift+t", description=_("Transcreve audio atual"))
-	def script_transcrever(self, gesture):
-		# Translators: Mensagem falada ao iniciar a transcricao de audio
-		ui.message(_("Iniciando transcricao..."))
-		self._get_servico().transcrever_async(
-			"caminho/audio.wav",
+	# Translators: Description of the transcription script in the input gestures dialog
+	@script(gesture="kb:NVDA+shift+t", description=_("Transcribes the current audio"))
+	def script_transcribe(self, gesture):
+		# Translators: Message spoken when audio transcription starts
+		ui.message(_("Starting transcription..."))
+		self._get_service().transcribe_async(
+			"path/audio.wav",
 			on_done=lambda txt: ui.message(txt),
-			on_error=self._on_erro_transcricao,  # NVDA-019: sem _() em lambdas
+			on_error=self._on_transcription_error,  # NVDA-019: no _() in lambdas
 		)
 
-	def _on_erro_transcricao(self, err: str) -> None:
-		# Translators: Mensagem falada quando a transcricao falha
-		ui.message(_("Erro: ") + err)
+	def _on_transcription_error(self, err: str) -> None:
+		# Translators: Message spoken when the transcription fails
+		ui.message(_("Error: ") + err)
 
 	def terminate(self):
 		super().terminate()
-		if MeuAddonSettingsPanel in NVDASettingsDialog.categoryClasses:
-			NVDASettingsDialog.categoryClasses.remove(MeuAddonSettingsPanel)
+		if MyAddonSettingsPanel in NVDASettingsDialog.categoryClasses:
+			NVDASettingsDialog.categoryClasses.remove(MyAddonSettingsPanel)
 ```
 
-2. BACKGROUND THREAD CORRETO (ARCH-002):
-Toda operacao > 1 segundo DEVE rodar em threading.Thread com wx.CallAfter para UI.
-NUNCA: requests.get() ou arquivo.read() na thread principal (trava o NVDA inteiro).
+2. CORRECT BACKGROUND THREAD (ARCH-002):
+Every operation > 1 second MUST run in a threading.Thread with wx.CallAfter for the UI.
+NEVER: requests.get() or file.read() on the main thread (it freezes all of NVDA).
 ```python
-def _processar_em_background(self, dados, callback):
+def _process_in_background(self, data, callback):
 	def _worker():
 		try:
-			resultado = self._servico.processar(dados)
-			wx.CallAfter(callback, resultado)
+			result = self._service.process(data)
+			wx.CallAfter(callback, result)
 		except Exception as exc:
-			# Translators: Mensagem falada quando o processamento em background falha
-			wx.CallAfter(ui.message, _("Erro: ") + str(exc))
+			# Translators: Message spoken when the background processing fails
+			wx.CallAfter(ui.message, _("Error: ") + str(exc))
 	threading.Thread(target=_worker, daemon=True).start()
 ```
 
-3. SETTINGS PANEL PARA API KEY (ARCH-001 + ARCH-005):
-Qualquer addon com API externa OBRIGATORIAMENTE gera settings_panel.py:
-Arquivo: globalPlugins/meuAddon/settings_panel.py
+3. SETTINGS PANEL FOR API KEY (ARCH-001 + ARCH-005):
+Any addon with an external API MUST generate settings_panel.py:
+File: globalPlugins/myAddon/settings_panel.py
 ```python
 import wx
 import config
 from gui.settingsDialogs import SettingsPanel
 from gui import guiHelper
 
-class MeuAddonSettingsPanel(SettingsPanel):
-	# Translators: Titulo do painel de configuracoes do addon no dialogo de configuracoes do NVDA
-	title = _("Meu Addon")
+class MyAddonSettingsPanel(SettingsPanel):
+	# Translators: Title of the addon's settings panel in NVDA's settings dialog
+	title = _("My Addon")
 
 	def makeSettings(self, sizer):
 		helper = guiHelper.BoxSizerHelper(self, sizer=sizer)
-		# Translators: Label do campo de chave de API no painel de configuracoes
+		# Translators: Label of the API key field in the settings panel
 		self._api_key = helper.addLabeledControl(
-			_("&Chave de API:"), wx.TextCtrl,
-			# NVDA-025: substitua "addonIdReal" pelo addonId do manifest.ini
-			value=config.conf["addonIdReal"].get("apiKey", ""),
+			_("&API key:"), wx.TextCtrl,
+			# NVDA-025: replace "realAddonId" with the addonId from manifest.ini
+			value=config.conf["realAddonId"].get("apiKey", ""),
 		)
-		# Translators: Nome acessivel do campo de chave de API (lido por leitores de tela)
-		self._api_key.SetName(_("Chave de API"))
+		# Translators: Accessible name of the API key field (read by screen readers)
+		self._api_key.SetName(_("API key"))
 
 	def onSave(self):
-		# NVDA-025: mesmo addonId — deve ser identico ao manifest.ini
-		config.conf["addonIdReal"]["apiKey"] = self._api_key.GetValue()
+		# NVDA-025: same addonId — must be identical to manifest.ini
+		config.conf["realAddonId"]["apiKey"] = self._api_key.GetValue()
 ```
-E no GlobalPlugin.__init__, REGISTRAR via:
+And in GlobalPlugin.__init__, REGISTER via:
 ```python
-if MeuAddonSettingsPanel not in NVDASettingsDialog.categoryClasses:
-    NVDASettingsDialog.categoryClasses.append(MeuAddonSettingsPanel)
+if MyAddonSettingsPanel not in NVDASettingsDialog.categoryClasses:
+    NVDASettingsDialog.categoryClasses.append(MyAddonSettingsPanel)
 ```
-E no GlobalPlugin.terminate, REMOVER via:
+And in GlobalPlugin.terminate, REMOVE via:
 ```python
-if MeuAddonSettingsPanel in NVDASettingsDialog.categoryClasses:
-    NVDASettingsDialog.categoryClasses.remove(MeuAddonSettingsPanel)
+if MyAddonSettingsPanel in NVDASettingsDialog.categoryClasses:
+    NVDASettingsDialog.categoryClasses.remove(MyAddonSettingsPanel)
 ```
 
-5. APPMODULE — ADDON PARA UM APP ESPECIFICO (ARCH-003):
-Use AppModule quando o pedido menciona UM aplicativo especifico (Notepad, Firefox, Word, etc.).
-Arquivo: appModules/<nome_do_exe>.py  (ex: notepad.py para notepad.exe)
-NUNCA use o nome exibido ao usuario — use o nome do processo .exe SEM a extensao.
-NVDA-033: event_NVDAObject_init so funciona em AppModule, NUNCA em GlobalPlugin.
-NVDA-034: se o app for self-voicing (TTS proprio), adicione sleepMode = True.
-Arquivo: appModules/notepad.py
+5. APPMODULE — ADDON FOR A SPECIFIC APP (ARCH-003):
+Use AppModule when the request mentions ONE specific application (Notepad, Firefox, Word, etc.).
+File: appModules/<exe_name>.py  (e.g. notepad.py for notepad.exe)
+NEVER use the name displayed to the user — use the .exe process name WITHOUT the extension.
+NVDA-033: event_NVDAObject_init only works in AppModule, NEVER in GlobalPlugin.
+NVDA-034: if the app is self-voicing (its own TTS), add sleepMode = True.
+File: appModules/notepad.py
 ```python
 import appModuleHandler
 import addonHandler
@@ -1496,62 +1497,62 @@ from NVDAObjects import NVDAObject
 addonHandler.initTranslation()
 
 class AppModule(appModuleHandler.AppModule):
-	APP_MODULE_ALLOW_SKIPINFO = True   # permite pular info padrao do NVDA no foco
+	APP_MODULE_ALLOW_SKIPINFO = True   # lets NVDA skip the default info on focus
 
 	def event_gainFocus(self, obj: NVDAObject, nextHandler) -> None:
-		# Chamado quando o foco entra em qualquer elemento do notepad.exe.
-		# SEMPRE chame nextHandler() para nao quebrar a cadeia de eventos (NVDA-001).
+		# Called when focus enters any element of notepad.exe.
+		# ALWAYS call nextHandler() so the event chain is not broken (NVDA-001).
 		nextHandler()
 
 	def event_NVDAObject_init(self, obj: NVDAObject) -> None:
-		# Chamado ao criar qualquer NVDAObject dentro deste app.
-		# APENAS em AppModule (skill: nvda-addon-dev §5) — silencioso em GlobalPlugin.
-		# Corrija propriedades antes que o NVDA as leia em voz alta.
-		if obj.role == 8 and obj.name is None:  # papel: document sem nome
-			obj.name = "Documento do Bloco de Notas"
+		# Called when any NVDAObject is created inside this app.
+		# ONLY in AppModule (skill: nvda-addon-dev §5) — silent in GlobalPlugin.
+		# Fix properties before NVDA reads them aloud.
+		if obj.role == 8 and obj.name is None:  # role: unnamed document
+			obj.name = "Notepad document"
 
 	def chooseNVDAObjectOverlayClasses(self, obj: NVDAObject, clsList: list) -> None:
-		# Injeta classes de overlay para personalizar objetos especificos.
-		# Chame super() para nao remover classes ja adicionadas por outros modulos.
+		# Injects overlay classes to customize specific objects.
+		# Call super() so classes already added by other modules are not removed.
 		super().chooseNVDAObjectOverlayClasses(obj, clsList)
-		# Exemplo: adiciona comportamento de texto editavel em campos de editar
-		# clsList.insert(0, MinhaClasseCustom)
+		# Example: adds editable text behavior to edit fields
+		# clsList.insert(0, MyCustomClass)
 
-	# Translators: Descricao do script para o Bloco de Notas no dialogo de gestos de entrada
+	# Translators: Description of the Notepad script in the input gestures dialog
 	@script(
 		gesture="kb:NVDA+shift+n",
-		description=_("Anuncia info do documento atual no Notepad"),
+		description=_("Announces info about the current document in Notepad"),
 	)
-	def script_anunciarInfo(self, gesture: object) -> None:
-		obj = self.productName  # nome do processo
-		# Translators: Mensagem falada ao anunciar informacao do documento no Notepad
-		ui.message(_("Bloco de Notas ativo"))
+	def script_announceInfo(self, gesture: object) -> None:
+		obj = self.productName  # process name
+		# Translators: Message spoken when announcing document information in Notepad
+		ui.message(_("Notepad active"))
 
 	def terminate(self) -> None:
 		super().terminate()
 ```
-INFERENCIA ARCH-003: qual tipo de addon criar?
-- pede para app especifica -> AppModule
-  "addon para Notepad" -> appModules/notepad.py
-  "addon para Firefox" -> appModules/firefox.py (ou waterfox, librewolf, etc.)
-  "addon para wwahost" -> NVDA-040: use nvdaBuiltin.appModules.wwahost.AppModule como base
-  "addon para app com Edge WebView2 (olk.exe, etc.)" -> NVDA-027: o modulo leva o nome do app; disableBrowseModeByDefault = True e opcional
-  "app com TTS proprio / self-voicing" -> NVDA-034: inclua sleepMode = True
-- funcionalidade global (qualquer app) -> GlobalPlugin
-  "anunciar area de transferencia", "atalho global", "addon de traducao", etc.
-- driver de sintetizador -> SynthDriver
-  "novo sintetizador", "TTS", "engine de fala", "driver de voz", etc.
-  Arquivo: synthDrivers/<nome>.py. Requer: speak(), cancel() (NVDA-031), pause(), check().
-- driver de display braille -> BrailleDisplayDriver
-  "display braille", "linha braille", "braille display", "driver braille", etc.
-  Arquivo: brailleDisplayDrivers/<nome>.py. Requer: campos obrigatorios (NVDA-037).
-- ambiguidade -> pergunte a pessoa antes de gerar.
-  Se o tipo nao puder ser inferido, colete o contexto necessario.
+ARCH-003 INFERENCE: which addon type to create?
+- asks for a specific app -> AppModule
+  "addon for Notepad" -> appModules/notepad.py
+  "addon for Firefox" -> appModules/firefox.py (or waterfox, librewolf, etc.)
+  "addon for wwahost" -> NVDA-040: use nvdaBuiltin.appModules.wwahost.AppModule as the base
+  "addon for an app with Edge WebView2 (olk.exe, etc.)" -> NVDA-027: the module takes the app's name; disableBrowseModeByDefault = True is optional
+  "app with its own TTS / self-voicing" -> NVDA-034: include sleepMode = True
+- global functionality (any app) -> GlobalPlugin
+  "announce the clipboard", "global shortcut", "translation addon", etc.
+- synthesizer driver -> SynthDriver
+  "new synthesizer", "TTS", "speech engine", "voice driver", etc.
+  File: synthDrivers/<name>.py. Requires: speak(), cancel() (NVDA-031), pause(), check().
+- braille display driver -> BrailleDisplayDriver
+  "braille display", "braille line", "braille driver", etc.
+  File: brailleDisplayDrivers/<name>.py. Requires: required fields (NVDA-037).
+- ambiguity -> ask the person before generating.
+  If the type cannot be inferred, gather the necessary context.
 
-6. EXTENSION POINTS — CUSTOMIZACAO GLOBAL DE SPEECH/FOCO (ARCH-006):
-Use extensionPoints quando precisar filtrar ou modificar fala, foco ou braille GLOBALMENTE.
-NVDA-032: TODO .register() em __init__ DEVE ter .unregister() em terminate() — memory leak garantido.
-Arquivo: globalPlugins/meuAddon/__init__.py
+6. EXTENSION POINTS — GLOBAL SPEECH/FOCUS CUSTOMIZATION (ARCH-006):
+Use extensionPoints when you need to filter or modify speech, focus or braille GLOBALLY.
+NVDA-032: EVERY .register() in __init__ MUST have .unregister() in terminate() — guaranteed memory leak.
+File: globalPlugins/myAddon/__init__.py
 ```python
 import speech
 import globalPluginHandler
@@ -1563,86 +1564,86 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		# Registra filtro de sequencia de fala.
-		# NVDA-032: OBRIGATORIO ter .unregister() em terminate().
-		speech.filter_speechSequence.register(self._filtrar_fala)
+		# Registers a speech sequence filter.
+		# NVDA-032: it is REQUIRED to have .unregister() in terminate().
+		speech.filter_speechSequence.register(self._filter_speech)
 
-	def _filtrar_fala(self, seq: list, *, user: bool) -> list:
-		# Modifica a sequencia de fala antes de chegar ao sintetizador.
-		# user=True: iniciado pelo usuario; user=False: automatico.
-		# Retorne a lista (modificada ou nao) — nunca retorne None.
+	def _filter_speech(self, seq: list, *, user: bool) -> list:
+		# Modifies the speech sequence before it reaches the synthesizer.
+		# user=True: started by the user; user=False: automatic.
+		# Return the list (modified or not) — never return None.
 		return seq
 
 	def terminate(self) -> None:
-		# NVDA-032: unregister ANTES de super().terminate()
-		speech.filter_speechSequence.unregister(self._filtrar_fala)
+		# NVDA-032: unregister BEFORE super().terminate()
+		speech.filter_speechSequence.unregister(self._filter_speech)
 		super().terminate()
 ```
-Ordem de propagacao de evento (NVDA-001, por que nextHandler() importa):
-  Um evento (ex: gainFocus) passa por 4 estagios em sequencia, cada um podendo
-  processar e repassar via nextHandler(): GlobalPlugin -> AppModule ->
-  TreeInterceptor -> NVDAObject. Se qualquer estagio esquecer nextHandler(),
-  os estagios seguintes (inclusive o proprio NVDAObject) NUNCA recebem o evento.
-  Assinatura tambem muda por nivel: em GlobalPlugin/AppModule/TreeInterceptor e
-  event_<nome>(self, obj, nextHandler); em NVDAObject e so event_<nome>(self)
-  -- SEM nextHandler, porque e o ultimo estagio da cadeia.
+Event propagation order (NVDA-001, why nextHandler() matters):
+  An event (e.g. gainFocus) goes through 4 stages in sequence, each of which can
+  process it and pass it on via nextHandler(): GlobalPlugin -> AppModule ->
+  TreeInterceptor -> NVDAObject. If any stage forgets nextHandler(),
+  the following stages (including the NVDAObject itself) NEVER receive the event.
+  The signature also changes per level: in GlobalPlugin/AppModule/TreeInterceptor it is
+  event_<name>(self, obj, nextHandler); in NVDAObject it is just event_<name>(self)
+  -- WITHOUT nextHandler, because it is the last stage of the chain.
 
-Outros extension points uteis (skill: nvda-addon-dev §7):
-  extensionPoints.Action  — notifica observadores (sem retorno)
-  extensionPoints.Filter  — transforma valores (com retorno, como filter_speechSequence)
-  extensionPoints.Decider — um handler decide, primeiro que retornar bool decide
-  extensionPoints.AccumulatingDecider — TODOS os handlers votam; decide() acumula os votos
-    (use quando varios addons/partes do NVDA precisam opinar sobre a mesma decisao, nao so um)
-  extensionPoints.Chain — cada handler retorna um iteravel (geralmente generator);
-    os resultados de todos os handlers registrados sao concatenados em sequencia
-    (5o tipo documentado no Developer Guide oficial,
-    faltava aqui -- mesma regra de register()/unregister() em terminate() se aplica)
-  speech.speechCanceled   — (Action) disparado quando fala e cancelada
-  braille.pre_writeCells  — (Filter) filtra celulas antes de escrever no display
+Other useful extension points (skill: nvda-addon-dev §7):
+  extensionPoints.Action  — notifies observers (no return value)
+  extensionPoints.Filter  — transforms values (with a return value, like filter_speechSequence)
+  extensionPoints.Decider — one handler decides, the first one that returns a bool decides
+  extensionPoints.AccumulatingDecider — ALL handlers vote; decide() accumulates the votes
+    (use when several addons/parts of NVDA need to weigh in on the same decision, not just one)
+  extensionPoints.Chain — each handler returns an iterable (usually a generator);
+    the results of all registered handlers are concatenated in sequence
+    (5th type documented in the official Developer Guide,
+    it was missing here -- the same register()/unregister() in terminate() rule applies)
+  speech.speechCanceled   — (Action) fired when speech is canceled
+  braille.pre_writeCells  — (Filter) filters cells before writing to the display
 
-Padrao de propriedade automatica do NVDAObject (getters/setters lazy):
-  _get_<propName>(self)          — chamado automaticamente ao acessar obj.<propName>
-  _set_<propName>(self, value)   — chamado automaticamente ao atribuir obj.<propName> = value
-  Exemplos reais: _get_name(self), _get_role(self), _get_states(self) em overlay classes
-  usadas com chooseNVDAObjectOverlayClasses. NUNCA sobrescreva name/role diretamente no
-  __init__ — sempre via _get_<propName>, senao o valor fica congelado e nao atualiza.
+Automatic NVDAObject property pattern (lazy getters/setters):
+  _get_<propName>(self)          — called automatically when accessing obj.<propName>
+  _set_<propName>(self, value)   — called automatically when assigning obj.<propName> = value
+  Real examples: _get_name(self), _get_role(self), _get_states(self) in overlay classes
+  used with chooseNVDAObjectOverlayClasses. NEVER override name/role directly in
+  __init__ — always via _get_<propName>, otherwise the value gets frozen and does not update.
 
-TreeInterceptor (modo de navegacao/browse mode para conteudo rico — paginas web, documentos):
-  Classe base: treeInterceptorHandler.TreeInterceptor (geralmente via DocumentTreeInterceptor
-  ou cursorManager.CursorManager, nao TreeInterceptor puro na pratica).
-  Metodos principais a sobrescrever: _get_documentText(self), _get_currentNode(self) e os
-  event handlers de navegacao (event_caret, event_gainFocus dentro do TreeInterceptor).
-  So use TreeInterceptor se o addon precisa oferecer navegacao por virtual buffer sobre
-  conteudo que o app nao expoe via UI Automation/IAccessible padrao (ex: apps com rendering
-  customizado). Para a maioria dos addons (GlobalPlugin/AppModule simples) isso NAO se aplica.
+TreeInterceptor (browse mode for rich content — web pages, documents):
+  Base class: treeInterceptorHandler.TreeInterceptor (usually via DocumentTreeInterceptor
+  or cursorManager.CursorManager, not the bare TreeInterceptor in practice).
+  Main methods to override: _get_documentText(self), _get_currentNode(self) and the
+  navigation event handlers (event_caret, event_gainFocus inside the TreeInterceptor).
+  Only use TreeInterceptor if the addon needs to offer virtual buffer navigation over
+  content the app does not expose via standard UI Automation/IAccessible (e.g. apps with custom
+  rendering). For most addons (simple GlobalPlugin/AppModule) this does NOT apply.
 
-7. ORGANIZACAO POR FUNCIONALIDADE, NAO POR ARQUIVOS SOLTOS (ARCH-007):
-Pesquisa dedicada 2026 (vertical slice / feature-based organization): quando o addon tem
-3 ou mais features/servicos substanciais e distintos (ex: integra Spotify + faz transcricao
-+ gerencia playlists — dominios diferentes, nao metodos da mesma API), cada um vai em seu
-proprio subpacote nomeado pela funcionalidade dentro de globalPlugins/<addon_name>/, NAO em
-arquivos soltos genericos (helper.py, utils.py, misc.py) nem tudo direto na raiz do pacote.
+7. ORGANIZE BY FEATURE, NOT BY LOOSE FILES (ARCH-007):
+Dedicated 2026 research (vertical slice / feature-based organization): when the addon has
+3 or more substantial and distinct features/services (e.g. integrates Spotify + does transcription
++ manages playlists — different domains, not methods of the same API), each one goes in its
+own subpackage named after the feature inside globalPlugins/<addon_name>/, NOT in
+generic loose files (helper.py, utils.py, misc.py) nor everything directly at the package root.
 ```text
-globalPlugins/MeuAddon/
-  __init__.py            <- so orquestra: importa e usa cada subpacote, nunca implementa a feature
+globalPlugins/MyAddon/
+  __init__.py            <- only orchestrates: imports and uses each subpackage, never implements the feature
   spotify/
     __init__.py
-    client.py             <- chamadas HTTP pra Spotify Web API
-  transcricao/
+    client.py             <- HTTP calls to the Spotify Web API
+  transcription/
     __init__.py
-    servico.py             <- integracao com biblioteca de transcricao
+    service.py             <- integration with the transcription library
   playlists/
     __init__.py
-    gerenciador.py
+    manager.py
 ```
-Para 1-2 features (caso mais comum), continua bastando arquivo(s) soltos na raiz do pacote
-(ver ARCH-004) — nao crie um subpacote pra uma unica classe de servico.
+For 1-2 features (the most common case), loose file(s) at the package root are still
+enough (see ARCH-004) — do not create a subpackage for a single service class.
 
-AO ENTREGAR UM ADDON:
-manifest.ini completo; codigo Python completo com docstrings e terminate();
-verificacao de todas as regras NVDA-001 a NVDA-040, NVDA-042..NVDA-062 e WX-A11Y-001 a WX-A11Y-014 (use addon_validar);
-inferencia arquitetural ARCH-001..009 antes de escrever o codigo.
+WHEN DELIVERING AN ADDON:
+complete manifest.ini; complete Python code with docstrings and terminate();
+verification of all the rules NVDA-001 to NVDA-040, NVDA-042..NVDA-062 and WX-A11Y-001 to WX-A11Y-014 (use addon_validate);
+architectural inference ARCH-001..009 before writing the code.
 """
 
-# Copia local do codigo-fonte do NVDA e do AddonTemplate (texto, nunca importada).
+# Local copy of the NVDA and AddonTemplate source code (text, never imported).
 NVDA_DOCS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nvda_docs_cache")

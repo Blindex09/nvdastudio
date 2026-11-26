@@ -104,7 +104,7 @@ class TestSmokeDosComandosPegaAcostura:
 			"addon com chamador e definicao discordando foi aprovado -- "
 			f"stdout={resultado.stdout!r}"
 		)
-		assert "SMOKE_FALHOU" in resultado.stdout
+		assert "SMOKE_FAILED" in resultado.stdout
 		# A mensagem tem que servir de fix_instruction sozinha.
 		assert "unexpected keyword argument" in resultado.stdout
 		assert "model" in resultado.stdout
@@ -219,7 +219,7 @@ def test_smoke_nao_roda_sob_falha_injetada(cenario):
 		fault_scenario=cenario,
 	)
 
-	assert "SMOKE_FALHOU" not in resultado.stdout
+	assert "SMOKE_FAILED" not in resultado.stdout
 
 
 class TestPortaoFinalSobreOPacote:
@@ -256,7 +256,7 @@ class TestPortaoFinalSobreOPacote:
 		evidencia = (resultado.error or "") + (resultado.stdout or "")
 		# Barrado pela NVDA-063 (estatica) OU pelo smoke (execucao): as duas
 		# defesas cobrem o mesmo defeito de proposito, e basta uma barrar.
-		assert "NVDA-063" in evidencia or "SMOKE_FALHOU" in evidencia, evidencia[:400]
+		assert "NVDA-063" in evidencia or "SMOKE_FAILED" in evidencia, evidencia[:400]
 
 	def test_pacote_correto_passa(self, tmp_path):
 		pacote = self._empacotar(tmp_path, {

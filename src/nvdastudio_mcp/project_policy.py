@@ -1,25 +1,25 @@
 MODULE_VERSION = "1.1.0"
 
-# Baseline oficial do projeto. O NVDAStudio atual nao mantem compatibilidade
-# ativa com versoes anteriores a esta linha.
+# Official baseline of the project. The current NVDAStudio does not actively
+# maintain compatibility with versions older than this line.
 PROJECT_MIN_NVDA = "2026.1.1"
 PROJECT_LAST_TESTED_NVDA = "2026.3.1"
 PROJECT_SUPPORTED_RANGE = "2026.1.1+"
 
-# Pastas de ponto de entrada que o NVDA carrega; qualquer uma basta para o addon existir.
+# Entry-point folders that NVDA loads; any one of them is enough for the add-on to exist.
 ENTRY_POINT_DIRS = (
 	"globalPlugins", "appModules", "synthDrivers", "brailleDisplayDrivers",
 	"visionEnhancementProviders",
 )
 
-# Piso tecnico absoluto das regras historicas do NVDA (Python 3).
+# Absolute technical floor of the historical NVDA rules (Python 3).
 ABSOLUTE_MIN_NVDA = "2019.3.0"
 
 
 def parse_version_tuple(version: str) -> tuple[int, int, int]:
 	"""
-	Converte '2025.3' ou '2026.1.1' em tupla de 3 inteiros.
-	Valores invalidos retornam (0, 0, 0).
+	Converts '2025.3' or '2026.1.1' into a tuple of 3 integers.
+	Invalid values return (0, 0, 0).
 	"""
 	parts = str(version).strip().replace("-", ".").split(".")
 	try:

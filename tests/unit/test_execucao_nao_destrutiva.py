@@ -17,7 +17,7 @@ class TestNaoExecutaCodigoDestrutivoNoCarregamento:
 			"\tpass\n"
 		)
 		r = self._valida(codigo)
-		assert "PULADO_POR_SEGURANCA" in r.stdout
+		assert "SKIPPED_FOR_SAFETY" in r.stdout
 		assert "os.remove" in r.stdout
 
 	def test_rmtree_no_init_pula_execucao(self):
@@ -30,7 +30,7 @@ class TestNaoExecutaCodigoDestrutivoNoCarregamento:
 			"\t\tshutil.rmtree('uma_pasta')\n"
 		)
 		r = self._valida(codigo)
-		assert "PULADO_POR_SEGURANCA" in r.stdout
+		assert "SKIPPED_FOR_SAFETY" in r.stdout
 
 	def test_op_destrutiva_em_metodo_de_script_ainda_executa(self):
 		"""Falso positivo aqui recusaria addon legitimo: rmtree DENTRO de um
@@ -44,7 +44,7 @@ class TestNaoExecutaCodigoDestrutivoNoCarregamento:
 			"\t\tshutil.rmtree('cache')\n"
 		)
 		r = self._valida(codigo)
-		assert "PULADO_POR_SEGURANCA" not in r.stdout
+		assert "SKIPPED_FOR_SAFETY" not in r.stdout
 
 
 def test_op_destrutiva_helper_direto():

@@ -94,7 +94,7 @@ class TestSaveAddonFilesTestsFilter:
 
 
 class TestValidateAddonStructure:
-    """Testes de validate_addon_structure() -- ESTRUTURA-009 (imports relativos)."""
+    """Testes de validate_addon_structure() -- STRUCTURE-009 (imports relativos)."""
 
     def _criar_addon(self, tmp_path, arquivos: dict) -> str:
         """Cria estrutura minima de addon em tmp_path. arquivos={relpath: conteudo}."""
@@ -121,7 +121,7 @@ class TestValidateAddonStructure:
         return addon
 
     def test_estrutura_009_modulo_relativo_ausente_detectado(self, tmp_path):
-        """ESTRUTURA-009: from .gmail_oauth import ... sem gmail_oauth.py detecta erro."""
+        """STRUCTURE-009: from .gmail_oauth import ... sem gmail_oauth.py detecta erro."""
         init = (
             "import globalPluginHandler\n"
             "import addonHandler\n"
@@ -137,13 +137,13 @@ class TestValidateAddonStructure:
             # gmail_oauth.py AUSENTE
         })
         problems = validate_addon_structure(addon)
-        erros_009 = [p for p in problems if "ESTRUTURA-009" in p]
-        assert len(erros_009) >= 1, f"Esperava ESTRUTURA-009, obteve: {problems}"
+        erros_009 = [p for p in problems if "STRUCTURE-009" in p]
+        assert len(erros_009) >= 1, f"Esperava STRUCTURE-009, obteve: {problems}"
         assert "gmail_oauth" in erros_009[0]
         assert "gmail_service.py" in erros_009[0]
 
     def test_estrutura_009_modulo_relativo_presente_sem_erro(self, tmp_path):
-        """Nenhum ESTRUTURA-009 quando o modulo importado existe."""
+        """Nenhum STRUCTURE-009 quando o modulo importado existe."""
         init = (
             "import globalPluginHandler\n"
             "import addonHandler\n"
@@ -160,8 +160,8 @@ class TestValidateAddonStructure:
             "gmail_oauth.py": gmail_oauth,  # PRESENTE
         })
         problems = validate_addon_structure(addon)
-        erros_009 = [p for p in problems if "ESTRUTURA-009" in p]
-        assert erros_009 == [], f"ESTRUTURA-009 falso positivo: {erros_009}"
+        erros_009 = [p for p in problems if "STRUCTURE-009" in p]
+        assert erros_009 == [], f"STRUCTURE-009 falso positivo: {erros_009}"
 
     def test_estrutura_009_imports_absolutos_ignorados(self, tmp_path):
         """Imports absolutos (sem ponto) nao sao checados pela regra 009."""
@@ -176,11 +176,11 @@ class TestValidateAddonStructure:
         )
         addon = self._criar_addon(tmp_path, {"__init__.py": init})
         problems = validate_addon_structure(addon)
-        erros_009 = [p for p in problems if "ESTRUTURA-009" in p]
-        assert erros_009 == [], "Imports absolutos nao devem gerar ESTRUTURA-009"
+        erros_009 = [p for p in problems if "STRUCTURE-009" in p]
+        assert erros_009 == [], "Imports absolutos nao devem gerar STRUCTURE-009"
 
     def test_estrutura_009_mensagem_contem_modulo_e_arquivo(self, tmp_path):
-        """A mensagem ESTRUTURA-009 indica qual arquivo e qual modulo estao ausentes."""
+        """A mensagem STRUCTURE-009 indica qual arquivo e qual modulo estao ausentes."""
         code = "from .modulo_inexistente import algo\n"
         addon = self._criar_addon(tmp_path, {
             "__init__.py": (
@@ -192,7 +192,7 @@ class TestValidateAddonStructure:
             "helper.py": code,
         })
         problems = validate_addon_structure(addon)
-        erros_009 = [p for p in problems if "ESTRUTURA-009" in p]
+        erros_009 = [p for p in problems if "STRUCTURE-009" in p]
         assert any("modulo_inexistente" in e for e in erros_009)
         assert any("helper.py" in e for e in erros_009)
 
@@ -813,7 +813,7 @@ class TestNvda047UrlVazio:
 	def test_url_vazio_reportado_com_mensagem_correta(self, tmp_path):
 		addon = tmp_path / "addon"
 		addon.mkdir()
-		# Cria globalPlugins/x/__init__.py para nao disparar ESTRUTURA-004
+		# Cria globalPlugins/x/__init__.py para nao disparar STRUCTURE-004
 		gp = addon / "globalPlugins" / "x"
 		gp.mkdir(parents=True)
 		(gp / "__init__.py").write_text(
@@ -838,7 +838,7 @@ class TestNvda047UrlVazio:
 		nvda047 = [p for p in problems if p.startswith("NVDA-047")]
 		assert len(nvda047) == 1, f"Esperado 1 NVDA-047, recebido: {nvda047}"
 		# Mensagem antiga reportava 'version = 1.0.0' — agora reporta url vazio
-		assert "vazio" in nvda047[0].lower()
+		assert "empty" in nvda047[0].lower()
 		assert "version" not in nvda047[0]
 
 	def test_url_http_sem_s_reportado_corretamente(self, tmp_path):

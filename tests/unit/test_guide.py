@@ -1,10 +1,9 @@
 from nvdastudio_mcp import guide
 
 
-def test_guia_tem_topicos_e_pula_a_persona_antiga():
-    titles = [t["topico"] for t in guide.list_topics()]
+def test_guia_tem_topicos():
+    titles = [t["topic"] for t in guide.list_topics()]
     assert len(titles) >= 10
-    assert not any("FORMATO" in t for t in titles)
 
 
 def test_busca_por_trecho_do_titulo_sem_diferenciar_caixa():

@@ -6,8 +6,9 @@ valida, testa, empacota e abre o pacote no NVDA.
 
 ## Usar
 
-Requisitos: Python 3.11+ e `pip install -r requirements.txt`. Docker com a imagem `python:3.11-slim` é opcional: sem ele, as etapas que
-executam código do addon voltam como `nao_executado`.
+Requisitos: Python 3.11+, `pip install -r requirements.txt` e Docker Desktop. O servidor sobe o Docker sozinho quando é chamado (abre o
+Docker Desktop, espera o motor ficar pronto e baixa a imagem `python:3.13-slim`, a mesma versão de Python do NVDA 2026). As etapas que executam
+código do addon rodam nesse contêiner, sem rede. Se o Docker não existir ou não subir, elas voltam como `not_run` com o motivo.
 
 Claude Code: o arquivo `.mcp.json` na raiz já registra o servidor (pasta de trabalho `workspace/`).
 

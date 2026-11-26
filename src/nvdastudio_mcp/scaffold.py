@@ -1,8 +1,8 @@
-"""Esqueleto de um addon NVDA novo, ja conforme as regras do validador.
+"""Skeleton of a new NVDA add-on, already compliant with the validator rules.
 
-O esqueleto e so o ponto de partida: o Claude decide o que o addon faz e
-reescreve o codigo. Aqui fica apenas o que e fato do formato do NVDA
-(manifest, estrutura de pastas, ganchos obrigatorios).
+The skeleton is only a starting point: Claude decides what the add-on does and
+rewrites the code. Only facts about the NVDA format live here (manifest,
+folder structure, required hooks).
 """
 
 import re
@@ -17,7 +17,7 @@ _APP = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 
 class ScaffoldError(ValueError):
-    """Parametro de esqueleto invalido."""
+    """Invalid skeleton parameter."""
 
 
 @dataclass(frozen=True)
@@ -26,7 +26,7 @@ class ScaffoldFiles:
 
 
 def _tabs(text: str) -> str:
-    """Converte a indentacao de 4 espacos do molde em TAB (padrao do NVDA)."""
+    """Converts the 4-space indentation of the template to TAB (NVDA convention)."""
     out = []
     for line in text.split("\n"):
         stripped = line.lstrip(" ")
@@ -44,14 +44,14 @@ addonHandler.initTranslation()
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-    # Translators: Nome da categoria dos comandos do addon em Gestos de entrada
+    # Translators: Name of the add-on's command category in Input gestures
     scriptCategory = _("{name}")
 
-    # Translators: Descricao do comando de exemplo em Gestos de entrada
-    @script(description=_("Diz que o addon esta funcionando"), gesture="kb:NVDA+control+shift+{key}")
-    def script_dizerOla(self, gesture):
-        # Translators: Mensagem falada pelo comando de exemplo
-        ui.message(_("{name} esta funcionando"))
+    # Translators: Description of the example command in Input gestures
+    @script(description=_("Says the add-on is working"), gesture="kb:NVDA+control+shift+{key}")
+    def script_sayHello(self, gesture):
+        # Translators: Message spoken by the example command
+        ui.message(_("{name} is working"))
 
     def terminate(self):
         super().terminate()
@@ -66,24 +66,24 @@ addonHandler.initTranslation()
 
 
 class AppModule(appModuleHandler.AppModule):
-    # Translators: Nome da categoria dos comandos do addon em Gestos de entrada
+    # Translators: Name of the add-on's command category in Input gestures
     scriptCategory = _("{name}")
 
-    # Translators: Descricao do comando de exemplo em Gestos de entrada
-    @script(description=_("Diz que o addon do aplicativo esta ativo"), gesture="kb:NVDA+control+shift+{key}")
-    def script_dizerOla(self, gesture):
-        # Translators: Mensagem falada pelo comando de exemplo
-        ui.message(_("{name} esta ativo neste aplicativo"))
+    # Translators: Description of the example command in Input gestures
+    @script(description=_("Says the application add-on is active"), gesture="kb:NVDA+control+shift+{key}")
+    def script_sayHello(self, gesture):
+        # Translators: Message spoken by the example command
+        ui.message(_("{name} is active in this application"))
 '''
 
 _GUIDE = """<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head><meta charset="UTF-8"><title>{name}</title></head>
 <body>
 <h1>{name}</h1>
 <p>{summary}</p>
-<h2>Comandos</h2>
-<p>Os comandos ficam em Preferencias, Gestos de entrada, na categoria {name}.</p>
+<h2>Commands</h2>
+<p>The commands are in Preferences, Input gestures, under the {name} category.</p>
 </body>
 </html>
 """
@@ -93,24 +93,24 @@ def build_scaffold(
     name: str,
     kind: str = "globalPlugin",
     summary: str = "",
-    author: str = "Autor <autor@example.com>",
+    author: str = "Author <author@example.com>",
     app_name: str = "",
     url: str = "",
 ) -> ScaffoldFiles:
-    """Monta os arquivos do esqueleto (caminho relativo -> conteudo)."""
+    """Builds the skeleton files (relative path -> content)."""
     if not _NAME.match(name):
         raise ScaffoldError(
-            "nome do addon: comece com letra, use so letras e digitos (2 a 40 caracteres)"
+            "add-on name: start with a letter, use only letters and digits (2 to 40 characters)"
         )
     if kind not in KINDS:
-        raise ScaffoldError(f"tipo invalido: {kind!r}. Use um de {', '.join(KINDS)}")
-    summary = " ".join(summary.split()) or f"Addon {name} para o NVDA"
-    author = " ".join(author.split()) or "Autor <autor@example.com>"
+        raise ScaffoldError(f"invalid kind: {kind!r}. Use one of {', '.join(KINDS)}")
+    summary = " ".join(summary.split()) or f"Add-on {name} for NVDA"
+    author = " ".join(author.split()) or "Author <author@example.com>"
     if kind == "appModule":
         if not _APP.match(app_name):
             raise ScaffoldError(
-                "appModule precisa de app_name: o nome do executavel em minusculas, "
-                "sem .exe (por exemplo: notepad)"
+                "appModule needs app_name: the executable name in lowercase, "
+                "without .exe (for example: notepad)"
             )
         entry = f"appModules/{app_name}.py"
         code = _APP_MODULE
@@ -131,6 +131,6 @@ def build_scaffold(
     files = {
         "manifest.ini": manifest,
         entry: _tabs(code.format(name=name, key="o")),
-        "doc/pt_BR/readme.html": _GUIDE.format(name=name, summary=summary),
+        "doc/en/readme.html": _GUIDE.format(name=name, summary=summary),
     }
     return ScaffoldFiles(files)

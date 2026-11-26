@@ -23,21 +23,21 @@ class RuleContract:
 
 
 ARCH_DESCRIPTIONS: dict[str, tuple[str, str]] = {
-	"ARCH-001": ("Serio", "Addon com API externa sem SettingsPanel para credenciais e opcoes."),
-	"ARCH-002": ("Critico", "I/O pesado, rede ou processamento longo sem thread/background worker."),
-	"ARCH-003": ("Serio", "AppModule vs GlobalPlugin incorreto para o escopo do addon."),
-	"ARCH-004": ("Moderado", "Logica de dominio misturada no ponto de entrada sem servico separado."),
-	"ARCH-005": ("Serio", "Configuracao persistente sem config.conf.spec e defaults claros."),
-	"ARCH-006": ("Serio", "Extension points sem register/unregister completo ou assinatura correta."),
-	"ARCH-007": ("Moderado", "Addon complexo sem subpacotes nomeados pela funcionalidade."),
-	"ARCH-008": ("Serio", "Addon multifuncional sem ponto de entrada acessivel."),
-	"ARCH-009": ("Serio", "Interface principal sem decisao clara entre menu e SettingsPanel."),
+	"ARCH-001": ("Serious", "Addon with an external API but no SettingsPanel for credentials and options."),
+	"ARCH-002": ("Critical", "Heavy I/O, network or long processing without a thread/background worker."),
+	"ARCH-003": ("Serious", "Wrong AppModule vs GlobalPlugin choice for the addon scope."),
+	"ARCH-004": ("Moderate", "Domain logic mixed into the entry point without a separate service."),
+	"ARCH-005": ("Serious", "Persistent configuration without config.conf.spec and clear defaults."),
+	"ARCH-006": ("Serious", "Extension points without a complete register/unregister or the correct signature."),
+	"ARCH-007": ("Moderate", "Complex addon without subpackages named after the feature."),
+	"ARCH-008": ("Serious", "Multi-feature addon without an accessible entry point."),
+	"ARCH-009": ("Serious", "Main interface without a clear choice between menu and SettingsPanel."),
 }
 
 NVDA_UX_RULES: tuple[tuple[str, str, str], ...] = (
-	("NVDA-UX-001", "Critico", "Mudanca visual de estado sem feedback equivalente pelo NVDA."),
-	("NVDA-UX-002", "Serio", "Acao sem retorno auditivo ao usuario."),
-	("NVDA-UX-003", "Serio", "Fluxo principal nao concluivel apenas com teclado e fala."),
+	("NVDA-UX-001", "Critical", "Visual state change without equivalent feedback through NVDA."),
+	("NVDA-UX-002", "Serious", "Action without audible feedback to the user."),
+	("NVDA-UX-003", "Serious", "Main flow cannot be completed with only the keyboard and speech."),
 )
 
 
@@ -63,7 +63,7 @@ def _build_registry() -> dict[str, RuleContract]:
 		"NVDA-041",
 		"NVDA",
 		"Deprecated",
-		"Alias historico; use NVDA-034.",
+		"Historical alias; use NVDA-034.",
 		"ALIAS",
 		status="deprecated_alias",
 		alias_for="NVDA-034",

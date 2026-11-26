@@ -101,14 +101,14 @@ class TestFailOpenDeInfraestrutura:
 		with patch("nvdastudio_mcp.code_sandbox.subprocess.run", return_value=fake):
 			result = CodeSandbox().lint_check({"globalPlugins/X/__init__.py": "x = 1\n"})
 		assert result.success is True
-		assert result.error == "ruff_indisponivel"
+		assert result.error == "ruff_unavailable"
 
 	def test_mypy_ausente_nao_reprova(self):
 		fake = MagicMock(returncode=1, stdout="No module named mypy", stderr="")
 		with patch("nvdastudio_mcp.code_sandbox.subprocess.run", return_value=fake):
 			result = CodeSandbox().typecheck({"globalPlugins/X/__init__.py": "x = 1\n"})
 		assert result.success is True
-		assert result.error == "mypy_indisponivel"
+		assert result.error == "mypy_unavailable"
 
 	def test_timeout_da_ferramenta_nao_reprova(self):
 		import subprocess
@@ -128,12 +128,12 @@ class TestFailOpenDeInfraestrutura:
 		):
 			result = CodeSandbox().lint_check({"globalPlugins/X/__init__.py": "x = 1\n"})
 		assert result.success is True
-		assert result.error == "ruff_indisponivel"
+		assert result.error == "ruff_unavailable"
 
 	def test_sem_arquivo_python_nao_reprova(self):
 		result = CodeSandbox().lint_check({"manifest.ini": "name = X\n"})
 		assert result.success is True
-		assert result.error == "sem arquivo Python"
+		assert result.error == "no Python file"
 
 
 class TestContratoDeInfraestrutura:

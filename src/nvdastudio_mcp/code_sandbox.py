@@ -14,41 +14,41 @@ from .logger import get_logger
 MODULE_VERSION = "1.14.0"
 _logger = get_logger("code_sandbox")
 
-# Interpretador Python REAL para os subprocessos de validacao. DENTRO do NVDA,
-# sys.executable e o nvda.exe -- rodar ele como python falha com WinError 740
-# (requer elevacao), e era isso que jogava a validacao de execucao num loop de
-# "Erro de execucao real". None => nao ha python usavel: as validacoes por
-# subprocesso PULAM (ausencia de interpretador nao e defeito do codigo gerado).
+# REAL Python interpreter for the validation subprocesses. INSIDE NVDA,
+# sys.executable is nvda.exe -- running it as python fails with WinError 740
+# (requires elevation), and that is what threw execution validation into a loop of
+# "real execution error". None => no usable python: the validations by
+# subprocess SKIP (absence of an interpreter is not a defect of the generated code).
 _PYTHON = find_python()
 
 
 def _run_hidden(*args, **kwargs):
-	"""subprocess.run com a janela de console suprimida no Windows -- senao
-	cada validacao/pytest/pip abre um terminal que rouba o foco do NVDA
-	(ver utils/hidden_process.py). Chama o subprocess.run DESTE modulo de
-	proposito: os testes que dao patch em code_sandbox.subprocess.run
-	continuam valendo."""
+	"""subprocess.run with the console window suppressed on Windows -- otherwise
+	every validation/pytest/pip opens a terminal that steals NVDA's focus
+	(see hidden_process.py). It calls the subprocess.run OF THIS module on
+	purpose: the tests that patch code_sandbox.subprocess.run
+	keep working."""
 	kwargs["creationflags"] = kwargs.get("creationflags", 0) | CREATE_NO_WINDOW
-	# O stdin do servidor e o protocolo MCP: um filho nunca pode herda-lo nem le-lo.
+	# The server's stdin is the MCP protocol: a child must never inherit or read it.
 	kwargs.setdefault("stdin", subprocess.DEVNULL)
 	return subprocess.run(*args, **kwargs)
 
-_SANDBOX_TIMEOUT = 10  # segundos
-_TEST_SUITE_TIMEOUT = 25  # segundos — varios arquivos/imports, mais folga que uma checagem simples
-_LINT_TIMEOUT = 20  # segundos -- ruff/mypy sobre o addon gerado inteiro
+_SANDBOX_TIMEOUT = 10  # seconds
+_TEST_SUITE_TIMEOUT = 25  # seconds — several files/imports, more slack than a simple check
+_LINT_TIMEOUT = 20  # seconds -- ruff/mypy over the whole generated add-on
 
-# Config de lint aplicada ao codigo GERADO (nunca a do proprio NVDAStudio).
-# Escolha deliberada de escopo: so regras que apontam DEFEITO real
-# (F=pyflakes: nome indefinido, import nao usado, f-string sem placeholder;
-# E9=erro de sintaxe/IO; B=bugbear: default mutavel, loop capturando
-# variavel). Regras de ESTILO ficam de fora de proposito -- o NVDA usa TABs
-# (W191/E101) e linhas longas sao comuns no core, entao ligar pycodestyle
-# inteiro produziria dezenas de avisos que nao sao bugs e empurrariam o
-# builtins: _/ngettext/pgettext/npgettext sao injetados em tempo de execucao
-# por addonHandler.initTranslation() -- sem declara-los aqui, TODO addon
-# traduzido (isto e, todo addon correto pela NVDA-019) levaria F821
-# "undefined name" em cada string traduzivel. E chave top-level no schema do
-# ruff, nao dentro de [lint] (confirmado contra ruff 0.16.5).
+# Lint config applied to the GENERATED code (never NVDAStudio's own).
+# Deliberate choice of scope: only rules that point at a real DEFECT
+# (F=pyflakes: undefined name, unused import, f-string without placeholder;
+# E9=syntax/IO error; B=bugbear: mutable default, loop capturing a
+# variable). STYLE rules are left out on purpose -- NVDA uses TABs
+# (W191/E101) and long lines are common in the core, so turning on all of
+# pycodestyle would produce dozens of warnings that are not bugs and would push the
+# builtins: _/ngettext/pgettext/npgettext are injected at runtime
+# by addonHandler.initTranslation() -- without declaring them here, EVERY
+# translated add-on (that is, every add-on correct per NVDA-019) would get F821
+# "undefined name" on each translatable string. It is a top-level key in the
+# ruff schema, not inside [lint] (confirmed against ruff 0.16.5).
 _GENERATED_RUFF_CONFIG = """builtins = ["_", "ngettext", "pgettext", "npgettext"]
 
 [lint]
@@ -56,20 +56,20 @@ select = ["F", "E9", "B"]
 ignore = ["B904"]
 """
 
-# Config de mypy aplicada ao codigo GERADO.
+# mypy config applied to the GENERATED code.
 #
-# `name-defined` desligado de proposito, e a autoridade sobre nome indefinido
-# fica com o ruff (F821), que suporta declarar builtins injetados em tempo de
-# execucao -- ver `builtins` em _GENERATED_RUFF_CONFIG. O mypy nao tem esse
-# mecanismo, entao para ele `_("texto")` de TODO addon traduzido (isto e, de
-# todo addon correto pela NVDA-019) aparece como nome indefinido.
+# `name-defined` is turned off on purpose, and the authority on undefined names
+# stays with ruff (F821), which supports declaring builtins injected at
+# runtime -- see `builtins` in _GENERATED_RUFF_CONFIG. mypy has no such
+# mechanism, so for it `_("text")` of EVERY translated add-on (that is, of
+# every add-on correct per NVDA-019) shows up as an undefined name.
 #
-# canonicamente correto, este era o UNICO que reprovava, com
-# `Name "_" is not defined` em cada string traduzivel. Nao bloqueia (mypy e
-# advisory), mas o resultado vai como CONTEXTO para a proxima tentativa: o
-# modelo recebia uma lista de problemas inexistentes para corrigir.
+# canonically correct, this was the ONLY one that failed, with
+# `Name "_" is not defined` on each translatable string. It does not block (mypy is
+# advisory), but the result goes as CONTEXT for the next attempt: the
+# model received a list of nonexistent problems to fix.
 #
-# Duas ferramentas opinando sobre a mesma coisa, uma delas mal informada, e
+# Two tools giving opinions on the same thing, one of them poorly informed, and
 _GENERATED_MYPY_CONFIG = """[mypy]
 ignore_missing_imports = True
 follow_imports = silent
@@ -77,12 +77,12 @@ disable_error_code = name-defined
 """
 
 
-# Roda em SUBPROCESSO isolado (nunca no processo deste modulo) -- instala
-# nvda_runtime_stubs.py (copiado pro mesmo diretorio temporario), importa o
-# modulo principal do addon gerado e tenta instanciar a classe principal
-# (GlobalPlugin/AppModule/SynthDriver/SettingsPanel). {dotted} e
-# substituido pelo caminho de import ja calculado em Python real (repr()
-# format() so recebe uma string ja validada como caminho de modulo.
+# Runs in an isolated SUBPROCESS (never in this module's process) -- installs
+# nvda_runtime_stubs.py (copied into the same temporary directory), imports the
+# main module of the generated add-on and tries to instantiate the main class
+# (GlobalPlugin/AppModule/SynthDriver/SettingsPanel). {dotted} is
+# replaced by the import path already computed in real Python (repr()
+# format() only receives a string already validated as a module path.
 _RUNNER_TEMPLATE = '''\
 import sys, os, inspect, traceback, importlib, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -94,7 +94,7 @@ DOTTED = "{dotted}"
 try:
 	mod = importlib.import_module(DOTTED)
 except Exception:
-	print("IMPORT_FALHOU")
+	print("IMPORT_FAILED")
 	traceback.print_exc()
 	sys.exit(1)
 
@@ -107,14 +107,14 @@ for _name, obj in vars(mod).items():
 			candidates.append(obj)
 
 if not candidates:
-	print("SEM_CLASSE_PRINCIPAL_ENCONTRADA")
+	print("NO_MAIN_CLASS_FOUND")
 	sys.exit(0)
 
 _ACHADOS_SMOKE = []
 _ADDON_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Mensagens de TypeError que provam DISCORDANCIA entre chamador e definicao.
-# Qualquer outro TypeError pode ser dado ruim vindo do stub, nao defeito.
+# TypeError messages that prove a MISMATCH between caller and definition.
+# Any other TypeError may be bad data coming from the stub, not a defect.
 _PADROES_ASSINATURA = (
 	"unexpected keyword argument",
 	"required positional argument",
@@ -127,13 +127,13 @@ _PADROES_ASSINATURA = (
 
 
 def _e_defeito_estrutural(exc_type, exc_value):
-	"""So conta defeito de CODIGO, nunca falha de ambiente.
+	"""Only counts CODE defects, never environment failures.
 
-	NameError e sempre defeito. TypeError so quando a mensagem e de
-	assinatura -- e o unico TypeError que prova que um chamador e uma
-	definicao discordam. ImportError fica de fora DE PROPOSITO: o par
-	`try: import openai / except ImportError` e o padrao CORRETO da
-	NVDA-022 e apareceria em todo addon bem escrito.
+	NameError is always a defect. TypeError only when the message is about
+	a signature -- it is the only TypeError that proves a caller and a
+	definition disagree. ImportError is left out ON PURPOSE: the pair
+	`try: import openai / except ImportError` is the CORRECT pattern of
+	NVDA-022 and would show up in every well-written add-on.
 	"""
 	if exc_type is NameError:
 		return True
@@ -156,8 +156,8 @@ def _trace_local(frame, event, arg):
 
 
 def _trace_global(frame, event, arg):
-	# So traceia frame do proprio addon: fora dele o custo nao se paga e
-	# stub/stdlib levantam excecao que nao e defeito do addon.
+	# Only traces frames of the add-on itself: outside it the cost does not pay off and
+	# stub/stdlib raise exceptions that are not an add-on defect.
 	_fn = frame.f_code.co_filename
 	if not _fn.startswith(_ADDON_DIR) or _fn.endswith("_sandbox_runner.py"):
 		return None
@@ -165,22 +165,22 @@ def _trace_global(frame, event, arg):
 
 
 def _smoke_comandos(cls, instance):
-	"""Executa os comandos (@script) do addon e testemunha o que levantam.
+	"""Runs the add-on's commands (@script) and witnesses what they raise.
 
-	Instanciar prova que o addon CARREGA; nao prova que ele FAZ. O defeito
-	passou inteiro por import,
-	instanciacao e terminate, e os dois atalhos morriam na primeira tecla:
-	__init__.py chamava proofread(text, model, api_key, on_done, on_error)
-	e openai_service.py definia proofread(self, text, callback).
+	Instantiating proves the add-on LOADS; it does not prove it WORKS. The defect
+	got through import,
+	instantiation and terminate, and both shortcuts died on the first keypress:
+	__init__.py called proofread(text, model, api_key, on_done, on_error)
+	and openai_service.py defined proofread(self, text, callback).
 
-	Chamar o script e ver "se levantou" NAO basta: o addon NVDA correto
-	engole a propria excecao (`except Exception` + ui.message) para nunca
-	derrubar o leitor de tela -- foi exatamente o que escondeu o defeito.
-	Por isso o testemunho e por sys.settrace, que registra a excecao no
-	instante em que ela e LEVANTADA, antes de qualquer except do addon.
+	Calling the script and checking "did it raise" is NOT enough: a correct NVDA add-on
+	swallows its own exception (`except Exception` + ui.message) so it never
+	brings the screen reader down -- that is exactly what hid the defect.
+	So the witness is sys.settrace, which records the exception at the
+	moment it is RAISED, before any except in the add-on.
 	"""
-	# Sob falha injetada o alvo e a resiliencia do carregamento, nao a
-	# assinatura; rodar o smoke ali so gastaria o orcamento de 3s.
+	# Under an injected fault the target is load resilience, not the
+	# signature; running the smoke there would only burn the 3s budget.
 	if os.environ.get("NVDASTUDIO_FAULT_SCENARIO"):
 		return
 
@@ -188,18 +188,18 @@ def _smoke_comandos(cls, instance):
 	for _n in dir(cls):
 		if not _n.startswith("script_"):
 			continue
-		# getattr no CLS, nunca na instancia: GlobalPlugin.__getattr__ do
-		# stub devolve _Permissive para qualquer nome, e todo addon teria
-		# "comandos" que nao existem.
+		# getattr on CLS, never on the instance: the stub's GlobalPlugin.__getattr__
+		# returns _Permissive for any name, and every add-on would have
+		# "commands" that do not exist.
 		if inspect.isfunction(getattr(cls, _n, None)):
 			_nomes.append(_n)
 	if not _nomes:
 		return
 
-	# Modo seguro DESLIGADO de proposito: com o stub permissivo,
-	# globalVars.appArgs.secure e verdadeiro, e todo script guardado por
-	# NVDA-062 retornaria na primeira linha -- o smoke passaria sem
-	# executar nada. O caminho que interessa aqui e o normal.
+	# Secure mode OFF on purpose: with the permissive stub,
+	# globalVars.appArgs.secure is truthy, and every script guarded by
+	# NVDA-062 would return on the first line -- the smoke would pass without
+	# running anything. The path that matters here is the normal one.
 	try:
 		import globalVars
 
@@ -223,23 +223,23 @@ def _smoke_comandos(cls, instance):
 			try:
 				getattr(instance, _n)(_gesture)
 			except Exception:
-				# Levantar aqui nao condena o addon: sob stub, faltar dado
-				# de ambiente e esperado. Quem julga e o testemunho.
+				# Raising here does not condemn the add-on: under a stub, missing
+				# environment data is expected. The witness is what judges.
 				pass
-		# Da tempo do trabalho em thread (padrao NVDA-002) levantar.
+		# Gives thread work (NVDA-002 pattern) time to raise.
 		time.sleep(0.2)
 	finally:
 		sys.settrace(None)
 		threading.settrace(None)
 
 	if _ACHADOS_SMOKE:
-		print("SMOKE_FALHOU: " + cls.__name__ + " -- " + " | ".join(_ACHADOS_SMOKE))
+		print("SMOKE_FAILED: " + cls.__name__ + " -- " + " | ".join(_ACHADOS_SMOKE))
 		sys.exit(1)
 
 for cls in candidates:
-	# Injecao de falha controlada: acontece dentro do subprocesso que executa
-	# o addon, depois do import e antes da instanciação. Isso exercita o codigo
-	# real do addon sem tocar no NVDA ou no sistema do usuario.
+	# Controlled fault injection: it happens inside the subprocess that runs
+	# the add-on, after the import and before the instantiation. This exercises the real
+	# add-on code without touching NVDA or the user's system.
 	_fault = os.environ.get("NVDASTUDIO_FAULT_SCENARIO", "")
 	if _fault == "api_401":
 		try:
@@ -255,7 +255,7 @@ for cls in candidates:
 		_real_open = builtins.open
 		def _fault_open(file, *args, **kwargs):
 			if isinstance(file, str) and not file.endswith("_sandbox_runner.py"):
-				raise FileNotFoundError(2, "arquivo ausente injetado", file)
+				raise FileNotFoundError(2, "injected missing file", file)
 			return _real_open(file, *args, **kwargs)
 		builtins.open = _fault_open
 	elif _fault == "timeout":
@@ -263,7 +263,7 @@ for cls in candidates:
 			import socket
 			import urllib.request
 			def _fault_urlopen(*args, **kwargs):
-				raise socket.timeout("timeout injetado")
+				raise socket.timeout("injected timeout")
 			urllib.request.urlopen = _fault_urlopen
 		except Exception:
 			pass
@@ -271,36 +271,36 @@ for cls in candidates:
 	try:
 		instance = cls()
 	except Exception:
-		print("INSTANCIACAO_FALHOU: " + cls.__name__)
+		print("INSTANTIATION_FAILED: " + cls.__name__)
 		traceback.print_exc()
 		sys.exit(1)
 
-	# Entre instanciar e terminar: o addon esta VIVO, que e a unica janela
-	# em que os comandos podem ser exercitados.
+	# Between instantiating and terminating: the add-on is ALIVE, which is the only window
+	# in which the commands can be exercised.
 	_smoke_comandos(cls, instance)
 
 	try:
 		if hasattr(instance, "terminate"):
 			instance.terminate()
 	except Exception:
-		print("INSTANCIACAO_FALHOU: " + cls.__name__)
+		print("INSTANTIATION_FAILED: " + cls.__name__)
 		traceback.print_exc()
 		sys.exit(1)
 
-	# Verificacao de bind/unbind de teclado (Keyboard/Focus Management):
-	# bindGesture() via dict de classe __gestures e o padrao estatico normal
-	# do NVDA -- limpo automaticamente quando a instancia e destruida, nao
-	# precisa de unbind. O risco real e bindGesture() chamado DINAMICAMENTE
-	# (self.bindGesture(...) fora do dict __gestures, tipicamente em
-	# resposta a mudanca de configuracao) sem removeGestureBinding()
-	# correspondente em lugar nenhum da classe -- cada rebind acumula um
-	# gesture duplicado apontando pro mesmo script. So roda se a
-	# instanciacao/terminate ja passaram (nao bloqueia o addon por isso --
-	# aviso, nao falha).
+	# Keyboard bind/unbind check (Keyboard/Focus Management):
+	# bindGesture() via the class dict __gestures is NVDA's normal static
+	# pattern -- cleaned up automatically when the instance is destroyed, it
+	# needs no unbind. The real risk is bindGesture() called DYNAMICALLY
+	# (self.bindGesture(...) outside the __gestures dict, typically in
+	# response to a configuration change) without a matching removeGestureBinding()
+	# anywhere in the class -- every rebind accumulates a
+	# duplicate gesture pointing at the same script. It only runs if
+	# instantiation/terminate already passed (it does not block the add-on for this --
+	# warning, not failure).
 	try:
 		src = inspect.getsource(cls)
 		if "self.bindGesture(" in src and "removeGestureBinding" not in src:
-			print("AVISO_BINDGESTURE_SEM_UNBIND: " + cls.__name__)
+			print("WARNING_BINDGESTURE_WITHOUT_UNBIND: " + cls.__name__)
 	except (OSError, TypeError):
 		pass
 
@@ -311,7 +311,7 @@ sys.exit(0)
 
 @dataclass
 class SandboxResult:
-    """Resultado da execucao em sandbox."""
+    """Result of the sandbox execution."""
     success: bool
     stdout: str
     stderr: str
@@ -327,23 +327,23 @@ class SandboxResult:
 
 
 def _result_evidence(result: SandboxResult) -> str:
-	"""Consolida a saída observável de uma execução isolada."""
+	"""Consolidates the observable output of an isolated execution."""
 	parts = [result.error, result.stderr, result.stdout]
 	return " | ".join(part for part in parts if part) or f"exit_code={result.exit_code}"
 
 
-# Operacoes de arquivo IRREVERSIVEIS. Varridas so no que roda ao CARREGAR o
-# addon (nivel de modulo + __init__): um `os.remove`/`shutil.rmtree` ali quase
-# nunca e legitimo e apagaria arquivos reais durante a validacao -- o subprocesso
-# roda com as permissoes do usuario (isolamento de processo, nao de blast
-# radius). Metodos de script (so rodam quando o usuario aciona o atalho) NAO sao
-# varridos: la o codigo nao roda na validacao, e reprovar seria falso positivo.
+# IRREVERSIBLE file operations. Scanned only in what runs when the add-on LOADS
+# (module level + __init__): an `os.remove`/`shutil.rmtree` there is almost
+# never legitimate and would delete real files during validation -- the subprocess
+# runs with the user's permissions (process isolation, not blast
+# radius isolation). Script methods (which only run when the user triggers the shortcut) are NOT
+# scanned: there the code does not run in validation, and failing it would be a false positive.
 _ATTR_DESTRUTIVOS_DE_ARQUIVO = {"rmtree", "unlink", "rmdir", "removedirs"}
 
 
 def _op_destrutiva_no_carregamento(files: dict[str, str]) -> str:
-	"""Descreve a 1a operacao destrutiva de arquivo que rodaria ao CARREGAR o
-	addon (nivel de modulo ou __init__), ou "" se nenhuma."""
+	"""Describes the 1st destructive file operation that would run when the
+	add-on LOADS (module level or __init__), or "" if none."""
 
 	def _perigo(call: ast.Call) -> str:
 		f = call.func
@@ -371,29 +371,29 @@ def _op_destrutiva_no_carregamento(files: dict[str, str]) -> str:
 		try:
 			tree = ast.parse(codigo or "")
 		except SyntaxError:
-			continue  # sintaxe ja e reprovada por outro degrau, mais preciso
+			continue  # syntax is already rejected by another, more precise, step
 		modulo = [
 			n for n in tree.body
 			if not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
 		]
 		achado = _scan(modulo)
 		if achado:
-			return f"{achado} em nivel de modulo de {caminho}"
+			return f"{achado} at module level in {caminho}"
 		for node in ast.walk(tree):
 			if isinstance(node, ast.FunctionDef) and node.name == "__init__":
 				achado = _scan(node.body)
 				if achado:
-					return f"{achado} em __init__ de {caminho}"
+					return f"{achado} in __init__ of {caminho}"
 	return ""
 
 
 class CodeSandbox:
     """
-    Sandbox para execucao segura de codigo Python.
+    Sandbox for safe execution of Python code.
 
-    Executa em contêiner isolado — nunca no processo NVDA.
-    Timeout rigido para evitar loops infinitos.
-    Sem acesso a rede, arquivos do sistema ou modulos NVDA.
+    Runs in an isolated container — never in the NVDA process.
+    Strict timeout to avoid infinite loops.
+    No access to the network, system files or NVDA modules.
     """
 
     def __init__(self, timeout_sec: int = _SANDBOX_TIMEOUT):
@@ -414,50 +414,62 @@ class CodeSandbox:
         fault_scenario: str | None = None,
     ) -> SandboxResult:
         """
-        Tenta IMPORTAR e INSTANCIAR de verdade a classe principal do addon
-        (GlobalPlugin/AppModule/SynthDriver/SettingsPanel), em subprocesso
-        isolado com os modulos NVDA simulados (nvda_runtime_stubs.py) --
-        pega NameError/AttributeError/assinatura de construtor errada que
-        uma checagem so de sintaxe nunca detecta.
+        Actually tries to IMPORT and INSTANTIATE the add-on's main class
+        (GlobalPlugin/AppModule/SynthDriver/SettingsPanel), in an isolated
+        subprocess with the simulated NVDA modules (nvda_runtime_stubs.py) --
+        it catches NameError/AttributeError/wrong constructor signature that
+        a syntax-only check never detects.
 
-        run_test_suite() (so roda se test_generation gerou testes E o
-        proprio teste exercitar o bug), esta verificacao roda direto sobre
-        fecha a lacuna real: ja
-        existiam desde 1.0.0 mas nunca eram chamados por ninguem porque
-        rodar import puro contra os modulos REAIS do NVDA sempre falha
-        (ModuleNotFoundError -- eles so existem dentro do processo do
-        NVDA). nvda_runtime_stubs.py resolve isso com stand-ins seguros.
+        run_test_suite() (only runs if tests exist AND the test itself
+        exercises the bug), this check runs directly over the code and
+        closes the real gap: the checks
+        existed since 1.0.0 but were never called by anyone because
+        running a plain import against the REAL NVDA modules always fails
+        (ModuleNotFoundError -- they only exist inside the NVDA
+        process). nvda_runtime_stubs.py solves this with safe stand-ins.
 
-        subprocesso isolado, sem rede, sem acesso ao NVDA real.
+        Isolated subprocess, no network, no access to the real NVDA.
         """
         if timeout is None:
             timeout = self.default_timeout
 
-        main_relpath = self._find_main_module(files)
-        if main_relpath is None:
+        entries = self._find_entry_modules(files)
+        if not entries:
             return SandboxResult(
                 success=True, stdout="", stderr="",
-                error="nenhum globalPlugins/*/__init__.py encontrado -- nada pra validar",
+                error="no entry point found (globalPlugins/, appModules/, synthDrivers/, "
+                      "brailleDisplayDrivers/) -- nothing to validate",
             )
 
-        # 1.11.0 -- NAO executar codigo que apaga arquivos ao carregar.
+        # 1.11.0 -- do NOT execute code that deletes files on load.
         #
-        # O subprocesso roda com as permissoes do usuario (isolamento de
-        # processo, nao de blast radius). Um os.remove/shutil.rmtree em nivel de
-        # modulo ou __init__ apagaria arquivos reais durante a validacao. Pular a
-        # execucao contem o dano; sintaxe e lint seguem julgando o codigo.
+        # The subprocess runs with the user's permissions (process
+        # isolation, not blast radius isolation). An os.remove/shutil.rmtree at module level
+        # or in __init__ would delete real files during validation. Skipping the
+        # execution contains the damage; syntax and lint keep judging the code.
         _perigo = _op_destrutiva_no_carregamento(files)
         if _perigo:
             _logger.warning(
-                "[Sandbox] Execucao de validacao PULADA por seguranca: %s", _perigo,
+                "[Sandbox] Validation execution SKIPPED for safety: %s", _perigo,
             )
-            return SandboxResult(
-                success=True,
-                stdout=f"PULADO_POR_SEGURANCA: operacao destrutiva de arquivo no carregamento ({_perigo})",
-                stderr="",
-                error="",
-            )
+            motivo = f"SKIPPED_FOR_SAFETY: destructive file operation on load ({_perigo})"
+            # nothing was executed: success with `error` filled in is read as not_run
+            return SandboxResult(success=True, stdout=motivo, stderr="", error=motivo)
 
+        results = [self._run_entry(files, entry, timeout, fault_scenario) for entry in entries]
+        failed = [r for r in results if not r.success]
+        if failed:
+            return failed[0]
+        return SandboxResult(
+            success=True, stdout=chr(10).join(r.stdout for r in results if r.stdout), stderr="",
+            exit_code=0, isolated=all(r.isolated for r in results),
+            isolation_backend=results[0].isolation_backend,
+        )
+
+    def _run_entry(
+        self, files: dict[str, str], main_relpath: str, timeout: int, fault_scenario: str | None,
+    ) -> SandboxResult:
+        """Imports and instantiates ONE entry point, in a container."""
         tmpdir = tempfile.mkdtemp(prefix="nvdastudio_execcheck_")
         try:
             self._write_files(tmpdir, files)
@@ -465,7 +477,8 @@ class CodeSandbox:
             stubs_src_path = os.path.join(os.path.dirname(__file__), "nvda_runtime_stubs.py")
             shutil.copy(stubs_src_path, os.path.join(tmpdir, "nvda_runtime_stubs.py"))
 
-            dotted = main_relpath[: -len("/__init__.py")].replace("/", ".")
+            module_path = main_relpath[: -len("/__init__.py")] if main_relpath.endswith("/__init__.py") else main_relpath[: -len(".py")]
+            dotted = module_path.replace("/", ".")
             runner_path = os.path.join(tmpdir, "_sandbox_runner.py")
             with open(runner_path, "w", encoding="utf-8") as f:
                 f.write(_RUNNER_TEMPLATE.format(dotted=dotted))
@@ -482,7 +495,7 @@ class CodeSandbox:
                 isolated=proc.isolated, isolation_backend=proc.backend,
             )
         except Exception as exc:
-            _logger.error("[Sandbox] Erro ao preparar validate_addon_execution: %s", exc)
+            _logger.error("[Sandbox] Error preparing validate_addon_execution: %s", exc)
             return SandboxResult(success=False, stdout="", stderr="", error=str(exc))
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
@@ -490,55 +503,55 @@ class CodeSandbox:
     def validate_addon_resilience(
         self, files: dict[str, str], timeout: int | None = None,
     ) -> SandboxResult:
-        """Executa o addon real sob falhas injetadas no subprocesso isolado."""
+        """Runs the real add-on under faults injected into the isolated subprocess."""
         scenarios = ("api_401", "timeout", "missing_file")
         evidence: list[str] = []
         for scenario in scenarios:
             result = self.validate_addon_execution(files, timeout, scenario)
             if result.success and result.error:
-                return result  # nada foi executado (ex.: sem globalPlugins): nao e sucesso
+                return result  # nothing was executed (e.g. no globalPlugins): not a success
             evidence.append(f"{scenario}: {_result_evidence(result)}")
             if not result.success:
                 return SandboxResult(
                     success=False,
                     stdout="\n".join(evidence),
                     stderr=result.stderr,
-                    error=f"falha no cenário real {scenario}: {_result_evidence(result)}",
+                    error=f"failure in the real scenario {scenario}: {_result_evidence(result)}",
                     exit_code=result.exit_code,
                     timed_out=result.timed_out,
                 )
         return SandboxResult(success=True, stdout="\n".join(evidence), stderr="", exit_code=0)
 
     def validate_final_package(self, package_path: str) -> SandboxResult:
-        """Valida o arquivo .nvda-addon final, não apenas os blocos da IA."""
+        """Validates the final .nvda-addon file, not just the source blocks."""
         if not os.path.isfile(package_path) or not zipfile.is_zipfile(package_path):
-            return SandboxResult(False, "", "", error="pacote final ausente ou ZIP inválido")
+            return SandboxResult(False, "", "", error="final package missing or invalid ZIP")
 
         temp_root = tempfile.mkdtemp(prefix="nvdastudio_final_package_")
         try:
             with zipfile.ZipFile(package_path) as archive:
                 bad_member = archive.testzip()
                 if bad_member:
-                    return SandboxResult(False, "", "", error=f"ZIP corrompido: {bad_member}")
+                    return SandboxResult(False, "", "", error=f"Corrupted ZIP: {bad_member}")
                 root = os.path.abspath(temp_root)
                 for member in archive.infolist():
                     target = os.path.abspath(os.path.join(temp_root, member.filename))
                     if target != root and not target.startswith(root + os.sep):
                         return SandboxResult(
-                            False, "", "", error=f"ZIP rejeitado por path traversal: {member.filename}"
+                            False, "", "", error=f"ZIP rejected for path traversal: {member.filename}"
                         )
                 archive.extractall(temp_root)
 
             from .addon_builder import validate_addon_structure
 
-            # O pacote do proprio NVDAStudio inclui fontes de REFERENCIA da
-            # API do NVDA em nvda_docs_cache/ e o buildVars.py usado apenas
-            # para construir o pacote. Eles terminam em .py, mas nao sao
-            # importados pelo addon em runtime. Validá-los como modulos do
-            # GlobalPlugin produz NVDA-003 falsos (gettext sem initTranslation)
-            # e rejeita um pacote funcional. A remocao ocorre somente nesta
-            # copia temporaria extraida; o ZIP original permanece intacto e ja
-            # teve sua integridade e seus caminhos conferidos acima.
+            # NVDAStudio's own package includes REFERENCE sources of the
+            # NVDA API in nvda_docs_cache/ and the buildVars.py used only
+            # to build the package. They end in .py, but are not
+            # imported by the add-on at runtime. Validating them as GlobalPlugin
+            # modules produces false NVDA-003 (gettext without initTranslation)
+            # and rejects a working package. The removal happens only in this
+            # temporary extracted copy; the original ZIP stays intact and has already
+            # had its integrity and paths checked above.
             build_vars = os.path.join(temp_root, "buildVars.py")
             if os.path.isfile(build_vars):
                 os.remove(build_vars)
@@ -554,7 +567,7 @@ class CodeSandbox:
             problems = validate_addon_structure(temp_root)
             if problems:
                 return SandboxResult(
-                    False, "", "", error="estrutura do pacote final inválida: " + " | ".join(problems[:8])
+                    False, "", "", error="invalid final package structure: " + " | ".join(problems[:8])
                 )
 
             files: dict[str, str] = {}
@@ -572,7 +585,7 @@ class CodeSandbox:
                     False,
                     runtime.stdout,
                     runtime.stderr,
-                    error="execução do pacote final falhou: " + _result_evidence(runtime),
+                    error="final package execution failed: " + _result_evidence(runtime),
                     exit_code=runtime.exit_code,
                     timed_out=runtime.timed_out,
                     isolated=runtime.isolated,
@@ -580,51 +593,56 @@ class CodeSandbox:
                 )
             return SandboxResult(
                 True,
-                "pacote íntegro; estrutura válida; execução do pacote final aprovada",
+                "package intact; structure valid; final package execution passed",
                 "",
                 exit_code=0,
                 isolated=runtime.isolated,
                 isolation_backend=runtime.isolation_backend,
             )
         except (OSError, zipfile.BadZipFile) as exc:
-            return SandboxResult(False, "", "", error=f"falha ao validar pacote final: {exc}")
+            return SandboxResult(False, "", "", error=f"failed to validate the final package: {exc}")
         finally:
             shutil.rmtree(temp_root, ignore_errors=True)
 
     @staticmethod
-    def _find_main_module(files: dict[str, str]) -> str | None:
-        """Localiza globalPlugins/<Addon>/__init__.py entre os arquivos
-        gerados -- convencao ja usada por builder/addon_builder.py."""
-        gp_re = re.compile(r"^globalPlugins/([^/]+)/__init__\.py$")
+    def _find_entry_modules(files: dict[str, str]) -> list[str]:
+        """Entry points that NVDA loads: globalPlugins/<A>/__init__.py,
+        appModules/<app>.py (or folder), synthDrivers/<s>.py and brailleDisplayDrivers/<d>.py."""
+        patterns = (
+            re.compile(r"^globalPlugins/[^/]+/__init__\.py$"),
+            re.compile(r"^appModules/[^/]+(/__init__)?\.py$"),
+            re.compile(r"^synthDrivers/[^/]+(/__init__)?\.py$"),
+            re.compile(r"^brailleDisplayDrivers/[^/]+(/__init__)?\.py$"),
+        )
+        found: list[str] = []
         for relpath in files:
             norm = relpath.replace("\\", "/").lstrip("/")
-            if gp_re.match(norm):
-                return norm
-        return None
+            if any(p.match(norm) for p in patterns) and norm not in found:
+                found.append(norm)
+        return found
 
     def run_test_suite(
         self, files: dict[str, str], test_relpaths: list[str], timeout: int | None = None,
     ) -> SandboxResult:
         """
-        Escreve `files` (relpath -> conteudo) num diretorio temporario e
-        executa de verdade os arquivos de teste em `test_relpaths` contra
-        eles, via subprocesso isolado (mesma garantia de seguranca de
-        nunca no processo do NVDA).
+        Writes `files` (relpath -> content) to a temporary directory and
+        actually runs the test files in `test_relpaths` against
+        them, through an isolated subprocess (same safety guarantee:
+        never in the NVDA process).
 
-        Tenta `python -m pytest` primeiro (roda tanto `def test_*()` soltos
-        de test_generator.py aceita). Se pytest nao estiver instalado no
-        interpretador (comum: o Python embutido de uma instalacao real do
-        NVDA pode nao ter pytest), cai pra `python -m unittest discover`
-        (stdlib, sempre disponivel, mas so descobre TestCase — funcoes test_*
-        soltas fora de uma classe nao sao coletadas por unittest puro).
+        Tries `python -m pytest` first (it runs both loose `def test_*()`
+        functions and TestCase classes). If pytest is not installed in the
+        interpreter, it falls back to `python -m unittest discover`
+        (stdlib, always available, but it only discovers TestCase — loose test_*
+        functions outside a class are not collected by plain unittest).
 
-        Nunca levanta excecao — degrada pra SandboxResult(success=False,
-        error=...) em qualquer falha de infraestrutura (sem Python no PATH,
+        Never raises — degrades to SandboxResult(success=False,
+        error=...) on any infrastructure failure (no Python on PATH,
         """
         if timeout is None:
             timeout = _TEST_SUITE_TIMEOUT
         if not test_relpaths:
-            return SandboxResult(success=True, stdout="", stderr="", error="sem arquivos de teste")
+            return SandboxResult(success=True, stdout="", stderr="", error="no test files")
 
         tmpdir = tempfile.mkdtemp(prefix="nvdastudio_testrun_")
         try:
@@ -632,21 +650,21 @@ class CodeSandbox:
 
             safe_test_paths = [p for p in (self._safe_relpath(r) for r in test_relpaths) if p]
             if not safe_test_paths:
-                return SandboxResult(success=True, stdout="", stderr="", error="sem caminho de teste valido")
+                return SandboxResult(success=True, stdout="", stderr="", error="no valid test path")
 
             result = self._run_pytest(tmpdir, safe_test_paths, timeout)
-            if result.error == "pytest_indisponivel":
+            if result.error == "pytest_unavailable":
                 result = self._run_unittest(tmpdir, safe_test_paths, timeout)
             return result
         except Exception as exc:
-            _logger.error("[Sandbox] Erro ao preparar run_test_suite: %s", exc)
+            _logger.error("[Sandbox] Error preparing run_test_suite: %s", exc)
             return SandboxResult(success=False, stdout="", stderr="", error=str(exc))
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
     def _write_files(self, tmpdir: str, files: dict[str, str]) -> None:
-        """Escreve `files` (relpath -> conteudo) no diretorio temporario,
-        rejeitando caminhos inseguros (compartilhado por run_test_suite() e
+        """Writes `files` (relpath -> content) to the temporary directory,
+        rejecting unsafe paths (shared by run_test_suite() and
         validate_addon_execution())."""
         for relpath, content in files.items():
             safe_rel = self._safe_relpath(relpath)
@@ -659,7 +677,7 @@ class CodeSandbox:
 
     @staticmethod
     def _safe_relpath(relpath: str) -> str | None:
-        """Normaliza e rejeita caminhos absolutos ou com `..` (path traversal)."""
+        """Normalizes and rejects absolute paths or paths with `..` (path traversal)."""
         normalized = relpath.replace("\\", "/").lstrip("/")
         parts = [p for p in normalized.split("/") if p not in ("", ".")]
         if not parts or ".." in parts or any(":" in p for p in parts):
@@ -668,22 +686,22 @@ class CodeSandbox:
 
     def _run_pytest(self, cwd: str, test_relpaths: list[str], timeout: int) -> SandboxResult:
         try:
-            # subprocess levava 3.9s de wall-clock pra rodar UM teste
-            # trivial (assert 1==1), contra 0.58s com plugin autoload
-            # desligado (7x mais rapido; o tempo interno do proprio pytest
-            # caiu de 0.87s pra 0.01s). O ambiente herdado (env real
-            # completo, ver comentario abaixo) faz o subprocess descobrir e
-            # importar TODOS os plugins de terceiros instalados no
-            # interpretador (hypothesis/langsmith/anyio/flask/cov/mock),
-            # nenhum dos quais os testes gerados por test_generator.py
-            # (asserts simples, unittest.mock.patch) precisam. Sob
-            # contencao real de CPU (suite completa do NVDAStudio rodando
-            # em paralelo), essa sobrecarga sozinha ja passava perto do
-            # teto de _TEST_SUITE_TIMEOUT (25s) -- root cause do timeout
-            # flaky, nao falta de tempo de execucao real. Plugins BUILT-IN
-            # do pytest (fixtures, mocks via unittest.mock stdlib)
-            # continuam funcionando -- so entry points de terceiros
-            # deixam de autocarregar.
+            # the subprocess took 3.9s of wall-clock to run ONE trivial
+            # test (assert 1==1), against 0.58s with plugin autoload
+            # turned off (7x faster; pytest's own internal time
+            # dropped from 0.87s to 0.01s). The inherited environment (full real
+            # env, see comment below) makes the subprocess discover and
+            # import ALL third-party plugins installed in the
+            # interpreter (hypothesis/langsmith/anyio/flask/cov/mock),
+            # none of which the generated tests (simple asserts,
+            # unittest.mock.patch) need. Under real CPU
+            # contention (the full NVDAStudio suite running in
+            # parallel), this overhead alone was already close to the
+            # _TEST_SUITE_TIMEOUT ceiling (25s) -- root cause of the flaky
+            # timeout, not a lack of real execution time. pytest BUILT-IN
+            # plugins (fixtures, mocks via stdlib unittest.mock)
+            # keep working -- only third-party entry points
+            # stop autoloading.
             env = os.environ.copy()
             env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
             proc = self._isolated_python(
@@ -701,7 +719,7 @@ class CodeSandbox:
             )
         stdout, stderr = proc.stdout, proc.stderr
         if proc.returncode != 0 and re.search(r"No module named .?pytest", stdout + stderr):
-            return SandboxResult(False, stdout, stderr, error="pytest_indisponivel", isolated=True, isolation_backend=proc.backend)
+            return SandboxResult(False, stdout, stderr, error="pytest_unavailable", isolated=True, isolation_backend=proc.backend)
         return SandboxResult(proc.returncode == 0, stdout, stderr, exit_code=proc.returncode, isolated=True, isolation_backend=proc.backend)
 
     def _run_unittest(self, cwd: str, test_relpaths: list[str], timeout: int) -> SandboxResult:
@@ -712,7 +730,7 @@ class CodeSandbox:
             dotted = relpath[:-3].replace("/", ".").replace(os.sep, ".")
             modules.append(dotted)
         if not modules:
-            return SandboxResult(success=True, stdout="", stderr="", error="sem modulo de teste valido")
+            return SandboxResult(success=True, stdout="", stderr="", error="no valid test module")
         proc = self._isolated_python(["-m", "unittest", *modules, "-v"], cwd, timeout)
 
         return SandboxResult(
@@ -726,21 +744,21 @@ class CodeSandbox:
         self, files: dict[str, str], timeout: int | None = None,
     ) -> SandboxResult:
         """
-        Roda `ruff check` sobre o codigo Python GERADO, num diretorio
-        temporario isolado, com a config curada de _GENERATED_RUFF_CONFIG
-        (so regras de defeito real -- ver comentario na constante).
+        Runs `ruff check` over the GENERATED Python code, in an isolated
+        temporary directory, with the curated config _GENERATED_RUFF_CONFIG
+        (only real-defect rules -- see the comment on the constant).
 
-        Fecha a assimetria historica do projeto: o CI do NVDAStudio exige
-        `ruff check` limpo no proprio codigo, mas o addon entregue ao
-        usuario nunca passava por lint nenhum -- so AST, import e pytest.
+        Closes the project's historical asymmetry: NVDAStudio's CI requires a clean
+        `ruff check` on its own code, but the add-on delivered to the
+        user never went through any lint -- only AST, import and pytest.
 
-        FAIL-OPEN (mesma politica de `pytest_indisponivel` em _run_pytest):
-        se o ruff nao estiver instalado no interpretador -- caso normal no
-        Python embutido de uma instalacao real do NVDA -- retorna
-        success=True com error="ruff_indisponivel". Ausencia de ferramenta
-        e falha de INFRAESTRUTURA, nunca defeito do addon; bloquear o
+        FAIL-OPEN (same policy as `pytest_unavailable` in _run_pytest):
+        if ruff is not installed in the interpreter -- the normal case in the
+        embedded Python of a real NVDA installation -- it returns
+        success=True with error="ruff_unavailable". The absence of a tool
+        is an INFRASTRUCTURE failure, never an add-on defect; blocking the
 
-        nao executa o addon. `ruff` faz analise estatica.
+        does not execute the add-on. `ruff` does static analysis.
         """
         return self._run_static_tool(
             files,
@@ -748,7 +766,7 @@ class CodeSandbox:
             tool_argv=["-m", "ruff", "check", "--output-format=concise", "--no-cache", "."],
             prefix="nvdastudio_lint_",
             missing_pattern=r"No module named .?ruff",
-            missing_error="ruff_indisponivel",
+            missing_error="ruff_unavailable",
             config_filename="ruff.toml",
             config_content=_GENERATED_RUFF_CONFIG,
         )
@@ -761,18 +779,18 @@ class CodeSandbox:
         self, files: dict[str, str], timeout: int | None = None,
     ) -> SandboxResult:
         """
-        Roda `mypy` sobre o codigo Python GERADO, em diretorio isolado.
+        Runs `mypy` over the GENERATED Python code, in an isolated directory.
 
-        --ignore-missing-imports e obrigatorio aqui: os modulos que o addon
-        importa (globalPluginHandler, addonHandler, ui, wx, config...) sao
-        injetados pelo PROCESSO do NVDA em tempo de execucao e nao existem
-        no interpretador de dev -- exatamente o mesmo motivo que levou o
-        mypy.ini da raiz a declarar `ignore_missing_imports` para cada um
-        deles. Sem a flag, 100% do resultado seria import-not-found.
+        --ignore-missing-imports is mandatory here: the modules the add-on
+        imports (globalPluginHandler, addonHandler, ui, wx, config...) are
+        injected by the NVDA PROCESS at runtime and do not exist
+        in the dev interpreter -- exactly the same reason that led the
+        root mypy.ini to declare `ignore_missing_imports` for each one of
+        them. Without the flag, 100% of the result would be import-not-found.
 
-        FAIL-OPEN identico a lint_check() quando o mypy nao esta instalado.
+        FAIL-OPEN identical to lint_check() when mypy is not installed.
 
-        nao executa o addon. `mypy` faz analise estatica.
+        does not execute the add-on. `mypy` does static analysis.
         """
         return self._run_static_tool(
             files,
@@ -788,7 +806,7 @@ class CodeSandbox:
             ],
             prefix="nvdastudio_typecheck_",
             missing_pattern=r"No module named .?mypy",
-            missing_error="mypy_indisponivel",
+            missing_error="mypy_unavailable",
             config_filename="mypy.ini",
             config_content=_GENERATED_MYPY_CONFIG,
         )
@@ -805,14 +823,14 @@ class CodeSandbox:
         config_content: str | None = None,
     ) -> SandboxResult:
         """
-        Escreve `files` num tmpdir e roda uma ferramenta de analise ESTATICA
-        (ruff/mypy) sobre ele, em subprocesso isolado com timeout.
+        Writes `files` to a tmpdir and runs a STATIC analysis tool
+        (ruff/mypy) over it, in an isolated subprocess with a timeout.
 
-        Compartilhado por lint_check() e typecheck() -- a unica diferenca
-        real entre as duas e o argv e o arquivo de config, entao duplicar
-        toda a preparacao de tmpdir/subprocesso/degradacao seria a
+        Shared by lint_check() and typecheck() -- the only real difference
+        between the two is the argv and the config file, so duplicating
+        all the tmpdir/subprocess/degradation preparation would be the
 
-        Nunca levanta excecao: qualquer falha de infraestrutura vira
+        Never raises: any infrastructure failure becomes
         SandboxResult(success=True, error=...) -- fail-open.
         """
         if timeout is None:
@@ -823,7 +841,7 @@ class CodeSandbox:
             if rel.replace("\\", "/").endswith(".py")
         }
         if not py_files:
-            return SandboxResult(success=True, stdout="", stderr="", error="sem arquivo Python")
+            return SandboxResult(success=True, stdout="", stderr="", error="no Python file")
 
         tmpdir = tempfile.mkdtemp(prefix=prefix)
         try:
@@ -836,18 +854,18 @@ class CodeSandbox:
                 proc = _run_hidden(
                     [(_PYTHON or sys.executable), *tool_argv],
                     capture_output=True, text=True, timeout=timeout, cwd=tmpdir,
-                    # Ambiente REAL herdado, mesmo motivo ja documentado em
-                    # _run_pytest(): ruff/mypy costumam estar instalados como
-                    # --user e vivem num site-packages que so e resolvido via
-                    # APPDATA/USERPROFILE no Windows.
+                    # REAL inherited environment, same reason already documented in
+                    # _run_pytest(): ruff/mypy are usually installed as
+                    # --user and live in a site-packages that is only resolved via
+                    # APPDATA/USERPROFILE on Windows.
                     env=os.environ.copy(),
                 )
             except subprocess.TimeoutExpired:
-                # Timeout de ferramenta estatica e infraestrutura lenta, nao
-                # defeito do addon -- fail-open igual a ausencia da ferramenta.
+                # A static tool timeout is slow infrastructure, not an
+                # add-on defect -- fail-open like the absence of the tool.
                 return SandboxResult(
                     success=True, stdout="", stderr="",
-                    error=f"analise estatica excedeu {timeout}s", timed_out=True,
+                    error=f"static analysis exceeded {timeout}s", timed_out=True,
                 )
             except OSError:
                 return SandboxResult(success=True, stdout="", stderr="", error=missing_error)
@@ -861,12 +879,12 @@ class CodeSandbox:
                 exit_code=proc.returncode,
             )
         except Exception as exc:
-            _logger.error("[Sandbox] Erro ao preparar analise estatica: %s", exc)
+            _logger.error("[Sandbox] Error preparing static analysis: %s", exc)
             return SandboxResult(success=True, stdout="", stderr="", error=str(exc))
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 
-# Instancia global
+# Global instance
 sandbox = CodeSandbox()

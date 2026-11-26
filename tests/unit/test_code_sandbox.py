@@ -116,7 +116,7 @@ class TestValidateAddonExecution:
 			{"globalPlugins/MeuAddon/__init__.py": "def util():\n\treturn 1\n"}
 		)
 		assert result.success is True
-		assert "SEM_CLASSE_PRINCIPAL_ENCONTRADA" in result.stdout
+		assert "NO_MAIN_CLASS_FOUND" in result.stdout
 
 	def test_sem_arquivo_globalplugins_retorna_sucesso_sem_validar(self):
 		"""Nada pra validar (ex: so manifest.ini/docs) -- nao e erro."""
@@ -162,7 +162,7 @@ class TestKeyboardFocusManagementVerification:
 			{"globalPlugins/MeuAddon/__init__.py": code}
 		)
 		assert result.success is True
-		assert "AVISO_BINDGESTURE_SEM_UNBIND: GlobalPlugin" in result.stdout
+		assert "WARNING_BINDGESTURE_WITHOUT_UNBIND: GlobalPlugin" in result.stdout
 
 	def test_bindgesture_com_unbind_correspondente_nao_gera_aviso(self):
 		from nvdastudio_mcp.code_sandbox import CodeSandbox
@@ -177,7 +177,7 @@ class TestKeyboardFocusManagementVerification:
 			{"globalPlugins/MeuAddon/__init__.py": code}
 		)
 		assert result.success is True
-		assert "AVISO_BINDGESTURE_SEM_UNBIND" not in result.stdout
+		assert "WARNING_BINDGESTURE_WITHOUT_UNBIND" not in result.stdout
 
 	def test_gestures_estatico_via_dict_de_classe_nao_gera_aviso(self):
 		"""Padrao NVDA normal (__gestures = {...}) nao chama self.bindGesture()
@@ -194,4 +194,4 @@ class TestKeyboardFocusManagementVerification:
 			{"globalPlugins/MeuAddon/__init__.py": code}
 		)
 		assert result.success is True
-		assert "AVISO_BINDGESTURE_SEM_UNBIND" not in result.stdout
+		assert "WARNING_BINDGESTURE_WITHOUT_UNBIND" not in result.stdout

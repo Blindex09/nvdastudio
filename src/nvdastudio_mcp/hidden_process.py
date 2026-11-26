@@ -1,13 +1,12 @@
-"""Suprime a janela de console de subprocessos no Windows.
+"""Suppresses the console window of subprocesses on Windows.
 
-Um subprocesso de app de console (o `droid` da Factory, o python do sandbox,
-o pytest, o pip) abre uma janela de terminal no Windows. Essa janela ROUBA O
-FOCO: para um usuario de leitor de tela, o leitor de tela salta para o terminal e ele perde
-o lugar na janela do NVDAStudio -- exatamente o que nao pode acontecer. Todo
+A console-app subprocess (the sandbox python, pytest, pip) opens a terminal
+window on Windows. That window STEALS FOCUS: for a screen reader user, the
+screen reader jumps to the terminal and they lose their place in the
+NVDAStudio window -- exactly what must not happen.
 
-CREATE_NO_WINDOW so existe no Windows; nas outras plataformas o getattr
-devolve 0 (no-op), entao passar creationflags=CREATE_NO_WINDOW e seguro em
-qualquer OS.
+CREATE_NO_WINDOW only exists on Windows; on other platforms getattr returns
+0 (no-op), so passing creationflags=CREATE_NO_WINDOW is safe on any OS.
 """
 
 import os
@@ -15,29 +14,29 @@ import shutil
 import subprocess
 import sys
 
-# 0 fora do Windows -- OR com 0 nao muda nada, entao o flag e portavel.
+# 0 outside Windows -- OR with 0 changes nothing, so the flag is portable.
 CREATE_NO_WINDOW: int = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 
 
 def find_python() -> "str | None":
-	"""Caminho de um python.exe REAL, ou None se so houver o nvda.exe.
+	"""Path of a REAL python.exe, or None if there is only nvda.exe.
 
-	DENTRO do NVDA, sys.executable e o `nvda.exe` -- rodar ele como
-	interpretador falha com WinError 740 (requer elevacao), que era exatamente
-	o loop de "Erro de execucao real" na validacao de codigo. O addon_builder ja
-	tratava isso para o pip; esta e a fonte unica , usada tambem pelo
+	INSIDE NVDA, sys.executable is `nvda.exe` -- running it as an
+	interpreter fails with WinError 740 (requires elevation), which was exactly
+	the "real execution error" loop in code validation. addon_builder already
+	handled this for pip; this is the single source, also used by
 	code_sandbox.
 
-	Retorna None quando so ha o nvda.exe: o chamador deve PULAR a validacao por
-	subprocesso (nao ha como executar), nunca tratar a ausencia de python como
-	defeito do codigo gerado.
+	Returns None when there is only nvda.exe: the caller must SKIP validation by
+	subprocess (there is no way to execute), and never treat the absence of
+	python as a defect of the generated code.
 	"""
 	exe = sys.executable or ""
 	base = os.path.basename(exe).lower()
 	if "python" in base and "nvda" not in base:
-		# pytest/CI/dev: sys.executable ja e um python real.
+		# pytest/CI/dev: sys.executable is already a real python.
 		return exe
 	for candidato in ("python.exe", "python3.exe", "python", "python3"):
 		achado = shutil.which(candidato)

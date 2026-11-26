@@ -69,7 +69,7 @@ class TestPegaADiscordancia:
 
 		problemas = _check_cross_module_signatures(pasta)
 
-		assert any("callback" in p and "obrigatorio" in p for p in problemas), problemas
+		assert any("callback" in p and "required" in p for p in problemas), problemas
 
 	def test_posicionais_demais(self, tmp_path):
 		pasta = _montar(tmp_path, {
@@ -83,7 +83,7 @@ class TestPegaADiscordancia:
 
 		problemas = _check_cross_module_signatures(pasta)
 
-		assert any("posicional" in p for p in problemas), problemas
+		assert any("positional" in p for p in problemas), problemas
 
 	def test_funcao_de_modulo_irmao(self, tmp_path):
 		"""`configSpec.apply_config_spec()` e o padrao real do pipeline."""

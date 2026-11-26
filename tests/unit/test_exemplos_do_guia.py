@@ -28,30 +28,30 @@ class TestSecureMode:
 	def test_mostra_o_erro_de_checar_so_no_init(self):
 		"""O ponto que o modelo erra: script definido a nivel de classe roda
 		mesmo com o __init__ retornando cedo."""
-		i = NVDA_GUIDE.index("NVDA-062 Critico")
+		i = NVDA_GUIDE.index("NVDA-062 Critical")
 		trecho = NVDA_GUIDE[i:i + 2500]
-		assert "Errado" in trecho and "Correto" in trecho
+		assert "Wrong" in trecho and "Correct" in trecho
 		assert "__init__" in trecho
 
 	def test_cobre_o_painel_de_configuracoes(self):
 		"""Reprovacao real medida: makeSettings() lia a chave de API e SO
 		depois desabilitava o controle."""
-		i = NVDA_GUIDE.index("NVDA-062 Critico")
+		i = NVDA_GUIDE.index("NVDA-062 Critical")
 		trecho = NVDA_GUIDE[i:i + 2500]
 		assert "makeSettings" in trecho
 		assert "onSave" in trecho
 
 	def test_proibe_logar_credencial(self):
-		i = NVDA_GUIDE.index("NVDA-062 Critico")
+		i = NVDA_GUIDE.index("NVDA-062 Critical")
 		trecho = NVDA_GUIDE[i:i + 2500]
-		assert "NUNCA logue" in trecho
+		assert "NEVER log" in trecho
 
 
 class TestFeedbackDeFalhaBloqueada:
 	def test_falha_bloqueada_precisa_ser_falada(self):
 		"""O usuario de leitor de tela apertou salvar e nao ouviu nada -- para ele, funcionou.
 		Warning no log nao e feedback."""
-		assert "nao foi salva" in NVDA_GUIDE
+		assert "was not saved" in NVDA_GUIDE
 		assert "shouldWriteToDisk" in NVDA_GUIDE
 
 
@@ -60,10 +60,10 @@ class TestDialogoAcessivel:
 		assert "CreateStdDialogButtonSizer" in NVDA_GUIDE
 
 	def test_explica_o_que_o_sizer_padrao_resolve(self):
-		i = NVDA_GUIDE.index("WX-A11Y-004 Serio")
+		i = NVDA_GUIDE.index("WX-A11Y-004 Serious")
 		trecho = NVDA_GUIDE[i:i + 900]
 		assert "Escape" in trecho
-		assert "tabulacao" in trecho or "ordem de foco" in trecho
+		assert "tab order" in trecho or "focus order" in trecho
 
 
 def test_toda_regra_critica_do_catalogo_com_reprovacao_cara_tem_template():

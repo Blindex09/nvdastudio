@@ -100,7 +100,7 @@ def test_nome_com_caminho_vira_error_de_ferramenta(ws):
     async def scenario(client):
         return await _call(client, "addon_validate", addon="../fora")
 
-    assert "invalido" in _run(ws, scenario)["_error"]
+    assert "invalid" in _run(ws, scenario)["_error"]
 
 
 def test_manifest_nao_pode_ser_apagado(ws):
@@ -145,7 +145,7 @@ def test_etapa_desconhecida_e_recusada(ws):
         await _call(client, "addon_create", name="Ola")
         return await _call(client, "addon_test", addon="Ola", stages=["magia"])
 
-    assert "desconhecidas" in _run(ws, scenario)["_error"]
+    assert "unknown stages" in _run(ws, scenario)["_error"]
 
 
 def test_conhecimento_do_nvda(ws):
@@ -169,7 +169,7 @@ def test_leitura_marca_o_conteudo_como_dado(ws):
         await _call(client, "addon_create", name="Ola")
         return await _call(client, "addon_read", addon="Ola", path="manifest.ini")
 
-    assert "DADO NAO CONFIAVEL" in _run(ws, scenario)["text"]
+    assert "UNTRUSTED DATA" in _run(ws, scenario)["text"]
 
 
 def test_servidor_por_stdio_responde_e_nao_suja_o_stdout(tmp_path):
@@ -191,15 +191,16 @@ def test_servidor_por_stdio_responde_e_nao_suja_o_stdout(tmp_path):
 
 
 def test_verificacao_que_nao_rodou_nao_vira_ok(ws):
-    """Resiliencia de um app module (sem globalPlugins) nao executa nada: deve voltar not_run."""
+    """Sem nenhum ponto de entrada nao ha o que carregar: not_run, nunca ok."""
 
     async def scenario(client):
-        await _call(client, "addon_create", name="App", kind="appModule", app="notepad")
-        return await _call(client, "addon_test", addon="App", stages=["resilience"])
+        await _call(client, "addon_create", name="Ola")
+        await _call(client, "addon_delete", addon="Ola", path="globalPlugins/Ola/__init__.py")
+        return await _call(client, "addon_test", addon="Ola", stages=["load", "resilience"])
 
     result = _run(ws, scenario)
-    assert result["stages"][0]["status"] == "not_run"
-    assert result["not_run"] == ["resilience"]
+    assert [s["status"] for s in result["stages"]] == ["not_run", "not_run"]
+    assert result["not_run"] == ["load", "resilience"]
 
 
 def test_dependencias_ignoradas_voltam_com_o_motivo(ws):
@@ -230,3 +231,82 @@ def test_addon_sem_url_informada_nao_ganha_endereco_falso(ws):
         return await _call(client, "addon_read", addon="Ola", path="manifest.ini")
 
     assert "url =" not in _run(ws, scenario)["text"]
+
+
+def test_app_module_e_carregado_de_verdade_no_container(ws):
+    """Com Docker disponivel (ele sobe sozinho), o app module e importado e instanciado."""
+
+    async def scenario(client):
+        await _call(client, "addon_create", name="App", kind="appModule", app="notepad")
+        return await _call(client, "addon_test", addon="App", stages=["load", "resilience"])
+
+    result = _run(ws, scenario)
+    assert [s["status"] for s in result["stages"]] == ["ok", "ok"], result
+    assert "no entry point" not in str(result)
+
+
+def test_app_module_com_erro_de_nome_reprova_no_carregamento(ws):
+    code = (
+        "import appModuleHandler" + chr(10) + chr(10) + chr(10)
+        + "class AppModule(appModuleHandler.AppModule):" + chr(10)
+        + chr(9) + "valor = nome_que_nao_existe" + chr(10)
+    )
+
+    async def scenario(client):
+        await _call(client, "addon_create", name="App", kind="appModule", app="notepad")
+        await _call(client, "addon_write", addon="App", files=[{"path": "appModules/notepad.py", "content": code}])
+        return await _call(client, "addon_test", addon="App", stages=["load"])
+
+    result = _run(ws, scenario)
+    assert result["failed"] == ["load"], result
+
+
+def test_execucao_pulada_por_seguranca_nao_vira_ok(ws):
+    code = (
+        "import os, globalPluginHandler" + chr(10) + "os.remove('x.txt')" + chr(10)
+        + "class GlobalPlugin(globalPluginHandler.GlobalPlugin):" + chr(10) + chr(9) + "pass" + chr(10)
+    )
+
+    async def scenario(client):
+        await _call(client, "addon_create", name="Ola")
+        await _call(client, "addon_write", addon="Ola", files=[{"path": "globalPlugins/Ola/__init__.py", "content": code}])
+        return await _call(client, "addon_test", addon="Ola", stages=["load"])
+
+    result = _run(ws, scenario)
+    assert result["stages"][0]["status"] == "not_run" and "SKIPPED_FOR_SAFETY" in result["stages"][0]["error"]
+
+
+def _addon_with_unit_test(passing: bool) -> list[dict[str, str]]:
+    nl, tab = chr(10), chr(9)
+    plugin = (
+        "import globalPluginHandler" + nl + nl + nl
+        + "class GlobalPlugin(globalPluginHandler.GlobalPlugin):" + nl + tab + "pass" + nl
+    )
+    test = (
+        "import unittest" + nl + nl + nl + "class T(unittest.TestCase):" + nl
+        + tab + "def test_soma(self):" + nl + tab + tab
+        + f"self.assertEqual(1 + 1, {2 if passing else 3})" + nl
+    )
+    return [
+        {"path": "globalPlugins/Ola/__init__.py", "content": plugin},
+        {"path": "tests/test_soma.py", "content": test},
+    ]
+
+
+def test_testes_do_proprio_addon_rodam_no_container(ws):
+    async def scenario(client):
+        await _call(client, "addon_create", name="Ola")
+        await _call(client, "addon_write", addon="Ola", files=_addon_with_unit_test(True))
+        return await _call(client, "addon_test", addon="Ola", stages=["tests"])
+
+    result = _run(ws, scenario)
+    assert result["stages"][0]["status"] == "ok", result
+
+
+def test_teste_do_addon_que_falha_reprova_a_etapa(ws):
+    async def scenario(client):
+        await _call(client, "addon_create", name="Ola")
+        await _call(client, "addon_write", addon="Ola", files=_addon_with_unit_test(False))
+        return await _call(client, "addon_test", addon="Ola", stages=["tests"])
+
+    assert _run(ws, scenario)["failed"] == ["tests"]

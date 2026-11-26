@@ -1,17 +1,17 @@
-"""Execução de código não confiável com isolamento verificável.
+"""Execution of untrusted code in a Docker container, with no network.
 
-O backend padrão usa um contêiner local já instalado. A imagem nunca é
-baixada automaticamente: sem backend disponível a operação falha fechada.
+Docker is prepared by `docker_runtime` (it starts Docker Desktop and pulls the
+Python image, if missing). Without Docker available the operation fails closed, with the reason.
 """
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 from dataclasses import dataclass
 
-MODULE_VERSION = "1.0.0"
-DEFAULT_IMAGE = "python:3.11-slim"
+from .docker_runtime import _docker_cli, image_name, runtime
+
+MODULE_VERSION = "2.0.0"
 
 
 @dataclass
@@ -26,29 +26,27 @@ class IsolatedProcessResult:
 
 
 class IsolationRunner:
-	"""Executa Python sem rede e sem acesso de escrita ao host fora do workspace."""
+	"""Runs Python with no network and no write access to the host outside the workspace."""
 
 	def __init__(self, image: str | None = None):
-		self.image: str = image or os.getenv("NVDASTUDIO_SANDBOX_IMAGE") or DEFAULT_IMAGE
-		self._docker = shutil.which("docker")
+		self.image: str = image or image_name()
+		self._docker = _docker_cli()
 
 	def backend_available(self) -> tuple[bool, str]:
-		docker = self._docker
-		if not docker:
-			return False, "Docker não está instalado"
-		try:
-			probe = subprocess.run(
-				[docker, "image", "inspect", self.image],
-				capture_output=True, text=True, timeout=8, check=False,
-			)
-		except (OSError, subprocess.TimeoutExpired) as exc:
-			return False, f"Docker indisponível: {exc}"
-		if probe.returncode != 0:
-			return False, (
-				f"imagem de isolamento ausente: {self.image}. "
-				"Instale-a explicitamente antes de executar código gerado"
-			)
-		return True, "docker"
+		"""Ensures Docker (starts it by itself, if needed) and returns (ready, reason)."""
+		ready, reason = runtime.ensure()
+		if ready and self.image != image_name():
+			# image chosen by hand for this runner: check only that one
+			try:
+				probe = subprocess.run(
+					[self._docker or "docker", "image", "inspect", self.image],
+					capture_output=True, text=True, timeout=8, check=False, stdin=subprocess.DEVNULL,
+				)
+			except (OSError, subprocess.TimeoutExpired) as exc:
+				return False, f"Docker unavailable: {exc}"
+			if probe.returncode != 0:
+				return False, f"isolation image missing: {self.image}"
+		return ready, reason
 
 	def run_python(
 		self,
@@ -65,8 +63,8 @@ class IsolationRunner:
 		if not os.path.isdir(root):
 			return IsolatedProcessResult(error="ISOLATION_INVALID_WORKSPACE")
 		docker = self._docker
-		if not docker:  # defesa contra alteração entre o probe e a execução
-			return IsolatedProcessResult(error="ISOLATION_UNAVAILABLE: Docker não está instalado")
+		if not docker:  # defense against a change between the probe and the execution
+			return IsolatedProcessResult(error="ISOLATION_UNAVAILABLE: Docker is not installed")
 		assert docker is not None
 
 		command = [
@@ -83,7 +81,7 @@ class IsolationRunner:
 			"--env", "TMP=/tmp",
 			"--env", "HOME=/tmp/home",
 		]
-		# Lista fechada: nenhuma chave, proxy, HOME ou variável do usuário vaza.
+		# Closed list: no key, proxy, HOME or user variable leaks.
 		for key, value in (env or {}).items():
 			if key in {"PYTHONPATH", "PYTEST_DISABLE_PLUGIN_AUTOLOAD", "NVDASTUDIO_FAULT_SCENARIO"}:
 				command.extend(["--env", f"{key}={value}"])
@@ -91,6 +89,7 @@ class IsolationRunner:
 		try:
 			proc = subprocess.run(
 				command, capture_output=True, text=True, timeout=timeout, check=False,
+				stdin=subprocess.DEVNULL,
 			)
 			return IsolatedProcessResult(
 				returncode=proc.returncode,
@@ -101,7 +100,7 @@ class IsolationRunner:
 			return IsolatedProcessResult(
 				stdout=(exc.stdout or "")[:5000] if isinstance(exc.stdout, str) else "",
 				stderr=(exc.stderr or "")[:5000] if isinstance(exc.stderr, str) else "",
-				error=f"Timeout: execução isolada excedeu {timeout}s",
+				error=f"Timeout: isolated execution exceeded {timeout}s",
 				timed_out=True, isolated=True, backend="docker",
 			)
 		except OSError as exc:

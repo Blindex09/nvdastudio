@@ -50,13 +50,13 @@ _USER_GUIDE_HTML = """<!DOCTYPE html>
 
 class TestE9EstruturaBasica:
 	"""
-	validate_addon_structure deve reportar ESTRUTURA-001/002/003 quando
+	validate_addon_structure deve reportar STRUCTURE-001/002/003 quando
 	os arquivos ou campos obrigatorios estiverem ausentes.
 	"""
 
 	def test_sem_manifest_gera_estrutura001(self, tmp_path):
 		"""
-		Addon sem manifest.ini deve reportar ESTRUTURA-001.
+		Addon sem manifest.ini deve reportar STRUCTURE-001.
 		Skill §9: manifest.ini e obrigatorio e deve estar na raiz do addon.
 
 		"Bug 1 fallback") -- quando nenhum bloco manifest.ini e extraido da
@@ -65,7 +65,7 @@ class TestE9EstruturaBasica:
 		validate_addon_structure() com manifest ausente -- o teste original
 		(que usava save_addon_files) ficou obsoleto. Agora testa
 		validate_addon_structure() diretamente contra uma pasta escrita a
-		mao sem manifest.ini -- o invariante real (ESTRUTURA-001 dispara
+		mao sem manifest.ini -- o invariante real (STRUCTURE-001 dispara
 		quando falta manifest.ini) continua verdadeiro, so nao e mais
 		alcancavel via save_addon_files() com blocks incompletos.
 		"""
@@ -80,15 +80,15 @@ class TestE9EstruturaBasica:
 		(doc_dir / "userGuide.html").write_text(_USER_GUIDE_HTML, encoding="utf-8")
 
 		problems = validate_addon_structure(str(addon_folder))
-		e001 = [p for p in problems if "ESTRUTURA-001" in p]
+		e001 = [p for p in problems if "STRUCTURE-001" in p]
 		assert len(e001) >= 1, (
-			f"Pasta de addon sem manifest.ini deve gerar ESTRUTURA-001. "
+			f"Pasta de addon sem manifest.ini deve gerar STRUCTURE-001. "
 			f"Problemas encontrados: {problems}"
 		)
 
 	def test_manifest_sem_campo_obrigatorio_gera_estrutura002(self, tmp_path):
 		"""
-		Manifest sem 'version' deve reportar ESTRUTURA-002.
+		Manifest sem 'version' deve reportar STRUCTURE-002.
 		Campos obrigatorios: name, summary, version, minimumNVDAVersion.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
@@ -103,18 +103,18 @@ class TestE9EstruturaBasica:
 			blocks, str(tmp_path), "AddonE9", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		e002 = [p for p in problems if "ESTRUTURA-002" in p]
+		e002 = [p for p in problems if "STRUCTURE-002" in p]
 		assert len(e002) >= 1, (
-			f"Manifest sem 'version' deve gerar ESTRUTURA-002. "
+			f"Manifest sem 'version' deve gerar STRUCTURE-002. "
 			f"Problemas: {problems}"
 		)
 		assert any("version" in p.lower() for p in e002), (
-			f"ESTRUTURA-002 deve mencionar o campo ausente 'version'. Mensagem: {e002}"
+			f"STRUCTURE-002 deve mencionar o campo ausente 'version'. Mensagem: {e002}"
 		)
 
 	def test_sem_globalPlugins_gera_estrutura003(self, tmp_path):
 		"""
-		Addon sem pasta globalPlugins/ deve reportar ESTRUTURA-003.
+		Addon sem pasta globalPlugins/ deve reportar STRUCTURE-003.
 		Skill §3: plugin code reside em globalPlugins/.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
@@ -129,15 +129,15 @@ class TestE9EstruturaBasica:
 			blocks, str(tmp_path), "AddonE9", use_timestamp=False,
 		)
 		problems = validate_addon_structure(addon_folder)
-		e003 = [p for p in problems if "ESTRUTURA-003" in p]
+		e003 = [p for p in problems if "STRUCTURE-003" in p]
 		assert len(e003) >= 1, (
-			f"Addon sem globalPlugins/ deve gerar ESTRUTURA-003. "
+			f"Addon sem globalPlugins/ deve gerar STRUCTURE-003. "
 			f"Problemas: {problems}"
 		)
 
 	def test_addon_correto_nao_gera_estrutura001_002_003(self, tmp_path):
 		"""
-		Addon estruturalmente correto nao deve gerar ESTRUTURA-001, 002 ou 003.
+		Addon estruturalmente correto nao deve gerar STRUCTURE-001, 002 ou 003.
 		"""
 		from nvdastudio_mcp.addon_builder import validate_addon_structure
 		from tests.support import save_addon_files
@@ -153,9 +153,9 @@ class TestE9EstruturaBasica:
 		problems = validate_addon_structure(addon_folder)
 		estrutura_criticos = [
 			p for p in problems
-			if "ESTRUTURA-001" in p or "ESTRUTURA-002" in p or "ESTRUTURA-003" in p
+			if "STRUCTURE-001" in p or "STRUCTURE-002" in p or "STRUCTURE-003" in p
 		]
 		assert estrutura_criticos == [], (
-			f"Addon correto nao deve ter ESTRUTURA-001/002/003. "
+			f"Addon correto nao deve ter STRUCTURE-001/002/003. "
 			f"Problemas: {problems}"
 		)

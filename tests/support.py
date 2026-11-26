@@ -55,7 +55,7 @@ def _deduplicate_blocks(blocks: list[dict]) -> list[dict]:
 
 	# Filtra arquivos .py orfaos em globalPlugins/: apenas arquivos com nomes
 	# sinteticos (arquivo_N.py) sem GlobalPlugin/AppModule sao residuos de montagem
-	# que causam ESTRUTURA-005 no validador.
+	# que causam STRUCTURE-005 no validador.
 	# Modulos de suporte legitimos (settings_panel.py, gemini_service.py, etc.)
 	# sao SEMPRE preservados, independente do conteudo — foram gerados com nome
 	# explicito pelo modelo e sao importados pelo __init__.py.
@@ -164,7 +164,7 @@ def save_addon_files(
 
 	# Se nenhum bloco manifest.ini existe nos
 	# blocos extraidos, gera um manifest minimo deterministico. Sem isso,
-	# o addon nao instala (ESTRUTURA-001). Causa raiz: modelo 503 durante
+	# o addon nao instala (STRUCTURE-001). Causa raiz: modelo 503 durante
 	_has_manifest = any(
 		(b.get("filename") or "").replace("\\", "/").lstrip("/").lower() == "manifest.ini"
 		or (b.get("filename") or "").replace("\\", "/").lstrip("/").lower().endswith("/manifest.ini")

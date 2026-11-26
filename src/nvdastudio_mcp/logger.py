@@ -1,9 +1,9 @@
-"""Registro do servidor MCP.
+"""Logging of the MCP server.
 
-Num servidor MCP por stdio, o stdout pertence ao protocolo: qualquer linha
-escrita ali corrompe a conversa com o cliente. Por isso o registro vai
-sempre para o stderr e, se a pessoa configurar NVDASTUDIO_LOG_DIR, tambem
-para um arquivo diario nessa pasta.
+In an MCP server over stdio, stdout belongs to the protocol: any line written
+there corrupts the conversation with the client. So logging always goes to
+stderr and, if the person sets NVDASTUDIO_LOG_DIR, also to a daily file in
+that folder.
 """
 
 import logging
@@ -26,7 +26,7 @@ _SECRET_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 
 
 def redact_secrets(text: str) -> str:
-    """Troca por um marcador o que tem formato de chave ou token de API."""
+    """Replaces with a marker whatever looks like an API key or token."""
     redacted = text
     for pattern in _SECRET_PATTERNS:
         redacted = pattern.sub("[REDACTED]", redacted)
@@ -42,7 +42,7 @@ _FORMAT = "%(asctime)s [%(levelname)s] [%(name)s] %(message)s"
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Devolve o logger `nvdastudio.<name>`, com saida em stderr (e arquivo opcional)."""
+    """Returns the `nvdastudio.<name>` logger, writing to stderr (and an optional file)."""
     logger = logging.getLogger(f"nvdastudio.{name}")
     if logger.handlers:
         return logger
@@ -67,10 +67,10 @@ def get_logger(name: str) -> logging.Logger:
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
         except OSError:
-            logger.warning("NVDASTUDIO_LOG_DIR inacessivel: %s", log_dir)
+            logger.warning("NVDASTUDIO_LOG_DIR inaccessible: %s", log_dir)
     return logger
 
 
 def log_decision(logger: logging.Logger, decision: str, context: str = "") -> None:
-    """Registra uma decisao relevante do servidor."""
+    """Logs a relevant decision of the server."""
     logger.info("[DECISION] %s context=%s", decision, context)

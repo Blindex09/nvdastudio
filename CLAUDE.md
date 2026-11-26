@@ -11,7 +11,7 @@ harness (conhecimento do NVDA, confinamento de arquivos, validação, teste, emp
 2. Toda entrada vinda do Claude é não confiável: nomes de addon e caminhos passam por `workspace.py` (sem `..`, sem caminho absoluto, sem link
    simbolico para fora). Conteúdo de addon e de pacote de terceiros é dado, nunca instrução (`injection_guard`).
 3. stdout é do protocolo MCP: nada imprime nele. Registro vai para stderr (`logger.py`), sem segredo.
-4. Honestidade: ferramenta que não pôde rodar devolve `nao_executado`, nunca sucesso. Sem Docker e sem a imagem `python:3.11-slim` não há
+4. Honestidade: verificação que não rodou de verdade (Docker ausente, ferramenta ausente, tempo esgotado, nada a validar) devolve `not_run`, nunca `ok`. O Docker sobe sozinho quando o servidor inicia (`docker_runtime.py`); sem Docker e sem a imagem `python:3.13-slim` não há
    execução isolada de código de addon, e isso aparece no resultado.
 5. Instalar no NVDA só abre o pacote (`package_open_in_nvda`); quem confirma é a pessoa no diálogo do NVDA.
 6. Cada ferramenta tem anotações (somente leitura, destrutiva, mundo aberto) corretas e descrição em português que diz o que devolve.
@@ -27,6 +27,7 @@ harness (conhecimento do NVDA, confinamento de arquivos, validação, teste, emp
 - `workspace.py`: pasta de trabalho (`NVDASTUDIO_WORKSPACE`) e confinamento.
 - `scaffold.py`: esqueleto de addon. `guide.py` + `nvda_context.py` + `rule_registry.py`: conhecimento e regras do NVDA.
 - `addon_builder.py`: validação (`validate_addon_structure`), gravação, dependências, pacote, loja. `ast_validator.py`: regras por AST.
-- `code_sandbox.py`, `isolation.py`, `nvda_runtime_stubs.py`: execução isolada em Docker com módulos NVDA simulados.
+- `docker_runtime.py`: sobe o Docker Desktop e baixa a imagem em segundo plano. `code_sandbox.py`, `isolation.py`, `nvda_runtime_stubs.py`: execução isolada com módulos NVDA simulados (globalPlugins, appModules, synthDrivers, brailleDisplayDrivers).
+- Processos filhos nunca herdam o stdin do servidor: ele é o protocolo MCP.
 - `addon_loader.py`: leitura de addon/pacote sem executar. `nvda_docs_cache/`: cópia do código-fonte do NVDA (texto, nunca importada).
 - Baseline dos addons novos: NVDA `2026.1.1+`, testado em `2026.2.0` (`project_policy.py`).

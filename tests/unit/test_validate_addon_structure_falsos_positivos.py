@@ -72,14 +72,14 @@ class MeuAddonSettingsPanel(SettingsPanel):
 class TestModulosDeSuporteNaoGeram005_003_004:
     """
     Comportamento central: modulos de suporte nunca devem gerar
-    ESTRUTURA-005, NVDA-003 e NVDA-004.
+    STRUCTURE-005, NVDA-003 e NVDA-004.
 
     skill: testing-patterns — describe blocks por comportamento, nao por funcao.
     skill: unit-testing-test-generate — identifica o cenario de producao real (GmailSummarizer).
     """
 
     def test_modulo_servico_nao_gera_estrutura_005(self, tmp_path):
-        """gmail_service.py sem GlobalPlugin nao deve gerar ESTRUTURA-005."""
+        """gmail_service.py sem GlobalPlugin nao deve gerar STRUCTURE-005."""
         from nvdastudio_mcp.addon_builder import validate_addon_structure
         addon = _make_addon(
             tmp_path,
@@ -88,8 +88,8 @@ class TestModulosDeSuporteNaoGeram005_003_004:
         )
         problems = validate_addon_structure(addon)
         ids = [p.split(":")[0] for p in problems]
-        assert "ESTRUTURA-005" not in ids, (
-            "ESTRUTURA-005 nao deve aparecer para modulos de suporte — "
+        assert "STRUCTURE-005" not in ids, (
+            "STRUCTURE-005 nao deve aparecer para modulos de suporte — "
             f"problemas: {problems}"
         )
 
@@ -131,7 +131,7 @@ class TestModulosDeSuporteNaoGeram005_003_004:
         )
         problems = validate_addon_structure(addon)
         ids = [p.split(":")[0] for p in problems]
-        for regra in ("ESTRUTURA-005", "NVDA-003", "NVDA-004"):
+        for regra in ("STRUCTURE-005", "NVDA-003", "NVDA-004"):
             assert regra not in ids, (
                 f"{regra} nao deve aparecer para settings_panel.py — problemas: {problems}"
             )
@@ -141,7 +141,7 @@ class TestModulosDeSuporteNaoGeram005_003_004:
         Cenario de producao: addon com __init__.py correto + 5 modulos de suporte.
         Simula GmailSummarizer com gmail_service, settings_panel, ai_runner,
         summarizer_service, config_spec.
-        Nenhum deles deve gerar ESTRUTURA-005, NVDA-003, NVDA-004.
+        Nenhum deles deve gerar STRUCTURE-005, NVDA-003, NVDA-004.
         """
         from nvdastudio_mcp.addon_builder import validate_addon_structure
         extras = {
@@ -154,7 +154,7 @@ class TestModulosDeSuporteNaoGeram005_003_004:
         addon = _make_addon(tmp_path, init_code=_INIT_CORRETO, extra_files=extras)
         problems = validate_addon_structure(addon)
         falsos = [p for p in problems if any(
-            p.startswith(r) for r in ("ESTRUTURA-005", "NVDA-003", "NVDA-004")
+            p.startswith(r) for r in ("STRUCTURE-005", "NVDA-003", "NVDA-004")
         )]
         assert falsos == [], (
             f"Nenhum falso positivo esperado para modulos de suporte, "
@@ -164,12 +164,12 @@ class TestModulosDeSuporteNaoGeram005_003_004:
 
 class TestInitPyContinuaVerificado:
     """
-    ESTRUTURA-005, NVDA-003, NVDA-004 devem continuar sendo verificados
+    STRUCTURE-005, NVDA-003, NVDA-004 devem continuar sendo verificados
     no __init__.py — a correcao nao pode desativar a validacao real.
     """
 
     def test_init_sem_global_plugin_gera_005(self, tmp_path):
-        """__init__.py sem GlobalPlugin DEVE gerar ESTRUTURA-005."""
+        """__init__.py sem GlobalPlugin DEVE gerar STRUCTURE-005."""
         from nvdastudio_mcp.addon_builder import validate_addon_structure
         addon = _make_addon(
             tmp_path,
@@ -177,8 +177,8 @@ class TestInitPyContinuaVerificado:
         )
         problems = validate_addon_structure(addon)
         ids = [p.split(":")[0] for p in problems]
-        assert "ESTRUTURA-005" in ids, (
-            f"__init__.py sem GlobalPlugin deveria gerar ESTRUTURA-005 — problemas: {problems}"
+        assert "STRUCTURE-005" in ids, (
+            f"__init__.py sem GlobalPlugin deveria gerar STRUCTURE-005 — problemas: {problems}"
         )
 
     def test_init_sem_init_translation_gera_003(self, tmp_path):
@@ -288,12 +288,12 @@ class TestSubpacoteInitNaoDisparaFalsoPositivo:
         relevantes = [p for p in problems if not p.startswith("NVDA-017")]
         assert relevantes == [], (
             f"__init__.py de subpacote (so reexport) nao deveria gerar "
-            f"ESTRUTURA-005/NVDA-003/NVDA-004 — encontrou: {relevantes}"
+            f"STRUCTURE-005/NVDA-003/NVDA-004 — encontrou: {relevantes}"
         )
 
     def test_varios_subpacotes_com_init_nao_multiplicam_falso_positivo(self, tmp_path):
         """Reproducao proxima do caso real: 4 subpacotes, cada um com seu
-        proprio __init__.py de reexport -- zero problemas, nao 4x ESTRUTURA-005."""
+        proprio __init__.py de reexport -- zero problemas, nao 4x STRUCTURE-005."""
         addon = _make_addon(tmp_path, init_code=_INIT_CORRETO)
         gp = os.path.join(addon, "globalPlugins", "MeuAddon")
         for nome in ("busca_web", "resumo", "perguntas", "historico"):
@@ -323,7 +323,7 @@ class TestSubpacoteInitNaoDisparaFalsoPositivo:
 
         from nvdastudio_mcp.addon_builder import validate_addon_structure
         problems = validate_addon_structure(addon)
-        assert any("ESTRUTURA-005" in p for p in problems), (
+        assert any("STRUCTURE-005" in p for p in problems), (
             f"__init__.py principal sem GlobalPlugin deveria continuar sendo "
             f"detectado mesmo com subpacotes presentes — problemas: {problems}"
         )

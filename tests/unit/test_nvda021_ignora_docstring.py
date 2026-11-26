@@ -63,7 +63,7 @@ class TestCheckIndentationStyle:
 		src = chr(10).join([Q, "    prosa recuada", Q, "def f():", "    return 1", ""])
 		problemas = _check_indentation_style(addon("__init__.py", src))
 		assert len(problemas) == 1
-		assert "linha 5" in problemas[0], problemas[0]
+		assert "line 5" in problemas[0], problemas[0]
 
 	def test_arquivo_com_sintaxe_quebrada_nao_explode(self, addon):
 		_check_indentation_style(addon("__init__.py", "def f(:" + chr(10)))
