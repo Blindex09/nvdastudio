@@ -16,7 +16,10 @@ NVDA_DETECTION_RULES: list[tuple[str, str, str]] = [
 	# (rule_id, severity, description)
 	("NVDA-001", "Critical", "Missing nextHandler() in event handler"),
 	("NVDA-002", "Critical", "Main thread blocked (sleep, synchronous I/O, blocking HTTP)"),
-	("NVDA-003", "Serious",  "Module uses gettext without calling addonHandler.initTranslation()"),
+	# Fonte: addonHandler.initTranslation e languageHandler.setLanguage do NVDA 2026.3.1. O NVDA instala o `_` em
+	# builtins (trans.install), entao nao ha NameError: sem initTranslation() as strings do modulo usam as
+	# traducoes do NVDA e ignoram as do addon (locale/).
+	("NVDA-003", "Moderate", "Module uses gettext without calling addonHandler.initTranslation(): its strings are looked up in NVDA's translations, not in the add-on's locale/ files (there is no NameError: NVDA installs _ in builtins)"),
 	("NVDA-004", "Serious",  "Missing terminate() to clean up persistent resources"),
 	("NVDA-005", "Serious",  "Wrong version format in the manifest, or lastTestedNVDAVersion < BACK_COMPAT_TO of the target NVDA -- the Add-on Store validates minimumNVDAVersion/lastTestedNVDAVersion against the real catalog of released versions (nvdaAPIVersions.json), not only against the numeric YYYY.N.P format"),
 	("NVDA-006", "Moderate", "Monkey-patching of NVDA core modules"),
@@ -188,7 +191,7 @@ WX_A11Y_RULES: list[tuple[str, str, str]] = [
 	# (rule_id, severity, description)
 	# Source: wxpython-specialist.agent.md "Detection Rules" table
 	("WX-A11Y-001", "Critical", "wx.StaticText missing immediately before an input/selection control, or label= missing on wx.Button (primary fix from the official source); SetName() is an acceptable complement, not a substitute"),
-	("WX-A11Y-002", "Critical", "wx.Panel or wx.Frame without a wx.AcceleratorTable defined"),
+	("WX-A11Y-002", "Minor", "Not checked: a wx.AcceleratorTable is not an NVDA convention (NVDA's own source/gui uses it twice) and keyboard access is normally given by the dialog's buttons, labeled controls and tab order"),
 	("WX-A11Y-003", "Critical", "EVT_LEFT_DOWN/EVT_LEFT_DCLICK without an equivalent keyboard event"),
 	("WX-A11Y-004", "Serious",  "wx.Dialog without CreateStdDialogButtonSizer() or Escape handling"),
 	("WX-A11Y-005", "Serious",  "wx.Dialog.ShowModal() without SetFocus() on a meaningful control"),
@@ -201,7 +204,7 @@ WX_A11Y_RULES: list[tuple[str, str, str]] = [
 	("WX-A11Y-012", "Moderate", "Menu item without an accelerator key (\\tCtrl+X suffix missing)"),
 	# WX-A11Y-013/014: added in v2.1.0 — critical for NVDA/JAWS users
 	# Source: wxpython-specialist.agent.md section "Screen Reader Key Event Pitfalls"
-	("WX-A11Y-013", "Critical", "EVT_KEY_DOWN/EVT_CHAR on ListBox/ListCtrl/TreeCtrl/DataViewCtrl — silent failure with NVDA/JAWS; use EVT_CHAR_HOOK or a semantic event"),
+	("WX-A11Y-013", "Minor", "EVT_KEY_DOWN/EVT_CHAR on ListBox/ListCtrl/TreeCtrl/DataViewCtrl: NVDA's own code uses EVT_CHAR_HOOK on list controls (gui/nvdaControls.py) and EVT_LIST_KEY_DOWN only exists for wx.ListCtrl; a style note, not an NVDA requirement"),
 	("WX-A11Y-014", "Serious",  "wx.ListCtrl with EVT_KEY_DOWN for Enter instead of EVT_LIST_ITEM_ACTIVATED"),
 ]
 
@@ -362,9 +365,11 @@ NVDA 2026.1 — BREAKING CHANGES (skill: nvda-addon-specialist §NVDA 2026.1):
 PROBLEM DETECTION RULES (NVDA-001..040, NVDA-042..050):
 NVDA-001 Critical: Missing nextHandler() in event handler.
 NVDA-002 Critical: Main thread blocked (sleep, synchronous I/O, blocking HTTP).
-NVDA-003 Serious: Module calls _(), ngettext(), pgettext() or npgettext() without
-  addonHandler.initTranslation(). Do not require the initialization in helper
-  modules that do not use gettext.
+NVDA-003 Moderate: Module calls _(), ngettext(), pgettext() or npgettext() without
+  addonHandler.initTranslation(). The Developer Guide says to call it at the top of every module with
+  translatable strings; without it the module uses NVDA's translations instead of the add-on's locale/
+  files (there is no NameError: NVDA installs _ in builtins). Do not require it in modules that do not
+  use gettext.
 NVDA-004 Serious: Missing terminate() to clean up persistent resources.
 NVDA-005 Serious: Wrong version format in the manifest.
 NVDA-006 Moderate: Monkey-patching of NVDA core modules.
@@ -933,7 +938,7 @@ NVDA-051 Minor: usability suggestion (the NVDA Developer Guide does not require 
 
 Source: github.com/Community-Access/accessibility-agents .github/agents/wxpython-specialist.agent.md
 WX-A11Y-001 Critical: wx.StaticText missing immediately before an input/selection control, or label= missing on wx.Button (primary fix). SetName() is a complement, not a substitute.
-WX-A11Y-002 Critical: wx.Panel or wx.Frame without a wx.AcceleratorTable defined.
+WX-A11Y-002 Minor (not checked): wx.Panel or wx.Frame without a wx.AcceleratorTable. NVDA itself rarely uses one; keyboard access comes from buttons, labeled controls and tab order.
 WX-A11Y-003 Critical: EVT_LEFT_DOWN/EVT_LEFT_DCLICK without an equivalent keyboard event.
 WX-A11Y-004 Serious: wx.Dialog without CreateStdDialogButtonSizer() or Escape handling.
 WX-A11Y-005 Serious: wx.Dialog.ShowModal() without SetFocus() on a meaningful control.
@@ -944,7 +949,7 @@ WX-A11Y-009 Moderate: Custom wx.Panel with EVT_PAINT without a wx.Accessible sub
 WX-A11Y-010 Minor: Tab order not set and does not follow the sizer.
 WX-A11Y-011 Serious: wx.ListCtrl or wx.TreeCtrl in virtual mode without a GetItemText override.
 WX-A11Y-012 Moderate: Menu item without an accelerator key (\tCtrl+X suffix missing).
-WX-A11Y-013 Critical: EVT_KEY_DOWN/EVT_CHAR on ListBox/ListCtrl/TreeCtrl fails with NVDA/JAWS; use EVT_CHAR_HOOK.
+WX-A11Y-013 Minor: EVT_KEY_DOWN/EVT_CHAR on ListBox/ListCtrl/TreeCtrl. NVDA itself uses EVT_CHAR_HOOK on list controls; EVT_LIST_KEY_DOWN exists only for wx.ListCtrl. Style note.
 WX-A11Y-014 Serious: wx.ListCtrl with EVT_KEY_DOWN for Enter instead of EVT_LIST_ITEM_ACTIVATED.
 
 Source: github.com/Community-Access/accessibility-agents .github/agents/desktop-a11y-specialist.agent.md

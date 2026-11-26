@@ -256,76 +256,10 @@ def validate_wx_a11y(codigo: str) -> ASTValidationResult:
     return ASTValidationResult(ok=len(violacoes) == 0, violacoes=violacoes)
 
 
-def _is_wx_panel_or_frame_call(node: ast.expr) -> tuple[bool, str]:
-    """Returns (True, type) if node is the instantiation of wx.Panel/wx.Frame."""
-    if not isinstance(node, ast.Call):
-        return False, ""
-    func = node.func
-    if isinstance(func, ast.Attribute):
-        if isinstance(func.value, ast.Name) and func.value.id == "wx":
-            if func.attr in ("Panel", "Frame"):
-                return True, func.attr
-    return False, ""
 
 
-def _collect_set_accelerator_targets(tree: ast.AST) -> set[str]:
-    """Collects objects that receive a SetAcceleratorTable(...) call."""
-    targets: set[str] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        func = node.func
-        if not isinstance(func, ast.Attribute):
-            continue
-        if func.attr != "SetAcceleratorTable":
-            continue
-        obj = func.value
-        if isinstance(obj, ast.Name):
-            targets.add(obj.id)
-        elif isinstance(obj, ast.Attribute) and isinstance(obj.value, ast.Name):
-            targets.add(f"{obj.value.id}.{obj.attr}")
-    return targets
 
 
-def validate_wx_a11y_002_accelerators(codigo: str) -> ASTValidationResult:
-    """Checks WX-A11Y-002: wx.Panel/wx.Frame without SetAcceleratorTable.
-
-    Rule applied:
-      - Each assignment var = wx.Panel(...) or var = wx.Frame(...)
-        must have var.SetAcceleratorTable(...) somewhere in the code.
-        - Also accepts self.var = wx.Panel(...) followed by self.var.SetAcceleratorTable(...).
-
-    Fail-open: SyntaxError returns ok=True.
-    """
-    if not codigo or not codigo.strip():
-        return ASTValidationResult(ok=True, violacoes=[])
-
-    try:
-        tree = ast.parse(codigo)
-    except SyntaxError:
-        return ASTValidationResult(ok=True, violacoes=[])
-
-    with_accel = _collect_set_accelerator_targets(tree)
-    violacoes: list[str] = []
-
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
-        if len(node.targets) != 1:
-            continue
-        is_panel_or_frame, widget_type = _is_wx_panel_or_frame_call(node.value)
-        if not is_panel_or_frame:
-            continue
-        var = _get_var_name(node.targets[0])
-        if var and var in with_accel:
-            continue
-        lineno = node.lineno
-        var_repr = var or "?"
-        violacoes.append(
-            f"line {lineno}: {var_repr} = wx.{widget_type}(...) — no SetAcceleratorTable()"
-        )
-
-    return ASTValidationResult(ok=len(violacoes) == 0, violacoes=violacoes)
 
 
 # ---------------------------------------------------------------------------
@@ -472,11 +406,11 @@ def validate_wx_a11y_013_key_events(codigo: str) -> ASTValidationResult:
         )
         if nome_evt not in _EVENTOS_PROIBIDOS:
             continue
-        sugestao = "EVT_TREE_KEY_DOWN" if "Tree" in tipo_widget else "EVT_LIST_KEY_DOWN"
         violacoes.append(
-            f"{objeto} (wx.{tipo_widget}) binds wx.{nome_evt} -- silent failure "
-            f"with NVDA/JAWS, which intercept arrow-key navigation on this control. "
-            f"Use wx.{sugestao} or the control's own selection event."
+            f"{objeto} (wx.{tipo_widget}) binds wx.{nome_evt}. NVDA's own code uses wx.EVT_CHAR_HOOK "
+            f"for key handling on list controls (gui/nvdaControls.py); wx.EVT_LIST_KEY_DOWN exists only "
+            f"for wx.ListCtrl and is not triggered for the space key. Consider wx.EVT_CHAR_HOOK or the "
+            f"control's own selection/activation event. Style note: not an NVDA requirement."
         )
 
     return ASTValidationResult(ok=len(violacoes) == 0, violacoes=violacoes)
@@ -616,7 +550,10 @@ def validate_nvda064_dialog_callback(codigo: str) -> ASTValidationResult:
     for classe in [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]:
         for item in classe.body:
             if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                definicoes.setdefault(item.name, (item.args, True))
+                # @staticmethod nao recebe self: o callback `_copyVersionToClipboard(p)` do proprio NVDA
+                # (gui/__init__.py) tem um unico parametro, o payload.
+                is_static = any(isinstance(d, ast.Name) and d.id == "staticmethod" for d in item.decorator_list)
+                definicoes.setdefault(item.name, (item.args, not is_static))
     for item in tree.body:
         if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
             definicoes[item.name] = (item.args, False)
@@ -663,7 +600,6 @@ def validate_nvda064_dialog_callback(codigo: str) -> ASTValidationResult:
 AST_RULES = (
     ("NVDA-019", validate_nvda019),
     ("WX-A11Y-001", validate_wx_a11y),
-    ("WX-A11Y-002", validate_wx_a11y_002_accelerators),
     ("NVDA-060", validate_nvda060_controltypes),
     ("WX-A11Y-013", validate_wx_a11y_013_key_events),
     ("NVDA-056", validate_nvda056_messagedialog_thread),

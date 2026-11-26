@@ -34,7 +34,7 @@ from .code_sandbox import CodeSandbox, SandboxResult
 from .injection_guard import sanitize_untrusted_block
 from .logger import get_logger
 from .nvda_install import NvdaInstallError, open_in_nvda
-from .rule_registry import active_rules
+from .rule_registry import active_rules, rule_kind
 from .scaffold import KINDS, ScaffoldError, build_scaffold
 from .workspace import Workspace, WorkspaceError
 
@@ -92,8 +92,20 @@ def _validation(addon_dir: Path) -> dict[str, Any]:
             # the structure validator's textual check already reported this rule
             if not any(t.startswith(rule_id) for t in texts):
                 texts.append(f"{rule_id}: {rel}: {violation}")
-    problems = [_split_problem(t) for t in texts]
-    return {"ok": not problems, "total": len(problems), "problems": problems}
+    problems = []
+    for text in texts:
+        problem = _split_problem(text)
+        kind = rule_kind(problem["code"])
+        problems.append({**problem, "kind": kind, "blocking": kind == "defect"})
+    blocking = [p for p in problems if p["blocking"]]
+    return {
+        # ok = nenhum DEFEITO: conselhos e politica do projeto nao reprovam um addon que funciona
+        "ok": not blocking,
+        "total": len(problems),
+        "blocking_total": len(blocking),
+        "by_kind": {k: sum(1 for p in problems if p["kind"] == k) for k in ("defect", "advisory", "policy")},
+        "problems": problems,
+    }
 
 
 def _collect_python(addon_dir: Path) -> dict[str, str]:
@@ -174,7 +186,8 @@ def build_server(workspace: Workspace | None = None) -> FastMCP:
         """Catalog of the rules the validator checks (NVDA-001, WX-A11Y-001, ARCH-001...).
 
         `prefix` filters by the start of the code, for example "NVDA-0" or "WX-A11Y".
-        Each rule carries its severity, description and fallback mode.
+        Each rule carries its severity, `kind` (defect, advisory or policy: only defects block),
+        description and fallback mode.
         """
         wanted = prefix.strip().upper()
         rules = [
@@ -182,6 +195,7 @@ def build_server(workspace: Workspace | None = None) -> FastMCP:
                 "code": r.rule_id,
                 "family": r.family,
                 "severity": r.severity,
+                "kind": rule_kind(r.rule_id),
                 "description": r.description,
                 "fallback": r.fallback_mode,
             }
@@ -349,8 +363,14 @@ def build_server(workspace: Workspace | None = None) -> FastMCP:
     def addon_validate(addon: str) -> dict[str, Any]:
         """Validates the structure, manifest and NVDA/WX/ARCH rules of the add-on, executing nothing.
 
-        Returns the list of problems with their code (see nvda_rules and
-        nvda_guide for the meaning and the fix of each one).
+        Each problem has a `kind`:
+        - "defect": an NVDA fact that breaks the add-on or gets it rejected (blocking);
+        - "advisory": good practice or a heuristic; it never blocks, and real working add-ons
+          trigger several of them, so judge each one before changing correct code;
+        - "policy": Add-on Store requirement or this project's baseline for NEW add-ons; the add-on
+          still works in NVDA without it (for example an older add-on that supports NVDA 2025).
+        `ok` is true when there is no defect. See nvda_rules and nvda_guide for the meaning and the
+        fix of each code.
         """
         return guarded(lambda: {"addon": addon, **_validation(ws.addon_dir(addon))})  # type: ignore[no-any-return]
 
@@ -467,8 +487,9 @@ def build_server(workspace: Workspace | None = None) -> FastMCP:
     def addon_package(addon: str, ignore_problems: bool = False) -> dict[str, Any]:
         """Builds the .nvda-addon in <workspace>/dist.
 
-        Validates first: with problems, it does NOT package (unless
-        `ignore_problems` is true, only for when you know what you are doing).
+        Validates first: with DEFECTS (blocking problems), it does NOT package (unless
+        `ignore_problems` is true, only for when you know what you are doing). Advisory and
+        policy problems are returned but never block.
         If Docker is available, it also validates the final package.
         """
 

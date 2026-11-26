@@ -182,11 +182,12 @@ class TestInitPyContinuaVerificado:
         )
 
     def test_init_sem_init_translation_gera_003(self, tmp_path):
-        """__init__.py sem initTranslation DEVE gerar NVDA-003."""
+        """__init__.py que USA gettext sem initTranslation DEVE gerar NVDA-003."""
         from nvdastudio_mcp.addon_builder import validate_addon_structure
         code = (
             "import globalPluginHandler\n"
             "class GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
+            "\tdef falar(self): return _('hello')\n"
             "\tdef terminate(self): super().terminate()\n"
         )
         addon = _make_addon(tmp_path, init_code=code)

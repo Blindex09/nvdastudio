@@ -161,12 +161,10 @@ class TestWxA11yRules:
         assert "ShowModal" in rule[2] or "SetFocus" in rule[2], f"Deve mencionar ShowModal/SetFocus: {rule[2]}"
 
     def test_regra_013_evtkeydow_listbox_critico(self):
-        """WX-A11Y-013: EVT_KEY_DOWN em ListBox/ListCtrl falha com NVDA/JAWS — Critico.
-        Fonte: wxpython-specialist.agent.md secao Screen Reader Key Event Pitfalls.
-        """
+        """WX-A11Y-013: EVT_KEY_DOWN em lista e so nota de estilo (o proprio NVDA usa EVT_CHAR_HOOK)."""
         rule = next((r for r in WX_A11Y_RULES if r[0] == "WX-A11Y-013"), None)
         assert rule is not None
-        assert "Critical" in rule[1], f"WX-A11Y-013 deve ser Critical: {rule[1]}"
+        assert "Minor" in rule[1], f"WX-A11Y-013 deve ser Minor: {rule[1]}"
         assert "EVT_CHAR_HOOK" in rule[2] or "EVT_KEY_DOWN" in rule[2], f"Deve mencionar EVT: {rule[2]}"
 
     def test_regra_014_listctrl_item_activated(self):
@@ -179,10 +177,8 @@ class TestWxA11yRules:
         assert "EVT_LIST_ITEM_ACTIVATED" in rule[2], f"Deve mencionar EVT_LIST_ITEM_ACTIVATED: {rule[2]}"
 
     def test_regras_001_002_003_sao_criticas(self):
-        """WX-A11Y-001/002/003 sao Critico.
-        Fonte: wxpython-specialist.agent.md tabela Detection Rules.
-        """
-        for rid in ("WX-A11Y-001", "WX-A11Y-002", "WX-A11Y-003"):
+        """WX-A11Y-001 e 003 seguem Critical no catalogo (impacto se a heuristica acertar); a 002 saiu."""
+        for rid in ("WX-A11Y-001", "WX-A11Y-003"):
             rule = next((r for r in WX_A11Y_RULES if r[0] == rid), None)
             assert rule is not None
             assert "Critical" in rule[1], f"{rid} deve ser Critical: {rule[1]}"

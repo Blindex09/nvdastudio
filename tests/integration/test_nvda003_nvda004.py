@@ -23,6 +23,10 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
+	def falar(self):
+		# Translators: usa gettext sem initTranslation(), NameError na primeira string
+		return _("hello")
+
 	def terminate(self):
 		super().terminate()
 """

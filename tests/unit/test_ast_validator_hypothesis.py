@@ -5,7 +5,6 @@ from hypothesis import given, settings, strategies as st
 from nvdastudio_mcp.ast_validator import (
 	validate_nvda019,
 	validate_wx_a11y,
-	validate_wx_a11y_002_accelerators,
 )
 
 # Estrategia de "quase-Python": strings arbitrarias com caracteres tipicos
@@ -60,13 +59,6 @@ class TestValidateWxA11yNuncaLevantaExcecao:
 		assert isinstance(resultado.ok, bool)
 
 
-class TestValidateWxA11y002NuncaLevantaExcecao:
-	@given(codigo=_QUASE_PYTHON)
-	@settings(max_examples=200, deadline=None)
-	def test_nunca_levanta_excecao(self, codigo):
-		resultado = validate_wx_a11y_002_accelerators(codigo)
-		assert isinstance(resultado.ok, bool)
-		assert resultado.ok == (len(resultado.violacoes) == 0)
 
 
 class TestValidadoresSaoDeterministicos:

@@ -85,15 +85,27 @@ def test_fluxo_criar_gravar_validar_empacotar_inspecionar(ws):
     assert inspected["name"] == "Ola" and inspected["read_errors"] == []
 
 
-def test_empacotar_recusa_addon_com_problemas(ws):
+def test_empacotar_recusa_addon_com_defeito_e_nao_se_deixa_barrar_por_conselho(ws):
+    """Defeito (manifest sem author: o NVDA recusa) bloqueia; conselho e politica nunca."""
+    manifest_sem_author = (
+        "name = Ola" + chr(10) + "summary = Ola" + chr(10) + "version = 1.0" + chr(10)
+        + "minimumNVDAVersion = 2025.1" + chr(10) + "lastTestedNVDAVersion = 2025.1" + chr(10)
+    )
+
     async def scenario(client):
         await _call(client, "addon_create", name="Ola")
-        await _call(client, "addon_delete", addon="Ola", path="globalPlugins/Ola/__init__.py")
-        return await _call(client, "addon_package", addon="Ola")
+        broken = await _call(client, "addon_write", addon="Ola", files=[{"path": "manifest.ini", "content": manifest_sem_author}])
+        refused = await _call(client, "addon_package", addon="Ola")
+        await _call(client, "addon_write", addon="Ola", files=[{"path": "manifest.ini", "content": manifest_sem_author + "author = A B <a@b.c>" + chr(10)}])
+        accepted = await _call(client, "addon_package", addon="Ola")
+        return broken, refused, accepted
 
-    result = _run(ws, scenario)
-    assert result["packaged"] is False and not result["validation"]["ok"]
-    assert not (ws.root / "dist").exists()
+    broken, refused, accepted = _run(ws, scenario)
+    assert broken["validation"]["blocking_total"] == 1
+    assert refused["packaged"] is False and not refused["validation"]["ok"]
+    # min/lastTested 2025.1 violam o baseline do projeto (policy), mas o addon funciona: empacota
+    assert accepted["packaged"] is True
+    assert accepted["validation"]["by_kind"]["policy"] >= 1 and accepted["validation"]["by_kind"]["defect"] == 0
 
 
 def test_nome_com_caminho_vira_error_de_ferramenta(ws):

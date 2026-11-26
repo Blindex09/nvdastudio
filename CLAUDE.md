@@ -14,12 +14,16 @@ harness (conhecimento do NVDA, confinamento de arquivos, validação, teste, emp
 4. Honestidade: verificação que não rodou de verdade (Docker ausente, ferramenta ausente, tempo esgotado, nada a validar) devolve `not_run`, nunca `ok`. O Docker sobe sozinho quando o servidor inicia (`docker_runtime.py`); sem Docker e sem a imagem `python:3.13-slim` não há
    execução isolada de código de addon, e isso aparece no resultado.
 5. Instalar no NVDA só entrega o pacote ao instalador do próprio NVDA (`package_open_in_nvda`, via `nvda_install.py`) e confere que uma janela nova do NVDA abriu (`dialog_detected`); quem confirma é a pessoa no diálogo. Nunca se diz que abriu sem essa conferência.
-6. Cada ferramenta tem anotações (somente leitura, destrutiva, mundo aberto) corretas e descrição em português que diz o que devolve.
-7. Texto para a pessoa em português, direto, sem asteriscos soltos.
-8. Antes de dizer "pronto": `ruff check .`, `mypy src` e `pytest`; mudança na costura entre módulos exige ler os dois lados. Todo bug
+6. Regras do validador têm categoria (`rule_registry.py`): `defect` (fato do NVDA que quebra o addon: pode bloquear), `advisory` (boa prática ou
+   heurística: nunca bloqueia, é o padrão de regra nova) e `policy` (loja e baseline do projeto: nunca bloqueia). Regra nova só vira `defect` com
+   prova no código-fonte do NVDA e passando nos addons instalados e no próprio fonte do NVDA. Falso positivo achado em addon real vira teste em
+   `tests/unit/test_falsos_positivos_de_addons_reais.py`. Fatos do NVDA ficam em `nvda_facts.py`.
+7. Cada ferramenta tem anotações (somente leitura, destrutiva, mundo aberto) corretas e descrição em inglês que diz o que devolve e quando usar.
+8. Texto para a pessoa em português, direto, sem asteriscos soltos.
+9. Antes de dizer "pronto": `ruff check .`, `mypy src` e `pytest`; mudança na costura entre módulos exige ler os dois lados. Todo bug
    corrigido ganha teste de regressão. Nenhum arquivo extra, rascunho ou código morto. Teste que pula por falta de ambiente é dito na entrega.
-9. A entrega diz o que foi feito, o que foi verificado, o que falhou ou não pôde ser testado e onde está o resultado.
-10. Commits em inglês (feat:, fix:, chore:). Commit ao final; push do branch de trabalho permitido; nunca merge sem ordem.
+10. A entrega diz o que foi feito, o que foi verificado, o que falhou ou não pôde ser testado e onde está o resultado.
+11. Commits em inglês (feat:, fix:, chore:). Commit ao final; push do branch de trabalho permitido; nunca merge sem ordem.
 
 ## Mapa
 

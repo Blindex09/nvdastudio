@@ -18,6 +18,7 @@ from html.parser import HTMLParser
 
 from .hidden_process import CREATE_NO_WINDOW, find_python
 from .logger import get_logger, log_decision
+from .nvda_facts import NVDA_CONFIG_SECTIONS, NVDA_CORE_MODULES, NVDA_RUNTIME_PACKAGES
 from .project_policy import (
 	ENTRY_POINT_DIRS,
 	PROJECT_MIN_NVDA,
@@ -178,6 +179,21 @@ def chama_gettext(code: str) -> bool:
 	return False
 
 
+def chama_init_translation(code: str) -> bool:
+	"""O modulo CHAMA initTranslation() (addonHandler.initTranslation() ou direto)? Via AST."""
+	try:
+		arvore = ast.parse(code)
+	except SyntaxError:
+		return "initTranslation(" in code
+	for no in ast.walk(arvore):
+		if isinstance(no, ast.Call):
+			alvo = no.func
+			nome = alvo.id if isinstance(alvo, ast.Name) else alvo.attr if isinstance(alvo, ast.Attribute) else ""
+			if nome == "initTranslation":
+				return True
+	return False
+
+
 class AddonBuilderError(Exception):
 	"""Error while generating or packaging the add-on."""
 	pass
@@ -192,109 +208,138 @@ _MANIFEST_SCALAR_FIELDS = frozenset({
 })
 
 
+def _triple_quote_opener(value: str) -> str | None:
+	"""Devolve aspas triplas se o valor abre uma string de aspas triplas (ConfigObj), senao None."""
+	for quote in ('"""', "'''"):
+		if value.startswith(quote):
+			return quote
+	return None
+
+
+def _manifest_logical_lines(code: str):
+	"""Itera (numero_da_linha, linhas_fisicas, chave, valor) de cada campo do manifest.
+
+	Um campo com valor entre aspas triplas pode ocupar varias linhas fisicas; o ConfigObj
+	le tudo ate as aspas triplas de fechamento. Linhas de outro tipo (comentario, secao,
+	vazia, continuacao) voltam com chave None.
+	"""
+	lines = code.splitlines()
+	index = 0
+	while index < len(lines):
+		line = lines[index]
+		match = re.match(r"^(\w+)\s*=\s*(.*)$", line)
+		if not match or not line or line[0].isspace():
+			yield index + 1, [line], None, ""
+			index += 1
+			continue
+		key, value = match.group(1), match.group(2).strip()
+		opener = _triple_quote_opener(value)
+		physical = [line]
+		if opener and value.find(opener, len(opener)) == -1:
+			# abre aspas triplas e nao fecha na mesma linha: consome ate fechar
+			end = index + 1
+			while end < len(lines):
+				physical.append(lines[end])
+				if opener in lines[end]:
+					break
+				end += 1
+			yield index + 1, physical, key, value
+			index = end + 1
+			continue
+		yield index + 1, physical, key, value
+		index += 1
+
+
+def _is_quoted_manifest_value(value: str) -> bool:
+	"""Aspas simples, duplas ou triplas: para o ConfigObj e uma string, mesmo com virgulas."""
+	return bool(_triple_quote_opener(value)) or (
+		len(value) >= 2 and value[0] in {'"', "'"} and value[-1] == value[0]
+	)
+
+
 def _manifest_scalar_errors(code: str) -> list[str]:
 	"""Detecta valores que o ConfigObj do NVDA converteria em lista.
 
-	Um parser simplificado aceitaria uma
-	descricao com virgulas. O ConfigObj, usado de verdade pelo NVDA, transforma
-	esse valor nao delimitado em ``list`` e a validacao ``string()`` rejeita o
-	manifesto. Esta checagem reproduz exatamente esse limite sem exigir que a
-	biblioteca interna do NVDA esteja instalada no ambiente de desenvolvimento.
+	O ConfigObj do NVDA transforma um valor SEM aspas que contem virgula numa lista, e a
+	validacao ``string()`` rejeita o manifesto. Valor entre aspas simples, duplas ou
+	triplas (inclusive de varias linhas, como o addonTemplate oficial gera) e uma string.
 	"""
 	errors: list[str] = []
-	for line_number, line in enumerate(code.splitlines(), start=1):
-		if not line or line[0].isspace() or line.lstrip().startswith(("#", "[")):
+	for line_number, _physical, key, value in _manifest_logical_lines(code):
+		if key is None or key.casefold() not in _MANIFEST_SCALAR_FIELDS:
 			continue
-		match = re.match(r"^(\w+)\s*=\s*(.*)$", line)
-		if not match or match.group(1).casefold() not in _MANIFEST_SCALAR_FIELDS:
-			continue
-		value = match.group(2).strip()
-		quoted = (
-			len(value) >= 2
-			and value[0] in {'"', "'"}
-			and value[-1] == value[0]
-		)
-		if "," in value and not quoted:
+		if "," in value and not _is_quoted_manifest_value(value):
 			errors.append(
-				f"MANIFEST-001: Field '{match.group(1)}' on line {line_number} "
+				f"MANIFEST-001: Field '{key}' on line {line_number} "
 				"contains an unquoted comma and NVDA would parse it as a list."
 			)
 	return errors
 
 
+def _quote_for_configobj(text: str) -> str:
+	"""Aspas que o ConfigObj entende para um texto de uma linha com virgula."""
+	if '"' not in text:
+		return f'"{text}"'
+	if "'" not in text:
+		return f"'{text}'"
+	return f'"""{text}"""'
+
+
 def _sanitize_manifest(code: str) -> str:
+	"""Prepara o manifest.ini para o ConfigObj do NVDA, sem tocar no que ja esta certo.
+
+	1. Remove campos que o NVDA nao conhece (sha256, configSpec).
+	2. Valores entre aspas (simples, duplas ou triplas, de uma ou varias linhas) passam
+	   byte a byte: sao strings validas, e o addonTemplate oficial gera description e
+	   changelog assim.
+	3. Valor de texto SEM aspas e com virgula ganha aspas (senao o ConfigObj faz lista).
+	4. Valor de texto sem aspas continuado em linhas indentadas e unido numa linha.
 	"""
-
-	ConfigObj (usado pelo NVDA para parsear manifest.ini) interpreta qualquer
-	valor de campo que contenha uma quebra de linha como lista Python, causando
-	VdtTypeError fatal na instalacao do addon.
-
-	Esta funcao garante que todos os campos de texto do manifest fiquem em
-
-	Algorithm:
-	  1. Remove campos proibidos (sha256, configSpec) — determinisitco, antes do parse.
-	  2. Junta campos de texto multiline em uma unica linha.
-
-	Campos protegidos: summary, description, changelog (e qualquer campo de texto).
-	Nao afeta campos de versao, url, name, docFileName.
-
-	sanitizacao deterministica, nao semantica. Nao executa codigo.
-	"""
-	# Passo 1: remove campos proibidos linha a linha
-	clean_lines = []
+	text_fields = {"summary", "description", "changelog", "author"}
+	kept = []
 	for _ln in code.splitlines():
 		_m = re.match(r"^(\w+)\s*=", _ln)
 		if _m and _m.group(1).lower() in _FORBIDDEN_MANIFEST_FIELDS:
 			_logger.warning("[MANIFEST] Campo proibido removido: %s", _m.group(1))
 			continue
-		clean_lines.append(_ln)
-	code = "\n".join(clean_lines)
+		kept.append(_ln)
+	code = "\n".join(kept)
 
-	# Passo 2: junta campos de texto multiline
-	_TEXT_FIELDS = {"summary", "description", "changelog", "author"}
-	lines = code.splitlines()
-	result = []
-	current_key = None
-	current_val_parts = []
+	out: list[str] = []
+	pending_key: str | None = None
+	pending_parts: list[str] = []
 
-	def flush():
-		if current_key is None:
+	def flush() -> None:
+		nonlocal pending_key, pending_parts
+		if pending_key is None:
 			return
-		if current_key.casefold() in _TEXT_FIELDS and current_val_parts:
-			# Une todas as partes em uma linha, separando por espaco
-			joined = " ".join(p.strip() for p in current_val_parts if p.strip())
-			# Remove virgulas ao final de cada parte (evita residuos de lista)
+		if pending_key.casefold() in text_fields:
+			joined = " ".join(p.strip() for p in pending_parts if p.strip())
 			joined = re.sub(r",\s*$", "", joined.strip())
-			# Remove aspas existentes para recolocar de forma consistente
-			if joined.startswith('"') and joined.endswith('"'):
-				joined = joined[1:-1]
-			# ConfigObj interpreta valores com virgula como lista (VdtTypeError fatal).
-			# Envolve em aspas duplas sempre que houver virgula no valor.
 			if "," in joined:
-				joined = f'"{joined}"'
-			result.append(f"{current_key} = {joined}")
-		elif current_val_parts:
-			result.append(f"{current_key} = {current_val_parts[0]}")
-			for extra in current_val_parts[1:]:
-				result.append(extra)
-
-	for line in lines:
-		m = re.match(r"^(\w+)\s*=\s*(.*)", line)
-		if m:
-			flush()
-			current_key = m.group(1)
-			current_val_parts = [m.group(2)]
-		elif current_key is not None and (line.startswith(" ") or line.startswith("\t")):
-			# Linha de continuacao (indentada) — parte de um valor multiline
-			current_val_parts.append(line.strip())
+				joined = _quote_for_configobj(joined)
+			out.append(f"{pending_key} = {joined}")
 		else:
-			flush()
-			current_key = None
-			current_val_parts = []
-			result.append(line)
+			out.append(f"{pending_key} = {pending_parts[0]}")
+			out.extend(pending_parts[1:])
+		pending_key, pending_parts = None, []
 
+	for _number, physical, key, value in _manifest_logical_lines(code):
+		if key is None:
+			line = physical[0]
+			if pending_key is not None and line[:1] in (" ", "\t") and line.strip():
+				pending_parts.append(line.strip())  # continuacao indentada de valor sem aspas
+				continue
+			flush()
+			out.append(line)
+			continue
+		flush()
+		if _is_quoted_manifest_value(value):
+			out.extend(physical)  # string valida: byte a byte
+			continue
+		pending_key, pending_parts = key, [value]
 	flush()
-	return "\n".join(result)
+	return "\n".join(out)
 
 
 def _is_development_artifact(relative_path: str) -> bool:
@@ -371,7 +416,22 @@ _NVDA_MODULES: frozenset = frozenset({
 })
 
 # Versao lowercase de _NVDA_MODULES para comparacao case-insensitive (v2.0.0)
-_NVDA_MODULES_LOWER: frozenset = frozenset(m.lower() for m in _NVDA_MODULES)
+_NVDA_MODULES_LOWER: frozenset = frozenset(m.lower() for m in (_NVDA_MODULES | NVDA_CORE_MODULES))
+_NVDA_RUNTIME_PACKAGES_LOWER: frozenset = frozenset(m.lower() for m in NVDA_RUNTIME_PACKAGES)
+
+
+def _bundled_lib_roots(addon_folder: str) -> set[str]:
+	"""Nomes (minusculos) dos modulos que o proprio addon empacota em alguma pasta lib/."""
+	found: set[str] = set()
+	for root, dirs, _files in os.walk(addon_folder):
+		if os.path.basename(root) != "lib":
+			continue
+		for entry in os.listdir(root):
+			name = entry[:-3] if entry.endswith(".py") else entry
+			if "-" not in name and not name.endswith((".dist-info", ".egg-info")):
+				found.add(name.lower())
+		dirs[:] = []
+	return found
 
 # Modulos stdlib disponiveis em qualquer Python 3.x
 _STDLIB_MODULES: frozenset = frozenset({
@@ -1118,9 +1178,8 @@ def _check_indentation_style(addon_folder: str) -> list[str]:
 						continue
 					problems.append(
 						f"NVDA-021: {py_file}: line {i + 1}: "
-						f"space indentation detected — NVDA and the NVDA core use TABs. "
-						f"Replace the spaces with TABs to avoid IndentationError in Python "
-						f"with strict mixed-indentation mode."
+						f"space indentation detected — NVDA's coding standard uses TABs. Spaces work in an "
+						f"add-on as long as a file does not mix both; this is a style note."
 					)
 					# Apenas primeira ocorrencia por arquivo
 					break
@@ -1195,9 +1254,6 @@ def _check_wx_accessibility(addon_folder: str) -> list[str]:
 	  como fix primario -- SetName() mantido como complemento, nao mais o
 	  unico sinal aceito).
 
-	WX-A11Y-002: arquivo usa wx.Panel( ou wx.Frame( mas nao tem AcceleratorTable
-	  -> paineis/frames sem tabela de atalhos nao permitem navegacao por teclado.
-
 	WX-A11Y-003: arquivo usa EVT_LEFT_DOWN mas nao tem EVT_CHAR_HOOK nem EVT_KEY_DOWN
 	  -> eventos apenas de mouse sem equivalente de teclado sao inacessiveis.
 
@@ -1224,16 +1280,6 @@ def _check_wx_accessibility(addon_folder: str) -> list[str]:
 					f"buttons without an accessible name are announced only as 'Button' "
 					f"by screen readers. Primary fix (official source): "
 					f"wx.Button(parent, label=_('Readable name'))."
-				)
-
-			# WX-A11Y-002: wx.Panel ou wx.Frame sem AcceleratorTable
-			has_panel_or_frame = "wx.Panel(" in src or "wx.Frame(" in src
-			if has_panel_or_frame and "AcceleratorTable" not in src:
-				problems.append(
-					f"WX-A11Y-002: {py_file}: "
-					f"wx.Panel() or wx.Frame() without AcceleratorTable — "
-					f"keyboard users cannot trigger actions from the keyboard. "
-					f"Add a wx.AcceleratorTable with the panel's shortcut keys."
 				)
 
 			# WX-A11Y-003: EVT_LEFT_DOWN sem equivalente de teclado
@@ -1394,8 +1440,17 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 	)
 	if not _tem_config_spec:
 		for rel, code in all_py:
-			if "config.conf[" in code:
-				problems.append(f"NVDA-015: {rel}: uses config.conf without config.conf.spec. Create configSpec.py.")
+			# config.conf["audio"], ["speech"]... sao secoes do PROPRIO NVDA (configSpec.py dele):
+			# ler delas nao pede spec do addon. So conta quem usa uma secao propria.
+			own_sections = sorted({
+				section for section in re.findall(r"config\.conf\[\s*['\"](\w+)['\"]", code)
+				if section not in NVDA_CONFIG_SECTIONS
+			})
+			if own_sections:
+				problems.append(
+					f"NVDA-015: {rel}: uses its own config.conf section(s) {', '.join(own_sections)} "
+					f"without config.conf.spec. Register the defaults with config.conf.spec[...]."
+				)
 
 	# NVDA-016: shouldWriteToDisk ausente
 	for rel, code in all_py:
@@ -1566,10 +1621,8 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 			if "class AppModule" in code and "nvdaBuiltin.appModules.wwahost" not in code:
 				problems.append(f"NVDA-040: {rel}: wwahost AppModule does not inherit from nvdaBuiltin.appModules.wwahost.AppModule.")
 
-	# NVDA-042: _() em vez de ngettext()
-	for rel, code in all_py:
-		if re.search(r"_\(['\"].*\{.*n.*\}.*['\"]\)", code) and "ngettext" not in code:
-			problems.append(f"NVDA-042: {rel}: _() used for a string with a count. Use ngettext().")
+	# NVDA-042 (ngettext para plural) nao e checado: nao ha como saber, so pelo texto, se um
+	# placeholder como {drive} ou {count} e uma quantidade; a regra ficou so como orientacao.
 
 	# NVDA-043: brailleTables sem [brailleTables] no manifest
 	manifest_path = os.path.join(addon_folder, "manifest.ini")
@@ -1634,9 +1687,9 @@ def _check_all_nvda_fallbacks(addon_folder: str, manifest_fields: dict) -> list[
 		tree = _tree(code)
 		calls = [_call_name(node) for node in ast.walk(tree) if isinstance(node, ast.Call)] if tree else []
 		if "wx.MessageDialog" in calls:
-			problems.append(f"NVDA-049: {rel}: wx.MessageDialog is forbidden. Use gui.message.MessageDialog.")
+			problems.append(f"NVDA-049: {rel}: wx.MessageDialog is discouraged: gui.message.MessageDialog is the NVDA dialog API (it announces itself and handles focus).")
 		if "wx.MessageBox" in calls:
-			problems.append(f"NVDA-049: {rel}: wx.MessageBox is forbidden. Use gui.message.MessageDialog.")
+			problems.append(f"NVDA-049: {rel}: wx.MessageBox is discouraged: gui.message.MessageDialog is the NVDA dialog API (it announces itself and handles focus).")
 
 	# NVDA-050: NVDAObject overlay herda de base
 	for rel, code in all_py:
@@ -1784,11 +1837,127 @@ def _indexar_definicoes_do_addon(pdir_path: str) -> tuple[dict, dict]:
 							isinstance(d, ast.Name) and d.id == "staticmethod"
 							for d in filho.decorator_list
 						)
+						if _decorador_muda_a_chamada(filho):
+							continue
 						metodos[filho.name] = _Assinatura.de_funcao(filho, py_file, metodo=not e_estatico)
 				classes[mod][no.name] = metodos
 			elif isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef)):
+				if _decorador_muda_a_chamada(no):
+					continue
 				funcoes[mod][no.name] = _Assinatura.de_funcao(no, py_file, metodo=False)
 	return classes, funcoes
+
+
+# Decoradores que NAO mudam a assinatura de chamada (ou que o NVDA documenta): o resto
+# (property, cached_property, functools.wraps proprios...) faz o nome deixar de ser a
+# funcao escrita, e conferir a chamada contra ela acusaria um addon correto.
+_DECORADORES_QUE_PRESERVAM_A_CHAMADA = frozenset({"staticmethod", "classmethod", "script"})
+
+
+def _reachable_python_files(addon_folder: str) -> set[str]:
+	"""Arquivos .py que o NVDA carrega: os pontos de entrada e tudo que eles importam de forma relativa.
+
+	Um import quebrado so impede o carregamento se o arquivo for alcancado a partir de um ponto de
+	entrada (globalPlugins/<n>/__init__.py, appModules/<app>.py, synthDrivers/..., ...).
+	"""
+	reached: set[str] = set()
+	queue: list[str] = []
+	for area in ENTRY_POINT_DIRS:
+		area_dir = os.path.join(addon_folder, area)
+		if not os.path.isdir(area_dir):
+			continue
+		for entry in sorted(os.listdir(area_dir)):
+			full = os.path.join(area_dir, entry)
+			if area == "globalPlugins":
+				full = os.path.join(full, "__init__.py")
+			elif os.path.isdir(full):
+				full = os.path.join(full, "__init__.py")
+			if full.endswith(".py") and os.path.isfile(full):
+				queue.append(full)
+	while queue:
+		current = queue.pop()
+		key = os.path.normcase(current)
+		if key in reached:
+			continue
+		reached.add(key)
+		try:
+			with open(current, encoding="utf-8", errors="replace") as handle:
+				tree = ast.parse(handle.read())
+		except (OSError, SyntaxError):
+			continue
+		base = os.path.dirname(current)
+		for node in ast.walk(tree):
+			if not isinstance(node, ast.ImportFrom) or node.level < 1:
+				continue
+			folder = base
+			for _ in range(node.level - 1):
+				folder = os.path.dirname(folder)
+			targets = [node.module] if node.module else [alias.name for alias in node.names]
+			for target in targets:
+				path = os.path.join(folder, *target.split("."))
+				for candidate in (path + ".py", os.path.join(path, "__init__.py")):
+					if os.path.isfile(candidate):
+						queue.append(candidate)
+	return reached
+
+
+def _relative_imports_at_load(code: str) -> list[str]:
+	"""Modulos irmaos importados com `from .x import ...` quando o modulo CARREGA.
+
+	Via AST: ignora o que so parece import (texto dentro de string ou docstring, como os exemplos
+	de um guia) e o que fica dentro de funcoes e classes (import tardio nao impede o carregamento).
+	"""
+	try:
+		tree = ast.parse(code)
+	except SyntaxError:
+		return []
+	found: list[str] = []
+
+	def visit(body: list[ast.stmt]) -> None:
+		for stmt in body:
+			if isinstance(stmt, ast.ImportFrom) and stmt.level == 1 and stmt.module:
+				found.append(stmt.module.split(".")[0])
+			elif isinstance(stmt, (ast.If, ast.For, ast.While, ast.With)):
+				visit(stmt.body)
+				visit(getattr(stmt, "orelse", []))
+			elif isinstance(stmt, ast.Try):
+				visit(stmt.body)
+				for handler in stmt.handlers:
+					visit(handler.body)
+				visit(stmt.orelse)
+				visit(stmt.finalbody)
+
+	visit(tree.body)
+	return found
+
+
+def _expoe_classe_de_plugin(code: str) -> bool:
+	"""O modulo define ou importa/atribui GlobalPlugin ou AppModule (o nome que o NVDA procura)."""
+	nomes = {"GlobalPlugin", "AppModule"}
+	try:
+		arvore = ast.parse(code)
+	except SyntaxError:
+		return "class GlobalPlugin" in code or "class AppModule" in code
+	for no in ast.walk(arvore):
+		if isinstance(no, ast.ClassDef) and no.name in nomes:
+			return True
+		if isinstance(no, (ast.Import, ast.ImportFrom)):
+			if any((alias.asname or alias.name.split(".")[-1]) in nomes for alias in no.names):
+				return True
+			if any(alias.name == "*" for alias in no.names) if isinstance(no, ast.ImportFrom) else False:
+				return True  # `from .modulo import *`: o nome pode vir de la
+		if isinstance(no, ast.Assign) and any(isinstance(t, ast.Name) and t.id in nomes for t in no.targets):
+			return True
+	return False
+
+
+def _decorador_muda_a_chamada(no: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+	for decorador in no.decorator_list:
+		alvo = decorador.func if isinstance(decorador, ast.Call) else decorador
+		nome = alvo.id if isinstance(alvo, ast.Name) else alvo.attr if isinstance(alvo, ast.Attribute) else ""
+		if nome not in _DECORADORES_QUE_PRESERVAM_A_CHAMADA:
+			return True
+	return False
 
 
 def _conferir_chamada(chamada: ast.Call, alvo: _Assinatura, arquivo: str) -> list[str]:
@@ -2007,7 +2176,13 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 	if not os.path.isdir(gp_dir):
 		# appModules/, synthDrivers/ etc. sao pontos de entrada validos sozinhos:
 		# so reclama quando NENHUMA pasta de ponto de entrada existe.
-		if not any(os.path.isdir(os.path.join(addon_folder, d)) for d in ENTRY_POINT_DIRS):
+		# Um addon pode ser so dados (voz, dicionario, tabela braille: ex. Acapela TTS Voices): se ha
+		# conteudo alem de manifest/doc/locale, nao e erro nao ter codigo de entrada.
+		_meta = {"manifest.ini", "doc", "locale", "readme.md", "readme.html", "license", "license.txt", "copying.txt"}
+		_so_metadados = all(
+			entry.lower() in _meta or entry.startswith(".") for entry in os.listdir(addon_folder)
+		)
+		if _so_metadados and not any(os.path.isdir(os.path.join(addon_folder, d)) for d in ENTRY_POINT_DIRS):
 			problems.append(
 				"STRUCTURE-003: globalPlugins/ folder missing (and no other "
 				"entry-point folder: appModules/, synthDrivers/, brailleDisplayDrivers/)."
@@ -2120,23 +2295,28 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 			if (
 				not _e_init_principal
 				and _usa_gettext
-				and "initTranslation" not in code
+				and not chama_init_translation(code)
 				and "import gettext" not in code
 			):
 				problems.append(
-					f"NVDA-003: {fname}: uses gettext (_(), ngettext...) without "
-					f"calling addonHandler.initTranslation(). NameError at run "
-					f"time on the first translated string in this module."
+					f"NVDA-003: {fname}: uses gettext (_(), ngettext...) without calling "
+					f"addonHandler.initTranslation(). The strings of this module are looked up in NVDA's "
+					f"own translations, not in the add-on's locale/ files."
 				)
 
 			if _e_init_principal:
-				if "class GlobalPlugin" not in code and "class AppModule" not in code:
+				# O NVDA procura o NOME GlobalPlugin/AppModule no modulo: definido aqui ou importado
+				# de um irmao (ponto de entrada fino, como no addon AbsoluteWindows) e a mesma coisa.
+				if not _expoe_classe_de_plugin(code):
 					problems.append(
 						f"STRUCTURE-005: {fname}: GlobalPlugin or AppModule class missing."
 					)
-				if "initTranslation" not in code:
+				# initTranslation so e exigido de quem usa gettext (o proprio _ depende dele).
+				if _usa_gettext and not chama_init_translation(code) and "import gettext" not in code:
 					problems.append(
-						f"NVDA-003: {fname}: addonHandler.initTranslation() missing."
+						f"NVDA-003: {fname}: uses gettext (_(), ngettext...) but addonHandler.initTranslation() "
+						f"is never called: its strings are looked up in NVDA's translations, not in the "
+						f"add-on's locale/ files."
 					)
 				if "def terminate" not in code:
 					problems.append(
@@ -2149,6 +2329,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 	# Causa raiz do bug do GmailSummarizer: gmail_service.py importava
 	# gmail_oauth.py que nunca foi gerado — NVDA silenciava o erro e
 	# o plugin inteiro deixava de ser carregado.
+	_alcancaveis = _reachable_python_files(addon_folder)
 	for pdir_path in _plugin_dirs(addon_folder):
 		pdir = os.path.relpath(pdir_path, addon_folder).replace(os.sep, "/")
 		module_names = {
@@ -2168,6 +2349,10 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 		for py_file in os.listdir(pdir_path):
 			if not py_file.endswith(".py"):
 				continue
+			# So um modulo que o NVDA realmente carrega pode impedir o carregamento: pasta de dados ou
+			# codigo copiado e nunca importado (ex.: uma copia do fonte do NVDA) nao conta.
+			if os.path.normcase(os.path.join(pdir_path, py_file)) not in _alcancaveis:
+				continue
 			try:
 				with open(
 					os.path.join(pdir_path, py_file),
@@ -2177,10 +2362,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 			except Exception as exc:
 				_logger.debug("[DEBUG] Ignorando arquivo problematico: %s", exc)
 				continue
-			for _rim in re.finditer(
-				r"^from \.(\w+) import", _src, re.MULTILINE
-			):
-				mod = _rim.group(1)
+			for mod in _relative_imports_at_load(_src):
 				if mod not in module_names:
 					problems.append(
 						f"STRUCTURE-009: {py_file}: "
@@ -2194,6 +2376,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 	# faz __init__.py crashar silenciosamente se lib/ estiver incompleta.
 	# O NVDA nao loga o erro — o addon inteiro deixa de carregar, incluindo o
 	# settings panel. Somente arquivos que NAO sao __init__.py sao verificados.
+	bundled_roots = _bundled_lib_roots(addon_folder) | set(_NVDA_RUNTIME_PACKAGES_LOWER)
 	for pdir_path in _plugin_dirs(addon_folder):
 		pdir = os.path.relpath(pdir_path, addon_folder).replace(os.sep, "/")
 		local_module_names: set[str] = {
@@ -2222,7 +2405,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 				if isinstance(_node, ast.Import):
 					for _alias in _node.names:
 						_root = _alias.name.split(".")[0].lower()
-						if not _is_known_module(_root, set()) and _root not in local_module_names:
+						if not _is_known_module(_root, bundled_roots) and _root not in local_module_names:
 							problems.append(
 								f"NVDA-022: {py_file}: "
 								f"import '{_alias.name}' at module level \u2014 "
@@ -2235,7 +2418,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 					# Ignora imports relativos (from .modulo import ...)
 					if _node.module and _node.level == 0:
 						_root = _node.module.split(".")[0].lower()
-						if not _is_known_module(_root, set()) and _root not in local_module_names:
+						if not _is_known_module(_root, bundled_roots) and _root not in local_module_names:
 							problems.append(
 								f"NVDA-022: {py_file}: "
 								f"import '{_node.module}' at module level \u2014 "
@@ -2400,7 +2583,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 		except Exception:
 			# Fallback: parse manual com regex para manifests sem secao header
 			try:
-				_raw_025 = open(_manifest_path_025, encoding="utf-8").read()
+				_raw_025 = open(_manifest_path_025, encoding="utf-8", errors="replace").read()
 				_m_025 = re.search(r"(?i)addonId\s*=\s*(\S+)", _raw_025)
 				if _m_025:
 					_addon_id_025 = _m_025.group(1).strip()
@@ -2531,6 +2714,11 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 				if "win_amd64" in fname.lower():
 					continue
 				pyd_avisos.append(_rel)
+	# Antes do NVDA 2026.1 o NVDA era 32-bit (Python 3.11): binarios x86 e cp311 sao CORRETOS para
+	# um addon que ainda suporta essas versoes (ex.: VisionAssistant, minimumNVDAVersion 2025.1,
+	# traz lib/x86 e lib/x64). So acusa quando o minimo declarado e 2026.1 ou mais novo.
+	if parse_version_tuple(manifest_fields.get("minimumNVDAVersion", "")) < (2026, 1, 0):
+		pyd_criticos, pyd_abi_criticos, pyd_avisos = [], [], []
 	if pyd_criticos:
 		exemplos = ", ".join(pyd_criticos[:3])
 		problems.append(
@@ -2587,7 +2775,7 @@ def validate_addon_structure(addon_folder: str) -> list[str]:
 			_raw_047 = open(_manifest_047, encoding="utf-8", errors="replace").read()
 			_m_047 = re.search(r"(?im)^url[ \t]*=[ \t]*(.*)$", _raw_047)
 			if _m_047:
-				_url_047 = _m_047.group(1).strip()
+				_url_047 = _m_047.group(1).strip().strip('"').strip("'")  # aspas sao sintaxe, nao parte da URL
 				if not _url_047:
 					problems.append(
 						"NVDA-047: manifest.ini: the 'url' field is empty. "

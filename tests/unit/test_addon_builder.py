@@ -185,6 +185,7 @@ class TestValidateAddonStructure:
         addon = self._criar_addon(tmp_path, {
             "__init__.py": (
                 "import globalPluginHandler\nimport addonHandler\n"
+                "from . import helper\n"
                 "addonHandler.initTranslation()\n"
                 "class GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
                 "    def terminate(self): pass\n"

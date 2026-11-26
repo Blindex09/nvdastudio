@@ -80,3 +80,37 @@ def active_rules() -> list[RuleContract]:
 
 
 
+
+
+# ---------------------------------------------------------------------------
+# Categoria de cada regra: o que pode bloquear e o que nao pode.
+#
+# "defect"   -- fato do NVDA que quebra o addon ou o faz ser rejeitado (ImportError, NameError,
+#               TypeError ao acionar, manifest invalido, plugin que o NVDA nao carrega). Pode bloquear.
+# "policy"   -- exigencia da Add-on Store ou baseline do proprio projeto: o addon funciona no NVDA sem
+#               isso (ex.: addon antigo que ainda suporta o NVDA 2025). Nunca bloqueia.
+# "advisory" -- boa pratica ou heuristica sobre o codigo. Nunca bloqueia: addons reais e corretos
+#               (os instalados no NVDA) disparam varias delas. E tambem o padrao de qualquer regra nova.
+#
+# O criterio de cada uma foi conferido contra o codigo-fonte do NVDA 2026.3.1 e contra os addons
+# instalados; ver tests/unit/test_categoria_das_regras.py.
+# ---------------------------------------------------------------------------
+
+DEFECT_CODES: frozenset[str] = frozenset({
+    "MANIFEST-001",
+    "STRUCTURE-001", "STRUCTURE-002", "STRUCTURE-003", "STRUCTURE-005", "STRUCTURE-009",
+    "NVDA-013", "NVDA-017", "NVDA-018", "NVDA-023", "NVDA-036", "NVDA-063", "NVDA-064",
+})
+
+POLICY_CODES: frozenset[str] = frozenset({
+    "POLICY-001", "POLICY-002", "NVDA-005", "NVDA-014", "NVDA-047", "NVDA-059",
+})
+
+
+def rule_kind(rule_id: str) -> str:
+    """"defect", "policy" ou "advisory" (o padrao para qualquer regra nao listada)."""
+    if rule_id in DEFECT_CODES:
+        return "defect"
+    if rule_id in POLICY_CODES:
+        return "policy"
+    return "advisory"

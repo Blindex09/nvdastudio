@@ -86,44 +86,6 @@ class TestWXA11Y001ButtonSetName:
 		)
 
 
-class TestWXA11Y002PanelAcceleratorTable:
-	"""WX-A11Y-002: wx.Panel ou wx.Frame sem AcceleratorTable impede navegacao por teclado."""
-
-	def test_panel_sem_acelerador_gera_wxa11y002(self, tmp_path):
-		"""
-		wx.Panel sem AcceleratorTable deve gerar WX-A11Y-002.
-		Usuarios de teclado nao conseguem ativar acoes sem tabela de atalhos.
-
-		NOTA: O validador busca 'wx.Panel(' (com parentese) para detectar instanciacao.
-		A declaracao 'class MeuPanel(wx.Panel):' nao dispara o validador — precisa
-		de instanciacao como 'panel = wx.Panel(parent)' ou equivalente.
-		Tambem nao pode mencionar 'AcceleratorTable' em comentarios.
-		"""
-		codigo = (
-			"import globalPluginHandler\n"
-			"import addonHandler\n"
-			"import wx\n\n"
-			"addonHandler.initTranslation()\n\n"
-			"class MeuDialog(wx.Dialog):\n"
-			'\tdef __init__(self, parent):\n'
-			'\t\tsuper().__init__(parent, title="Teste")\n'
-			"\t\tself.panel = wx.Panel(self)\n"
-			"\t\tself.btn = wx.Button(self.panel, label=\"OK\")\n"
-			"\t\tself.btn.SetName(\"Confirmar\")\n"
-			"\t\t# tabela de atalhos nao configurada\n"
-			"\n"
-			"class GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
-			"\tdef terminate(self):\n"
-			"\t\tsuper().terminate()\n"
-		)
-		addon_folder = _criar_addon(tmp_path, codigo)
-		problems = validate_addon_structure(addon_folder)
-
-		wxa11y002_problems = [p for p in problems if "WX-A11Y-002" in p]
-		assert wxa11y002_problems, (
-			f"Esperado problema WX-A11Y-002 para wx.Panel sem AcceleratorTable. "
-			f"Todos os problemas: {problems}"
-		)
 
 
 class TestWXA11Y003EventoMouse:

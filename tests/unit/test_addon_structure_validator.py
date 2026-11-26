@@ -184,12 +184,42 @@ class TestValidateAddonStructurePython:
         gp.mkdir()
         (gp / "__init__.py").write_text(
             "import globalPluginHandler\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
-            "    def terminate(self): super().terminate()\n",
+            "    def terminate(self): super().terminate()\n"
+            "    def dizer(self): return _('hello')\n",
             encoding="utf-8"
         )
         (tmp_path / "doc").mkdir()
         problems = validate_addon_structure(str(tmp_path))
         assert any("NVDA-003" in p for p in problems)
+
+    def test_sem_gettext_nao_exige_inittranslation(self, tmp_path):
+        """O add-on advanced-nvda-remote nao traduz nada: initTranslation nao e obrigatorio."""
+        from nvdastudio_mcp.addon_builder import validate_addon_structure
+        self._manifest(tmp_path)
+        gp = tmp_path / "globalPlugins"
+        gp.mkdir()
+        (gp / "__init__.py").write_text(
+            "import globalPluginHandler\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
+            "    def terminate(self): super().terminate()\n",
+            encoding="utf-8"
+        )
+        (tmp_path / "doc").mkdir()
+        assert not any("NVDA-003" in p for p in validate_addon_structure(str(tmp_path)))
+
+    def test_ponto_de_entrada_fino_que_importa_a_classe_nao_e_acusado(self, tmp_path):
+        """AbsoluteWindows: __init__.py so importa GlobalPlugin de um modulo irmao."""
+        from nvdastudio_mcp.addon_builder import validate_addon_structure
+        self._manifest(tmp_path)
+        gp = tmp_path / "globalPlugins" / "Meu"
+        gp.mkdir(parents=True)
+        (gp / "__init__.py").write_text("from .core import GlobalPlugin\n", encoding="utf-8")
+        (gp / "core.py").write_text(
+            "import globalPluginHandler\nclass GlobalPlugin(globalPluginHandler.GlobalPlugin):\n"
+            "    def terminate(self): super().terminate()\n",
+            encoding="utf-8"
+        )
+        (tmp_path / "doc").mkdir()
+        assert not any("STRUCTURE-005" in p for p in validate_addon_structure(str(tmp_path)))
 
     def test_sem_terminate_reporta_nvda004(self, tmp_path):
         from nvdastudio_mcp.addon_builder import validate_addon_structure

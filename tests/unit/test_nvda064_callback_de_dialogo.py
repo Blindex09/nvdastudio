@@ -49,3 +49,16 @@ def test_callback_desconhecido_nao_e_acusado():
 def test_codigo_sem_dialogo_e_sintaxe_invalida_sao_ok():
     assert validate_nvda064_dialog_callback("x = 1" + NL).ok
     assert validate_nvda064_dialog_callback("def (:" + NL).ok
+
+
+def test_staticmethod_com_o_payload_como_unico_parametro_passa():
+    """Caso real: gui/__init__.py do NVDA usa @staticmethod def _copyVersionToClipboard(p: Payload)."""
+    codigo = _codigo(
+        "class P:",
+        TAB + "@staticmethod",
+        TAB + "def copiar(p):",
+        TAB + TAB + "pass",
+        TAB + "def abrir(self, dlg):",
+        TAB + TAB + "dlg.addButton(callback=self.copiar)",
+    )
+    assert validate_nvda064_dialog_callback(codigo).ok
